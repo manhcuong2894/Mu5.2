@@ -18,6 +18,8 @@ uniform float uBodyScale;
 uniform float uAlpha;
 uniform int uTranslate;
 uniform int uUseLighting;
+uniform int uRenderMode;
+uniform float uWorldTime;
 
 void main()
 {
@@ -41,7 +43,56 @@ void main()
         color *= luminosity;
     }
 
-    TexCoord = aTexCoord + uTexCoordOffset;
+    float wave = mod(uWorldTime, 10000.0) * 0.0001;
+    float wave2 = mod(uWorldTime, 5000.0) * 0.00024 - 0.4;
+    vec3 lightVector = vec3(0.0, -0.1, -0.8);
+    vec3 chromeL = vec3(cos(uWorldTime * 0.001), sin(uWorldTime * 0.002), 1.0);
+
+    if (uRenderMode == 1)
+    {
+        TexCoord = vec2(worldNormal.z * 0.5 + wave, worldNormal.y * 0.5 + wave * 2.0);
+    }
+    else if (uRenderMode == 2)
+    {
+        TexCoord = vec2((worldNormal.z + worldNormal.x) * 0.8 + wave2 * 2.0,
+                        (worldNormal.y + worldNormal.x) * 1.0 + wave2 * 3.0);
+    }
+    else if (uRenderMode == 3)
+    {
+        float d = dot(worldNormal, lightVector);
+        TexCoord = vec2(d, 1.0 - d);
+    }
+    else if (uRenderMode == 4)
+    {
+        float d = dot(worldNormal, chromeL);
+        TexCoord = vec2(d + worldNormal.y * 0.5 + chromeL.y * 3.0,
+                        1.0 - d - (worldNormal.z * 0.5 + wave * 3.0)) + uTexCoordOffset;
+    }
+    else if (uRenderMode == 5)
+    {
+        float d = dot(worldNormal, chromeL);
+        TexCoord = vec2(d + worldNormal.y * 3.0 + chromeL.y * 5.0,
+                        1.0 - d - (worldNormal.z * 2.5 + wave));
+    }
+    else if (uRenderMode == 6)
+    {
+        float c = (worldNormal.z + worldNormal.x) * 0.8 + wave2 * 2.0;
+        TexCoord = vec2(c, c);
+    }
+    else if (uRenderMode == 7)
+    {
+        float c = (worldNormal.z + worldNormal.x) * 0.8 + uWorldTime * 0.00006;
+        TexCoord = vec2(c, c);
+    }
+    else if (uRenderMode == 8)
+    {
+        TexCoord = worldNormal.xy + uTexCoordOffset;
+    }
+    else
+    {
+        TexCoord = aTexCoord + uTexCoordOffset;
+    }
+
     VertexColor = vec4(color, uAlpha);
     gl_Position = gl_ModelViewProjectionMatrix * vec4(worldPosition, 1.0);
 }
