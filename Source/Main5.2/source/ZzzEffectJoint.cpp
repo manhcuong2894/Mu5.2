@@ -69,6 +69,70 @@ static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, co
 }
 
 
+extern int g_iCrowdVisiblePlayerCount;
+extern unsigned int g_uiCrowdAnimationFrameId;
+
+static bool IsRemotePlayerJointTarget(OBJECT* target)
+{
+	if (target == NULL || Hero == NULL)
+		return false;
+
+	if (target == &Hero->Object || target->Owner == &Hero->Object)
+		return false;
+
+	if (target->Kind == KIND_PLAYER && target->Type == MODEL_PLAYER)
+		return true;
+
+	return target->Owner != NULL
+		&& target->Owner != &Hero->Object
+		&& target->Owner->Kind == KIND_PLAYER
+		&& target->Owner->Type == MODEL_PLAYER;
+}
+
+static bool IsThrottleableRemoteJoint(int Type)
+{
+	switch (Type)
+	{
+	case BITMAP_LIGHT:
+	case BITMAP_LIGHT + 1:
+	case BITMAP_LIGHT + 2:
+	case BITMAP_SHINY:
+	case BITMAP_SHINY + 1:
+	case BITMAP_SHINY + 2:
+	case BITMAP_SPARK:
+	case BITMAP_SPARK + 1:
+	case BITMAP_FLARE:
+	case BITMAP_FLARE + 1:
+	case BITMAP_LIGHTNING:
+	case BITMAP_LIGHTNING + 1:
+	case BITMAP_JOINT_THUNDER:
+	case BITMAP_JOINT_SPIRIT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool ShouldThrottleRemoteJoint(int Type, int SubType, OBJECT* Target)
+{
+	if (!IsRemotePlayerJointTarget(Target) || !IsThrottleableRemoteJoint(Type))
+		return false;
+
+	int period = 1;
+	if (g_iCrowdVisiblePlayerCount >= 60)
+		period = 3;
+	else if (g_iCrowdVisiblePlayerCount >= 30)
+		period = 2;
+
+	if (period <= 1)
+		return false;
+
+	const unsigned int seed = g_uiCrowdAnimationFrameId
+		+ (unsigned int)(((UINT_PTR)Target) >> 4)
+		+ (unsigned int)(Type * 19)
+		+ (unsigned int)(SubType * 29);
+	return (seed % (unsigned int)period) != 0;
+}
 extern float g_fBoneSave[10][3][4];
 
 void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PK, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vColor, short int sTargetIndex)
@@ -81,6 +145,9 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
+	if (ShouldThrottleRemoteJoint(Type, SubType, Target))
+		return;
+
 	const bool priorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
 	const int searchLimit = priorityEffect ? MAX_JOINTS : (MAX_JOINTS - JOINT_HERO_WING_RESERVE);
 

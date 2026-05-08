@@ -71,8 +71,76 @@ static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, O
 		|| (IsWingGlowSpriteType(Type, SubType) && IsNearHeroSpritePosition(Position));
 }
 
+extern int g_iCrowdVisiblePlayerCount;
+extern unsigned int g_uiCrowdAnimationFrameId;
+
+static bool IsRemotePlayerEffectOwner(OBJECT* owner)
+{
+	if (owner == NULL || Hero == NULL)
+		return false;
+
+	if (owner == &Hero->Object || owner->Owner == &Hero->Object)
+		return false;
+
+	if (owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER)
+		return true;
+
+	return owner->Owner != NULL
+		&& owner->Owner != &Hero->Object
+		&& owner->Owner->Kind == KIND_PLAYER
+		&& owner->Owner->Type == MODEL_PLAYER;
+}
+
+static bool IsThrottleableRemoteSprite(int Type)
+{
+	switch (Type)
+	{
+	case BITMAP_LIGHT:
+	case BITMAP_LIGHT + 1:
+	case BITMAP_LIGHT + 2:
+	case BITMAP_SHINY:
+	case BITMAP_SHINY + 1:
+	case BITMAP_SHINY + 2:
+	case BITMAP_SHINY + 3:
+	case BITMAP_SPARK:
+	case BITMAP_SPARK + 1:
+	case BITMAP_FLARE:
+	case BITMAP_FLARE + 1:
+	case BITMAP_LIGHTNING:
+	case BITMAP_LIGHTNING + 1:
+	case BITMAP_PIN_LIGHT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
+{
+	if (!IsRemotePlayerEffectOwner(Owner) || !IsThrottleableRemoteSprite(Type))
+		return false;
+
+	int period = 1;
+	if (g_iCrowdVisiblePlayerCount >= 60)
+		period = 3;
+	else if (g_iCrowdVisiblePlayerCount >= 30)
+		period = 2;
+
+	if (period <= 1)
+		return false;
+
+	const unsigned int seed = g_uiCrowdAnimationFrameId
+		+ (unsigned int)(((UINT_PTR)Owner) >> 4)
+		+ (unsigned int)(Type * 17)
+		+ (unsigned int)(SubType * 31);
+	return (seed % (unsigned int)period) != 0;
+}
+
 int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
 {
+	if (ShouldThrottleRemoteSprite(Type, SubType, Owner))
+		return false;
+
 	const bool priorityEffect = IsPriorityWingSprite(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_SPRITES : (MAX_SPRITES - SPRITE_HERO_WING_RESERVE);
 
