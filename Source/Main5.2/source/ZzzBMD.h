@@ -231,6 +231,7 @@ typedef struct _Mesh_t
 
 	GLuint VAO, VBO_Vertices, VBO_Normals, VBO_TexCoords, VBO_Colors, EBO;
 	GLuint VBO_VertexNodes, VBO_NormalNodes;
+	GLuint VBO_SourceVertexIndices;
 	int GpuVertexCount;
 
 	_Mesh_t()
@@ -263,6 +264,7 @@ typedef struct _Mesh_t
 		EBO = 0;
 		VBO_VertexNodes = 0;
 		VBO_NormalNodes = 0;
+		VBO_SourceVertexIndices = 0;
 		GpuVertexCount = 0;
 	}
 
@@ -385,7 +387,7 @@ public:
 	void ClearGpuAssist();
 	void EnsureCpuTransformData();
 	bool CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const;
-	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady);
+	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeometry, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady);
 	void CacheGpuAssistBoneMatrices();
 	void ComputeGpuAssistLightDirection(vec3_t lightDir) const;
 	void PrepareGpuAssistBounds(vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB);

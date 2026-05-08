@@ -5,6 +5,7 @@ layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in float aPositionNode;
 layout(location = 4) in float aNormalNode;
+layout(location = 5) in float aSourceVertexIndex;
 
 out vec2 TexCoord;
 out vec4 VertexColor;
@@ -19,6 +20,7 @@ uniform float uBoneScale;
 uniform float uAlpha;
 uniform int uTranslate;
 uniform int uUseLighting;
+uniform int uUseWave;
 uniform int uRenderMode;
 uniform float uWorldTime;
 
@@ -40,6 +42,12 @@ void main()
     {
         worldPosition *= uBodyScale;
         worldPosition += uBodyOrigin;
+    }
+
+    if (uUseWave != 0)
+    {
+        float waveOffset = sin((uWorldTime + aSourceVertexIndex * 931.0) * 0.007) * 28.0;
+        worldPosition += normalize(worldNormal) * waveOffset;
     }
 
     vec3 color = uBodyLight;

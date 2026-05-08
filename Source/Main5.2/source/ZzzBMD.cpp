@@ -744,12 +744,17 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 		RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
 		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
-		RENDER_METAL;
+		RENDER_METAL | RENDER_WAVE;
 	if (renderFlag & ~gpuSafeStateFlags)
 		return PART_GPU_REJECT_FLAG;
 
+	if ((renderFlag & RENDER_WAVE) && resolvedRenderFlag != RENDER_TEXTURE)
+	{
+		return PART_GPU_REJECT_FLAG;
+	}
+
 	if (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
-		RENDER_SHADOWMAP | RENDER_WAVE))
+		RENDER_SHADOWMAP))
 	{
 		return PART_GPU_REJECT_FLAG;
 	}
@@ -2014,7 +2019,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						const int gpuRenderMode = (renderFlags == RENDER_BRIGHT && (RenderFlag & RENDER_BRIGHT)) ? 10 : GetGpuAssistRenderMode(RenderFlag);
 						const bool gpuChromeOffset = (gpuRenderMode == 4 || gpuRenderMode == 8);
 						ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, true, PART_GPU_REJECT_NONE);
-						RenderMeshGpuAssist(m, EnableLight, Alpha,
+						RenderMeshGpuAssist(m, EnableLight, (RenderFlag & RENDER_WAVE) != 0, Alpha,
 							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordU : 0.0f,
 							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordV : 0.0f,
 							gpuRenderMode, gpuFallbackBodyLight, gpuFallbackBodyLightReady);
@@ -2958,6 +2963,7 @@ void BMD::Release()
 			if (m->VBO_Colors != 0) glDeleteBuffers(1, &m->VBO_Colors);
 			if (m->VBO_VertexNodes != 0) glDeleteBuffers(1, &m->VBO_VertexNodes);
 			if (m->VBO_NormalNodes != 0) glDeleteBuffers(1, &m->VBO_NormalNodes);
+			if (m->VBO_SourceVertexIndices != 0) glDeleteBuffers(1, &m->VBO_SourceVertexIndices);
 			if (m->EBO != 0) glDeleteBuffers(1, &m->EBO);
 			if (m->VAO != 0) glDeleteVertexArrays(1, &m->VAO);
 
@@ -3970,7 +3976,7 @@ void createViewMatrix(float* matrix, float* cameraPosition, float* cameraAngles,
 }
 
 
-void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady)
+void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeometry, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady)
 {
 #ifdef SHADER_VERSION_TEST
 	if (m == NULL || m->VAO == 0 || m->GpuVertexCount <= 0)
@@ -3992,6 +3998,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 		GLint TexCoordOffset;
 		GLint Translate;
 		GLint UseLighting;
+		GLint UseWave;
 		GLint RenderMode;
 		GLint WorldTime;
 		GLint LightDir;
@@ -4015,6 +4022,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 		sUniforms.TexCoordOffset = glGetUniformLocation(program, "uTexCoordOffset");
 		sUniforms.Translate = glGetUniformLocation(program, "uTranslate");
 		sUniforms.UseLighting = glGetUniformLocation(program, "uUseLighting");
+		sUniforms.UseWave = glGetUniformLocation(program, "uUseWave");
 		sUniforms.RenderMode = glGetUniformLocation(program, "uRenderMode");
 		sUniforms.WorldTime = glGetUniformLocation(program, "uWorldTime");
 		sUniforms.LightDir = glGetUniformLocation(program, "uLightDir");
@@ -4044,6 +4052,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
 	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
 	glUniform1i(sUniforms.UseLighting, shaderLighting ? 1 : 0);
+	glUniform1i(sUniforms.UseWave, enableWaveGeometry ? 1 : 0);
 	glUniform1i(sUniforms.RenderMode, renderMode);
 	glUniform1f(sUniforms.WorldTime, (float)WorldTime);
 
@@ -4099,6 +4108,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 		if (mesh.VBO_Colors != 0) glDeleteBuffers(1, &mesh.VBO_Colors);
 		if (mesh.VBO_VertexNodes != 0) glDeleteBuffers(1, &mesh.VBO_VertexNodes);
 		if (mesh.VBO_NormalNodes != 0) glDeleteBuffers(1, &mesh.VBO_NormalNodes);
+		if (mesh.VBO_SourceVertexIndices != 0) glDeleteBuffers(1, &mesh.VBO_SourceVertexIndices);
 		if (mesh.EBO != 0) glDeleteBuffers(1, &mesh.EBO);
 		if (mesh.VAO != 0) glDeleteVertexArrays(1, &mesh.VAO);
 
@@ -4109,6 +4119,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 		mesh.VBO_Colors = 0;
 		mesh.VBO_VertexNodes = 0;
 		mesh.VBO_NormalNodes = 0;
+		mesh.VBO_SourceVertexIndices = 0;
 		mesh.EBO = 0;
 		mesh.GpuVertexCount = 0;
 	};
@@ -4132,6 +4143,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	std::vector<float> textCoords;
 	std::vector<float> vertexNodes;
 	std::vector<float> normalNodes;
+	std::vector<float> sourceVertexIndices;
 	std::vector<unsigned short> indices;
 
 	int target_vertex_index = -1;
@@ -4140,6 +4152,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	textCoords.reserve(mesh.NumTriangles * 8);
 	vertexNodes.reserve(mesh.NumTriangles * 4);
 	normalNodes.reserve(mesh.NumTriangles * 4);
+	sourceVertexIndices.reserve(mesh.NumTriangles * 4);
 	indices.reserve(mesh.NumTriangles * 6);
 
 	for (int j = 0; j < mesh.NumTriangles; j++)
@@ -4216,6 +4229,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 
 			vertexNodes.push_back((float)vertexNode);
 			normalNodes.push_back((float)normalNode);
+			sourceVertexIndices.push_back((float)source_vertex_index[k]);
 		}
 
 		if (!validPolygon)
@@ -4248,6 +4262,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	glGenBuffers(1, &mesh.VBO_TexCoords);
 	glGenBuffers(1, &mesh.VBO_VertexNodes);
 	glGenBuffers(1, &mesh.VBO_NormalNodes);
+	glGenBuffers(1, &mesh.VBO_SourceVertexIndices);
 	glGenBuffers(1, &mesh.EBO);
 
 	glBindVertexArray(mesh.VAO);
@@ -4276,6 +4291,11 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	glBufferData(GL_ARRAY_BUFFER, normalNodes.size() * sizeof(float), normalNodes.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
 	glEnableVertexAttribArray(4);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_SourceVertexIndices);
+	glBufferData(GL_ARRAY_BUFFER, sourceVertexIndices.size() * sizeof(float), sourceVertexIndices.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+	glEnableVertexAttribArray(5);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), indices.data(), GL_STATIC_DRAW);
