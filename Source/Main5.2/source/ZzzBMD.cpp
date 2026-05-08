@@ -79,6 +79,8 @@ static void FlushGpuAssistState()
 		glBindVertexArray(0);
 		g_uiGpuAssistActiveVao = 0;
 	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	if (g_uiGpuAssistActiveProgram != 0)
 	{
 		glUseProgram(0);
@@ -1701,6 +1703,13 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 
 		if (m->NumTriangles)
 		{
+#ifdef SHADER_VERSION_TEST
+			if (!m_bGpuAssistRequested || !m_bGpuAssistTransformReady || m_pGpuAssistBoneMatrices == NULL || !gShaderGL->IsGpuAssistEnabled())
+			{
+				FlushGpuAssistState();
+			}
+#endif // SHADER_VERSION_TEST
+
 			float Wave = (int)WorldTime % 10000 * 0.0001f;
 			int Texture = IndexTexture[m->Texture];
 
@@ -4062,6 +4071,7 @@ void BMD::RenderVertexBuffer(int i, Mesh_t* m, int vertex_index, vec3_t* vertice
 	if (m == NULL || m->VAO == 0)
 		return;
 
+	FlushGpuAssistState();
 	glBindVertexArray(m->VAO);
 	glDrawElements(GL_TRIANGLES, vertex_index, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
@@ -4073,6 +4083,7 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 {
 	UNREFERENCED_PARAMETER(i);
 
+	FlushGpuAssistState();
 	auto resetGpuMeshBuffers = [&mesh]()
 	{
 		if (mesh.VBO_Vertices != 0) glDeleteBuffers(1, &mesh.VBO_Vertices);
