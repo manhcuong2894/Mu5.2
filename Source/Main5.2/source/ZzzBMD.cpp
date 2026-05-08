@@ -314,11 +314,6 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	return false;
 }
 
-static bool IsGpuAssistEligibleGlobalItemModel(int modelType)
-{
-	return modelType == MODEL_POTION + 414;
-}
-
 static void BuildRenderMeshCache(Mesh_t& mesh)
 {
 	SAFE_DELETE_ARRAY(mesh.RenderVertexIndices);
@@ -566,8 +561,7 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (!gShaderGL->IsGpuAssistEnabled())
 		return;
 
-	const bool isGlobalItemModel = globalTransform && IsGpuAssistEligibleGlobalItemModel(modelType);
-	if (!isGlobalItemModel && !IsGpuAssistEligibleObject(pObject))
+	if (!IsGpuAssistEligibleObject(pObject))
 		return;
 
 	const bool isAttachmentModel = (!isBodyModel && IsGpuAssistEligibleAttachmentModel(modelType));
