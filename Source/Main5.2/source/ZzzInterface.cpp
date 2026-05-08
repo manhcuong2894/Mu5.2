@@ -9146,13 +9146,39 @@ void RenderPartPerfWindow()
 		OtherPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED]);
 	g_pRenderText->RenderText(18, PerfY + 65, PerfText);
 
-	const PART_RENDER_PERF_BUCKET& ReqTopPerf =
-		(ArmorPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > 0) ? ArmorPerf : WeaponPerf;
-	sprintf(PerfText, "PFO TYPE %d:%d %d:%d %d:%d %d:%d",
-		ReqTopPerf.ReqType[0], ReqTopPerf.ReqTypeCount[0],
-		ReqTopPerf.ReqType[1], ReqTopPerf.ReqTypeCount[1],
-		ReqTopPerf.ReqType[2], ReqTopPerf.ReqTypeCount[2],
-		ReqTopPerf.ReqType[3], ReqTopPerf.ReqTypeCount[3]);
+	const PART_RENDER_PERF_BUCKET* ReqTopPerf = &WeaponPerf;
+	const char* ReqTopName = "WP";
+	int ReqTopCount = WeaponPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED];
+	if (ArmorPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > ReqTopCount)
+	{
+		ReqTopPerf = &ArmorPerf;
+		ReqTopName = "AR";
+		ReqTopCount = ArmorPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED];
+	}
+	if (WingPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > ReqTopCount)
+	{
+		ReqTopPerf = &WingPerf;
+		ReqTopName = "WG";
+		ReqTopCount = WingPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED];
+	}
+	if (HelperPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > ReqTopCount)
+	{
+		ReqTopPerf = &HelperPerf;
+		ReqTopName = "HP";
+		ReqTopCount = HelperPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED];
+	}
+	if (OtherPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > ReqTopCount)
+	{
+		ReqTopPerf = &OtherPerf;
+		ReqTopName = "OT";
+		ReqTopCount = OtherPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED];
+	}
+	sprintf(PerfText, "PFO TYPE %s %d:%d %d:%d %d:%d %d:%d",
+		ReqTopName,
+		ReqTopPerf->ReqType[0], ReqTopPerf->ReqTypeCount[0],
+		ReqTopPerf->ReqType[1], ReqTopPerf->ReqTypeCount[1],
+		ReqTopPerf->ReqType[2], ReqTopPerf->ReqTypeCount[2],
+		ReqTopPerf->ReqType[3], ReqTopPerf->ReqTypeCount[3]);
 	g_pRenderText->RenderText(18, PerfY + 78, PerfText);
 }
 
