@@ -11,6 +11,7 @@ Ví dụ:
 git commit -m "Fix login bug"
 3. Upload lên GitHub
 git push
+git push origin main --force
 
 Xem file nào thay đổi
 git status
