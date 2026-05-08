@@ -10,6 +10,7 @@
 #include "UIGuildInfo.h"
 #include "ZzzInterface.h"
 #include "ZzzLodTerrain.h"
+#include "ZzzScene.h"
 #include "jpexs.h"
 
 
@@ -27,8 +28,27 @@ struct HeadChatExtentCache {
 
 static HeadChatExtentCache g_HeadChatExtentCache[512];
 
+extern CHARACTER* Hero;
+extern int g_iCrowdVisiblePlayerCount;
+extern unsigned int g_uiCrowdAnimationFrameId;
+
+struct HeadChatPositionCache {
+  bool Valid;
+  CHARACTER* Owner;
+  unsigned int FrameId;
+  vec3_t OwnerPosition;
+  vec3_t CameraPosition;
+  vec3_t CameraAngle;
+  int X;
+  int Y;
+  int Width;
+  int Height;
+};
+
+static HeadChatPositionCache g_HeadChatPositionCache[MAX_CHAT];
+
 static unsigned int GetHeadChatTextHash(const char *text, bool useGmFont,
-                                        bool useBoldFont) {
+                                         bool useBoldFont) {
   unsigned int hash = 2166136261u;
   const unsigned char *cursor = (const unsigned char *)text;
   while (*cursor) {
@@ -89,6 +109,102 @@ static BOOL GetCachedHeadChatTextExtent(const char *text, bool useGmFont,
   cache->Size = *size;
   cache->Result = result;
   return result;
+}
+
+static bool IsCrowdHeadChatOwner(const CHAT *chat, CHARACTER *owner) {
+  if (chat == NULL || owner == NULL || owner == Hero || Hero == NULL) {
+    return false;
+  }
+
+  if (chat->LifeTime[0] > 0 || chat->LifeTime[1] > 0 ||
+      chat->szShopTitle[0] != '\0') {
+    return false;
+  }
+
+  OBJECT *object = &owner->Object;
+  return (SceneFlag == MAIN_SCENE && g_iCrowdVisiblePlayerCount >= 30 &&
+          owner->GetKind() == KIND_PLAYER && object->Type == MODEL_PLAYER &&
+          object->Live && object->Visible);
+}
+
+static float GetHeadChatDistance2ToHero(const OBJECT *object) {
+  const float dx = Hero->Object.Position[0] - object->Position[0];
+  const float dy = Hero->Object.Position[1] - object->Position[1];
+  return (dx * dx) + (dy * dy);
+}
+
+static int GetCrowdHeadChatPositionStep(const OBJECT *object) {
+  if (object == NULL || Hero == NULL || g_iCrowdVisiblePlayerCount < 30) {
+    return 1;
+  }
+
+  const float dist2 = GetHeadChatDistance2ToHero(object);
+
+  if (g_iCrowdVisiblePlayerCount >= 60) {
+    if (dist2 > (320.0f * 320.0f)) {
+      return 4;
+    }
+    if (dist2 > (180.0f * 180.0f)) {
+      return 3;
+    }
+    if (dist2 > (100.0f * 100.0f)) {
+      return 2;
+    }
+  } else if (g_iCrowdVisiblePlayerCount >= 45) {
+    if (dist2 > (260.0f * 260.0f)) {
+      return 3;
+    }
+    if (dist2 > (150.0f * 150.0f)) {
+      return 2;
+    }
+  } else if (dist2 > (220.0f * 220.0f)) {
+    return 2;
+  }
+
+  return 1;
+}
+
+static bool HasHeadChatVectorChanged(const vec3_t a, const vec3_t b,
+                                     float epsilon) {
+  return fabsf(a[0] - b[0]) > epsilon || fabsf(a[1] - b[1]) > epsilon ||
+         fabsf(a[2] - b[2]) > epsilon;
+}
+
+static bool CanReuseHeadChatPosition(const HeadChatPositionCache *cache,
+                                     CHARACTER *owner, int step) {
+  if (cache == NULL || !cache->Valid || cache->Owner != owner || step <= 1) {
+    return false;
+  }
+
+  if ((g_uiCrowdAnimationFrameId - cache->FrameId) >= (unsigned int)step) {
+    return false;
+  }
+
+  if (HasHeadChatVectorChanged(cache->CameraPosition, CameraPosition, 1.0f) ||
+      HasHeadChatVectorChanged(cache->CameraAngle, CameraAngle, 0.05f)) {
+    return false;
+  }
+
+  return !HasHeadChatVectorChanged(cache->OwnerPosition, owner->Object.Position,
+                                   3.0f);
+}
+
+static void StoreHeadChatPositionCache(HeadChatPositionCache *cache,
+                                       CHARACTER *owner, const CHAT *chat) {
+  if (cache == NULL || owner == NULL || chat == NULL) {
+    return;
+  }
+
+  cache->Valid = true;
+  cache->Owner = owner;
+  cache->FrameId = g_uiCrowdAnimationFrameId;
+  VectorCopy(owner->Object.Position, cache->OwnerPosition);
+  VectorCopy(CameraPosition, cache->CameraPosition);
+  VectorCopy(CameraAngle, cache->CameraAngle);
+  cache->X = chat->x;
+  cache->Y = chat->y;
+  cache->Width = chat->Width;
+  cache->Height = chat->Height;
 }
 
 CGMHeadChat::CGMHeadChat() : Chat(MAX_CHAT) {}
@@ -499,6 +615,23 @@ void CGMHeadChat::RenderBooleans() {
       CHARACTER *pCharacter = ci->Owner;
 
       float add_boundin = 0.0;
+      HeadChatPositionCache *positionCache = &g_HeadChatPositionCache[i];
+      const bool canUsePositionCache =
+          IsCrowdHeadChatOwner(ci, pCharacter);
+      const int positionCacheStep =
+          canUsePositionCache
+              ? GetCrowdHeadChatPositionStep(&pCharacter->Object)
+              : 1;
+
+      if (canUsePositionCache &&
+          CanReuseHeadChatPosition(positionCache, pCharacter,
+                                   positionCacheStep)) {
+        ci->x = positionCache->X;
+        ci->y = positionCache->Y;
+        ci->Width = positionCache->Width;
+        ci->Height = positionCache->Height;
+        continue;
+      }
 
       if (ci->Owner != NULL) {
         OBJECT *o = &ci->Owner->Object;
@@ -537,6 +670,12 @@ void CGMHeadChat::RenderBooleans() {
 
       ci->x = ScreenX - (ci->Width * 0.5f);
       ci->y = ScreenY - ci->Height;
+
+      if (canUsePositionCache && positionCacheStep > 1) {
+        StoreHeadChatPositionCache(positionCache, pCharacter, ci);
+      } else {
+        positionCache->Valid = false;
+      }
     }
   }
 
