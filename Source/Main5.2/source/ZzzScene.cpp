@@ -2826,6 +2826,7 @@ bool RenderMainScene()
 		BeginBitmap();
 
 		RenderInfomation();
+		RenderPartPerfWindow();
 
 #ifdef ENABLE_EDIT
 		RenderDebugWindow();

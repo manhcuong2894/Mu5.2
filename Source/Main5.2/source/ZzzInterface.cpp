@@ -9059,18 +9059,8 @@ int OldTime = timeGetTime();
 extern int MixItemValue;
 extern int MixItemValueOld;
 
-void RenderDebugWindow()
+void RenderPartPerfWindow()
 {
-	g_pRenderText->SetFont(g_hFont);
-	g_pRenderText->SetTextColor(255, 255, 255, 255);
-	g_pRenderText->SetBgColor(0, 0, 0, 255);
-
-	if (timeGetTime() - OldTime >= 1000)
-	{
-		OldTime = timeGetTime();
-		TotalPacketSize = 0;
-	}
-
 	static DWORD s_dwPartPerfLastTime = 0;
 	static PART_RENDER_PERF_STATS s_PartPerfSnapshot;
 	const DWORD dwPartPerfNow = timeGetTime();
@@ -9081,7 +9071,7 @@ void RenderDebugWindow()
 	}
 
 	char PerfText[256];
-	int PerfY = gwinhandle->GetScreenY() - 118;
+	int PerfY = 74;
 	g_pRenderText->SetFont(g_hFont);
 	g_pRenderText->SetTextColor(255, 220, 80, 255);
 	g_pRenderText->SetBgColor(0, 0, 0, 180);
@@ -9091,7 +9081,7 @@ void RenderDebugWindow()
 		s_PartPerfSnapshot.Bucket[PART_RENDER_WING].Ms,
 		s_PartPerfSnapshot.Bucket[PART_RENDER_HELPER].Ms,
 		s_PartPerfSnapshot.Bucket[PART_RENDER_OTHER].Ms);
-	g_pRenderText->RenderText(3, PerfY, PerfText);
+	g_pRenderText->RenderText(18, PerfY, PerfText);
 
 	const PART_RENDER_PERF_BUCKET& WeaponPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_WEAPON];
 	const PART_RENDER_PERF_BUCKET& ArmorPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_ARMOR];
@@ -9104,7 +9094,7 @@ void RenderDebugWindow()
 	sprintf(PerfText, "PMESH %d GPU H/F %d/%d TRI %d",
 		PartMeshCalls, PartGpuHits, PartGpuFallbacks,
 		WeaponPerf.Triangles + ArmorPerf.Triangles + WingPerf.Triangles + HelperPerf.Triangles + OtherPerf.Triangles);
-	g_pRenderText->RenderText(3, PerfY + 12, PerfText);
+	g_pRenderText->RenderText(18, PerfY + 13, PerfText);
 
 	int RejectTotals[PART_GPU_REJECT_MAX] = { 0 };
 	for (int i = 0; i < PART_RENDER_CATEGORY_MAX; ++i)
@@ -9119,7 +9109,20 @@ void RenderDebugWindow()
 		RejectTotals[PART_GPU_REJECT_FLAG],
 		RejectTotals[PART_GPU_REJECT_MESH],
 		RejectTotals[PART_GPU_REJECT_SHADER]);
-	g_pRenderText->RenderText(3, PerfY + 24, PerfText);
+	g_pRenderText->RenderText(18, PerfY + 26, PerfText);
+}
+
+void RenderDebugWindow()
+{
+	g_pRenderText->SetFont(g_hFont);
+	g_pRenderText->SetTextColor(255, 255, 255, 255);
+	g_pRenderText->SetBgColor(0, 0, 0, 255);
+
+	if (timeGetTime() - OldTime >= 1000)
+	{
+		OldTime = timeGetTime();
+		TotalPacketSize = 0;
+	}
 
 #ifdef ENABLE_EDIT
 	char Text[256];

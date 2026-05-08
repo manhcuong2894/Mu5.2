@@ -100,6 +100,7 @@ int  FindHotKey(int Skill);
 
 void RenderInputText(int x, int y, int Index, int Hide = 0);
 void RenderDebugWindow();
+void RenderPartPerfWindow();
 void RenderTipText(int sx, int sy, const char* Text);
 
 extern int g_iWidthEx;
