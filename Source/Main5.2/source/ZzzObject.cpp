@@ -11797,6 +11797,7 @@ void NextGradeObjectRender(CHARACTER* c)
 void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int ItemLevel, int Option1, int ExtOption, int Select, int RenderType)
 {
 	int Level = (ItemLevel >> 3) & 15;
+	const bool isPlus15Item = (Level == 15);
 
 	if (RenderType & RENDER_WAVE)
 	{
@@ -11865,6 +11866,10 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 	if (g_iEquipmentFxRenderLevelCap >= 0 && g_iEquipmentFxRenderLevelCap < renderLevel)
 	{
 		renderLevel = g_iEquipmentFxRenderLevelCap;
+	}
+	if (isPlus15Item && renderLevel < 4)
+	{
+		renderLevel = 4;
 	}
 
 	if (renderLevel == 0)
