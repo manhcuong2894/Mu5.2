@@ -376,6 +376,16 @@ static bool ShouldRenderHighCostEquipmentFx(const CHARACTER* c, const OBJECT* o)
 	return GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL;
 }
 
+static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
+{
+	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15)
+	{
+		return true;
+	}
+
+	return ShouldRenderHighCostEquipmentFx(c, o);
+}
+
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 {
 	if (o == NULL || Hero == NULL)
@@ -7595,8 +7605,9 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	pModel->Transform(BoneTransform, Temp, Temp, &OBB, Translate);
 #endif //PBG_ADD_NEWCHAR_MONK_ITEM
 
+	const bool isPlus15Item = (Level >= 15);
 	const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
-	const int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, pObject, Type);
+	const int adaptiveFxRenderLevelCap = isPlus15Item ? -1 : GetCrowdAdaptiveEquipmentFxCap(c, pObject, Type);
 
 	if (adaptiveFxRenderLevelCap >= 0)
 	{
@@ -7607,12 +7618,12 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	pModel->ClearGpuAssist();
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 
-	if (adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 2)
+	if (!isPlus15Item && adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 2)
 	{
 		return;
 	}
 
-	if (!ShouldRenderCrowdBrightEquipmentFx(c, pObject, Type))
+	if (!isPlus15Item && !ShouldRenderCrowdBrightEquipmentFx(c, pObject, Type))
 	{
 		return;
 	}
@@ -10198,7 +10209,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 
 	if (!gMapManager->InChaosCastle() && !(gMapManager->IsCursedTemple() && !c->SafeZone))
 	{
-		if (g_pOption->GetRenderEquipment() && ShouldRenderHighCostEquipmentFx(c, o))
+		if (g_pOption->GetRenderEquipment() && ShouldRenderFullSetEquipmentFx(c, o))
 		{
 			if (gmProtect->max_item_level_on >= 15)
 			{
@@ -10431,7 +10442,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				float Scale;
 				if (c->PK < PVP_MURDERER2
 					&& c->Level != 4
-					&& GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL)
+					&& (w->Level >= 15 || GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL))
 				{
 					bool Success = true;
 
@@ -11177,7 +11188,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				//c->ExtendStateTime += timefac(1.f);
 			}
 
-			if (fullset && g_pOption->GetRenderEquipment() && ShouldRenderHighCostEquipmentFx(c, o))
+			if (fullset && g_pOption->GetRenderEquipment() && ShouldRenderFullSetEquipmentFx(c, o))
 			{
 				PartObjectColor(c->BodyPart[5].Type, o->Alpha, 0.5f, Light);
 
