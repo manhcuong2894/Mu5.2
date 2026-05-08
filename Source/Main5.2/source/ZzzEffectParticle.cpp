@@ -4233,13 +4233,13 @@ void MoveParticles()
 	for (int i = 0; i < 2; ++i)
 	{
 		g_vParticleWindVelo[i] += ((rand() % 2001 - 1000) * (0.001f * 0.6f));
-		g_vParticleWindVelo[i] = max(-.6f, min(g_vParticleWindVelo[i], .6f));
+		g_vParticleWindVelo[i] = (g_vParticleWindVelo[i] < -0.6f) ? -0.6f : ((g_vParticleWindVelo[i] > 0.6f) ? 0.6f : g_vParticleWindVelo[i]);
 	}
 
 	for (int i = 0; i < 2; ++i)
 	{
 		g_vParticleWind[i] += (g_vParticleWindVelo[i]);
-		g_vParticleWind[i] = max(-1.7f, min(g_vParticleWind[i], 1.7f));
+		g_vParticleWind[i] = (g_vParticleWind[i] < -1.7f) ? -1.7f : ((g_vParticleWind[i] > 1.7f) ? 1.7f : g_vParticleWind[i]);
 	}
 
 	int count = 0;
@@ -4337,7 +4337,7 @@ void MoveParticles()
 					o->Scale = 0.2f;//sin( WorldTime*0.001f )*0.2f+0.35f;
 
 					o->Velocity[2] += timefac(0.4f);
-					o->Velocity[2] = min(8.f, o->Velocity[2]);
+					o->Velocity[2] = (o->Velocity[2] > 8.0f) ? 8.0f : o->Velocity[2];
 
 					if (o->LifeTime < 5)
 					{
@@ -5450,7 +5450,7 @@ void MoveParticles()
 						)
 					{
 						o->SubType = 1;
-						o->LifeTime = (double)min(20, (double)o->LifeTime);
+						o->LifeTime = (o->LifeTime._runvalue > 20.0) ? 20.0 : o->LifeTime._runvalue;
 						Vector(0.f, 0.f, 0.f, o->Velocity);
 						VectorCopy(o->Position, o->StartPosition);
 					}
@@ -9419,10 +9419,10 @@ void RenderParticles(BYTE byRenderOneMore)
 					for (int k = 0; k < 3; ++k)
 					{
 						Position[k] = o->Position[k] - (float)j * o->Velocity[k] * 0.1f;
-						Light[k] = (float)(min(iCount - j, 10)) *
+						Light[k] = (float)(((iCount - j) < 10) ? (iCount - j) : 10) *
 							(o->Light[(k + iColor) % 3] * (10 - iColorChange) +
 								o->Light[(k + iColor + 1) % 3] * iColorChange) *
-							((float)min(o->LifeTime, 10) * 0.001f);
+							((float)((o->LifeTime._runvalue < 10.0) ? o->LifeTime._runvalue : 10.0) * 0.001f);
 					}
 					RenderSprite(o->TexType, Position, Width, Height, Light, o->Rotation);
 				}
