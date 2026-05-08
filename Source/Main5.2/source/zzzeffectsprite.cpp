@@ -429,6 +429,7 @@ void RenderSprites(BYTE byRenderOneMore)
 				EnableAlphaBlend2();
 			}
 			g_EffectRenderPerfStats.SpriteCpuRender++;
+			ZzzPerfAddTopType(o->Type, g_EffectRenderPerfStats.SpriteCpuType, g_EffectRenderPerfStats.SpriteCpuTypeCount);
 			RenderSprite(o, o->Owner);
 
 			if (byRenderOneMore == 0 || byRenderOneMore == 2)

@@ -25,6 +25,11 @@ vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
 EFFECT_RENDER_PERF_STATS g_EffectRenderPerfStats;
 
+static const int EFFECT_PERF_TYPE_MAX = 4096;
+static int g_EffectSpriteCpuTypeCount[EFFECT_PERF_TYPE_MAX];
+static int g_EffectParticleCreateTypeCount[EFFECT_PERF_TYPE_MAX];
+static int g_EffectParticleCpuTypeCount[EFFECT_PERF_TYPE_MAX];
+
 void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset)
 {
 	if (OutStats != NULL)
@@ -34,6 +39,49 @@ void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset)
 	if (Reset)
 	{
 		memset(&g_EffectRenderPerfStats, 0, sizeof(EFFECT_RENDER_PERF_STATS));
+		memset(g_EffectSpriteCpuTypeCount, 0, sizeof(g_EffectSpriteCpuTypeCount));
+		memset(g_EffectParticleCreateTypeCount, 0, sizeof(g_EffectParticleCreateTypeCount));
+		memset(g_EffectParticleCpuTypeCount, 0, sizeof(g_EffectParticleCpuTypeCount));
+	}
+}
+
+void ZzzPerfAddTopType(int Type, int TypeList[4], int CountList[4])
+{
+	if (Type < 0 || Type >= EFFECT_PERF_TYPE_MAX)
+		return;
+
+	int* sourceCounts = NULL;
+	if (TypeList == g_EffectRenderPerfStats.SpriteCpuType)
+		sourceCounts = g_EffectSpriteCpuTypeCount;
+	else if (TypeList == g_EffectRenderPerfStats.ParticleCreateType)
+		sourceCounts = g_EffectParticleCreateTypeCount;
+	else if (TypeList == g_EffectRenderPerfStats.ParticleCpuType)
+		sourceCounts = g_EffectParticleCpuTypeCount;
+
+	if (sourceCounts == NULL)
+		return;
+
+	const int count = ++sourceCounts[Type];
+	for (int i = 0; i < 4; ++i)
+	{
+		if (TypeList[i] == Type)
+		{
+			CountList[i] = count;
+			return;
+		}
+	}
+
+	int slot = 0;
+	for (int i = 1; i < 4; ++i)
+	{
+		if (CountList[i] < CountList[slot])
+			slot = i;
+	}
+
+	if (count > CountList[slot])
+	{
+		TypeList[slot] = Type;
+		CountList[slot] = count;
 	}
 }
 
@@ -340,6 +388,7 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 			if (AppendParticleSpriteBatch(o, Width, Height))
 			{
 				g_EffectRenderPerfStats.ParticleCpuRender++;
+				ZzzPerfAddTopType(o->Type, g_EffectRenderPerfStats.ParticleCpuType, g_EffectRenderPerfStats.ParticleCpuTypeCount);
 			}
 		}
 		FlushParticleSpriteBatch();
@@ -379,6 +428,7 @@ int CreateParticleSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, in
 int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, float Scale, OBJECT* Owner)
 {
 	g_EffectRenderPerfStats.ParticleCreate++;
+	ZzzPerfAddTopType(Type, g_EffectRenderPerfStats.ParticleCreateType, g_EffectRenderPerfStats.ParticleCreateTypeCount);
 
 	const bool priorityEffect = IsPriorityWingParticle(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_PARTICLES : (MAX_PARTICLES - PARTICLE_HERO_WING_RESERVE);
@@ -9258,6 +9308,7 @@ void RenderParticles(BYTE byRenderOneMore)
 				continue;
 
 			g_EffectRenderPerfStats.ParticleCpuRender++;
+			ZzzPerfAddTopType(o->Type, g_EffectRenderPerfStats.ParticleCpuType, g_EffectRenderPerfStats.ParticleCpuTypeCount);
 
 			BITMAP_t* pBitmap = Bitmaps.GetTexture(o->TexType);
 			float Width = pBitmap->Width * o->Scale;

@@ -19,12 +19,18 @@ typedef struct
 	int SpriteCpuRender;
 	int SpriteGpuRender;
 	int SpriteGpuPass;
+	int SpriteCpuType[4];
+	int SpriteCpuTypeCount[4];
 	int ParticleCreate;
 	int ParticleCreated;
 	int ParticleLive;
 	int ParticleCpuRender;
 	int ParticleGpuRender;
 	int ParticleGpuPass;
+	int ParticleCreateType[4];
+	int ParticleCreateTypeCount[4];
+	int ParticleCpuType[4];
+	int ParticleCpuTypeCount[4];
 	int JointCreate;
 	int JointCreated;
 	int JointThrottled;
@@ -36,6 +42,7 @@ typedef struct
 
 extern EFFECT_RENDER_PERF_STATS g_EffectRenderPerfStats;
 void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset);
+void ZzzPerfAddTopType(int Type, int TypeList[4], int CountList[4]);
 
 void CreateBlur(CHARACTER *Owner,vec3_t p1,vec3_t p2,vec3_t Light,int Type,bool Short=false,int SubType = 0);
 void MoveBlurs();

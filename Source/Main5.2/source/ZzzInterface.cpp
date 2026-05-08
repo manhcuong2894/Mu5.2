@@ -9208,6 +9208,27 @@ void RenderPartPerfWindow()
 		s_EffectPerfSnapshot.JointBatchRender,
 		s_EffectPerfSnapshot.JointFallbackRender);
 	g_pRenderText->RenderText(18, PerfY + 117, PerfText);
+
+	sprintf(PerfText, "EFX TOP SC %d:%d %d:%d %d:%d %d:%d",
+		s_EffectPerfSnapshot.SpriteCpuType[0], s_EffectPerfSnapshot.SpriteCpuTypeCount[0],
+		s_EffectPerfSnapshot.SpriteCpuType[1], s_EffectPerfSnapshot.SpriteCpuTypeCount[1],
+		s_EffectPerfSnapshot.SpriteCpuType[2], s_EffectPerfSnapshot.SpriteCpuTypeCount[2],
+		s_EffectPerfSnapshot.SpriteCpuType[3], s_EffectPerfSnapshot.SpriteCpuTypeCount[3]);
+	g_pRenderText->RenderText(18, PerfY + 130, PerfText);
+
+	sprintf(PerfText, "EFX TOP PC %d:%d %d:%d %d:%d %d:%d",
+		s_EffectPerfSnapshot.ParticleCpuType[0], s_EffectPerfSnapshot.ParticleCpuTypeCount[0],
+		s_EffectPerfSnapshot.ParticleCpuType[1], s_EffectPerfSnapshot.ParticleCpuTypeCount[1],
+		s_EffectPerfSnapshot.ParticleCpuType[2], s_EffectPerfSnapshot.ParticleCpuTypeCount[2],
+		s_EffectPerfSnapshot.ParticleCpuType[3], s_EffectPerfSnapshot.ParticleCpuTypeCount[3]);
+	g_pRenderText->RenderText(18, PerfY + 143, PerfText);
+
+	sprintf(PerfText, "EFX TOP PCR %d:%d %d:%d %d:%d %d:%d",
+		s_EffectPerfSnapshot.ParticleCreateType[0], s_EffectPerfSnapshot.ParticleCreateTypeCount[0],
+		s_EffectPerfSnapshot.ParticleCreateType[1], s_EffectPerfSnapshot.ParticleCreateTypeCount[1],
+		s_EffectPerfSnapshot.ParticleCreateType[2], s_EffectPerfSnapshot.ParticleCreateTypeCount[2],
+		s_EffectPerfSnapshot.ParticleCreateType[3], s_EffectPerfSnapshot.ParticleCreateTypeCount[3]);
+	g_pRenderText->RenderText(18, PerfY + 156, PerfText);
 }
 
 void RenderDebugWindow()
