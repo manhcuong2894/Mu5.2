@@ -23,7 +23,7 @@ vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
 vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
 static const int PARTICLE_HERO_WING_RESERVE = 512;
-static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 520.f;
+static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 220.f;
 
 static bool IsNearHeroParticlePosition(const vec3_t position)
 {
@@ -44,7 +44,11 @@ static bool IsHeroOrWingParticleOwner(OBJECT* owner)
 	if (Hero != NULL && owner == &Hero->Object)
 		return true;
 
-	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER;
+	if (Hero != NULL && owner->Owner == &Hero->Object)
+		return true;
+
+	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER
+		&& IsNearHeroParticlePosition(owner->Position);
 }
 
 static bool IsWingGlowParticleType(int Type, int SubType)

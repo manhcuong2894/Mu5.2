@@ -19,7 +19,7 @@
 OBJECT Sprites[MAX_SPRITES];
 
 static const int SPRITE_HERO_WING_RESERVE = 256;
-static const float HERO_WING_PRIORITY_RADIUS = 520.f;
+static const float HERO_WING_PRIORITY_RADIUS = 220.f;
 
 static bool IsNearHeroSpritePosition(const vec3_t position)
 {
@@ -40,7 +40,11 @@ static bool IsHeroOrWingSpriteOwner(OBJECT* owner)
 	if (Hero != NULL && owner == &Hero->Object)
 		return true;
 
-	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER;
+	if (Hero != NULL && owner->Owner == &Hero->Object)
+		return true;
+
+	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER
+		&& IsNearHeroSpritePosition(owner->Position);
 }
 
 static bool IsWingGlowSpriteType(int Type, int SubType)

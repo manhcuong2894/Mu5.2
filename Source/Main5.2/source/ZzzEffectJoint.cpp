@@ -18,7 +18,7 @@
 #include "NewUISystem.h"
 
 static const int JOINT_HERO_WING_RESERVE = 160;
-static const float JOINT_HERO_WING_PRIORITY_RADIUS = 520.f;
+static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
 
 static bool IsNearHeroJointPosition(const vec3_t position)
 {
@@ -39,7 +39,11 @@ static bool IsHeroOrWingJointTarget(OBJECT* target)
 	if (Hero != NULL && target == &Hero->Object)
 		return true;
 
-	return target->Type >= MODEL_WING && target->Type < MODEL_HELPER;
+	if (Hero != NULL && target->Owner == &Hero->Object)
+		return true;
+
+	return target->Type >= MODEL_WING && target->Type < MODEL_HELPER
+		&& IsNearHeroJointPosition(target->Position);
 }
 
 static bool IsWingGlowJointType(int Type, int SubType)
