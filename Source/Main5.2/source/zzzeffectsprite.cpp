@@ -45,9 +45,17 @@ static bool ShouldRenderSpriteInPass(const OBJECT* o, BYTE byRenderOneMore)
 	return true;
 }
 
+static bool IsGpuBatchablePlayerSpriteOwner(const OBJECT* owner)
+{
+	return owner != NULL && owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER;
+}
+
 static bool CanGpuBatchTransientSprite(const OBJECT* o)
 {
 	if (o == NULL || o->Type == BITMAP_FORMATION_MARK)
+		return false;
+
+	if (!IsGpuBatchablePlayerSpriteOwner(o->Owner))
 		return false;
 
 	if (o->SubType != 0)
