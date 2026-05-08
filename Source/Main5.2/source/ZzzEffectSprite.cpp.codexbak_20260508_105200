@@ -67,201 +67,6 @@ static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, O
 		|| (IsWingGlowSpriteType(Type, SubType) && IsNearHeroSpritePosition(Position));
 }
 
-struct SPRITE_BATCH
-{
-	int Type;
-	int SubType;
-	int Count;
-	vec2_t TexCoord[MAX_SPRITES * 4];
-	vec3_t Vertex[MAX_SPRITES * 4];
-	vec4_t Color[MAX_SPRITES * 4];
-};
-
-static void SetSpriteBlendMode(int Type, int SubType)
-{
-	if (Type == BITMAP_FORMATION_MARK)
-	{
-		EnableAlphaTest();
-	}
-	else if (SubType == 0)
-	{
-		EnableAlphaBlend();
-	}
-	else if (SubType == 1)
-	{
-		EnableAlphaBlendMinus();
-	}
-	else if (SubType == 2)
-	{
-		EnableAlphaTest();
-	}
-	else if (SubType == 3)
-	{
-		EnableAlphaBlend2();
-	}
-}
-
-static void ResetSpriteBatch(SPRITE_BATCH* batch)
-{
-	batch->Type = -1;
-	batch->SubType = -1;
-	batch->Count = 0;
-}
-
-static bool IsSameSpriteBatch(const SPRITE_BATCH* batch, const OBJECT* o)
-{
-	return batch->Count > 0
-		&& batch->Type == o->Type
-		&& batch->SubType == o->SubType;
-}
-
-static void FlushSpriteBatch(SPRITE_BATCH* batch)
-{
-	if (batch->Count <= 0)
-	{
-		return;
-	}
-
-	SetSpriteBlendMode(batch->Type, batch->SubType);
-	BindTexture(batch->Type);
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	glVertexPointer(3, GL_FLOAT, 0, batch->Vertex);
-	glTexCoordPointer(2, GL_FLOAT, 0, batch->TexCoord);
-	glColorPointer(4, GL_FLOAT, 0, batch->Color);
-
-	glDrawArrays(GL_QUADS, 0, batch->Count);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	ResetSpriteBatch(batch);
-}
-
-static void AppendSpriteQuad(SPRITE_BATCH* batch, OBJECT* o)
-{
-	if (batch->Count + 4 > MAX_SPRITES * 4)
-	{
-		FlushSpriteBatch(batch);
-	}
-
-	if (batch->Count == 0)
-	{
-		batch->Type = o->Type;
-		batch->SubType = o->SubType;
-	}
-
-	if (o->Visible)
-	{
-		o->AnimationFrame += 0.1f;
-		if (o->AnimationFrame > 1.f)
-		{
-			o->AnimationFrame = 1.f;
-		}
-	}
-	else
-	{
-		o->AnimationFrame -= 0.1f;
-		if (o->AnimationFrame < 0.2f)
-		{
-			o->AnimationFrame = 0.2f;
-		}
-	}
-
-	float Scale = o->AnimationFrame * o->Scale;
-	BITMAP_t* pBitmap = Bitmaps.GetTexture(o->Type);
-	float Width = pBitmap->Width * Scale;
-	float Height = pBitmap->Height * Scale;
-	float u = 0.f;
-	float v = 0.f;
-	float uWidth = 1.f;
-	float vHeight = 1.f;
-
-	if (o->Type == BITMAP_FORMATION_MARK)
-	{
-		Width = 64.f;
-		Height = 64.f;
-		uWidth = 0.33f;
-		vHeight = 0.33f;
-		switch (o->SubType)
-		{
-		case 0: u = 0.f; v = 0.f; break;
-		case 1: u = 0.33f; v = 0.f; break;
-		case 2: u = 0.66f; v = 0.f; break;
-		case 3: u = 0.f; v = 0.33f; break;
-		case 4: u = 0.33f; v = 0.33f; break;
-		case 5: u = 0.66f; v = 0.33f; break;
-		case 6: u = 0.f; v = 0.66f; break;
-		case 7: u = 0.33f; v = 0.66f; break;
-		}
-	}
-
-	vec3_t p2;
-	VectorTransform(o->Position, CameraMatrix, p2);
-	float x = p2[0];
-	float y = p2[1];
-	float z = p2[2];
-
-	Width *= 0.5f;
-	Height *= 0.5f;
-
-	vec3_t p[4];
-	if (o->Angle[2] == 0)
-	{
-		Vector(x - Width, y - Height, z, p[0]);
-		Vector(x + Width, y - Height, z, p[1]);
-		Vector(x + Width, y + Height, z, p[2]);
-		Vector(x - Width, y + Height, z, p[3]);
-	}
-	else
-	{
-		vec3_t p2[4];
-		Vector(-Width, -Height, z, p2[0]);
-		Vector(Width, -Height, z, p2[1]);
-		Vector(Width, Height, z, p2[2]);
-		Vector(-Width, Height, z, p2[3]);
-		vec3_t Angle;
-		Vector(0.f, 0.f, o->Angle[2], Angle);
-		float Matrix[3][4];
-		AngleMatrix(Angle, Matrix);
-
-		for (int i = 0; i < 4; i++)
-		{
-			VectorRotate(p2[i], Matrix, p[i]);
-			p[i][0] += x;
-			p[i][1] += y;
-		}
-	}
-
-	float c[4][2];
-	TEXCOORD(c[3], u, v);
-	TEXCOORD(c[2], u + uWidth, v);
-	TEXCOORD(c[1], u + uWidth, v + vHeight);
-	TEXCOORD(c[0], u, v + vHeight);
-
-	for (int i = 0; i < 4; i++)
-	{
-		const int index = batch->Count + i;
-		VectorCopy(p[i], batch->Vertex[index]);
-		TEXCOORD(batch->TexCoord[index], c[i][0], c[i][1]);
-		VectorCopy(o->Light, batch->Color[index]);
-		if (Bitmaps[o->Type].Components == 3 || o->Type == BITMAP_BLOOD + 1 || o->Type == BITMAP_FONT_HIT)
-		{
-			batch->Color[index][3] = 1.f;
-		}
-		else
-		{
-			batch->Color[index][3] = o->Light[0];
-		}
-	}
-
-	batch->Count += 4;
-}
-
 int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
 {
 	const bool priorityEffect = IsPriorityWingSprite(Type, SubType, Position, Owner);
@@ -364,10 +169,6 @@ void RenderSprites(BYTE byRenderOneMore)
 	{
 		return;
 	}
-
-	static SPRITE_BATCH batch;
-	ResetSpriteBatch(&batch);
-
 	for (int i = 0; i < MAX_SPRITES; i++)
 	{
 		OBJECT* o = &Sprites[i];
@@ -389,12 +190,27 @@ void RenderSprites(BYTE byRenderOneMore)
 
 		if (o->Live)
 		{
-			if (!IsSameSpriteBatch(&batch, o))
+			if (o->Type == BITMAP_FORMATION_MARK)
 			{
-				FlushSpriteBatch(&batch);
+				EnableAlphaTest();
 			}
-
-			AppendSpriteQuad(&batch, o);
+			else if (o->SubType == 0)
+			{
+				EnableAlphaBlend();
+			}
+			else if (o->SubType == 1)
+			{
+				EnableAlphaBlendMinus();
+			}
+			else if (o->SubType == 2)
+			{
+				EnableAlphaTest();
+			}
+			else if (o->SubType == 3)
+			{
+				EnableAlphaBlend2();
+			}
+			RenderSprite(o, o->Owner);
 
 			if (byRenderOneMore == 0 || byRenderOneMore == 2)
 			{
@@ -402,8 +218,6 @@ void RenderSprites(BYTE byRenderOneMore)
 			}
 		}
 	}
-
-	FlushSpriteBatch(&batch);
 }
 
 void CheckSprites()
