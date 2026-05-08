@@ -69,6 +69,37 @@ static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, co
 }
 
 
+struct JointSearchCacheEntry
+{
+	int Type;
+	int SubType;
+	OBJECT* Target;
+	int Index;
+};
+
+static const int JOINT_SEARCH_CACHE_SIZE = 256;
+static JointSearchCacheEntry g_JointSearchCache[JOINT_SEARCH_CACHE_SIZE];
+
+static unsigned int GetJointSearchCacheSlot(int Type, OBJECT* Target, int SubType)
+{
+	UINT_PTR key = (UINT_PTR)Target;
+	key >>= 4;
+	key ^= (UINT_PTR)(Type * 131);
+	key ^= (UINT_PTR)((SubType + 3) * 17);
+	return (unsigned int)(key & (JOINT_SEARCH_CACHE_SIZE - 1));
+}
+
+static bool IsCachedJointSearchHit(const JointSearchCacheEntry& Cache, int Type, OBJECT* Target, int SubType)
+{
+	if (Cache.Type != Type || Cache.SubType != SubType || Cache.Target != Target)
+		return false;
+
+	if (Cache.Index < 0 || Cache.Index >= MAX_JOINTS)
+		return false;
+
+	JOINT* o = &Joints[Cache.Index];
+	return o->Live && o->Type == Type && o->Target == Target && (SubType == -1 || o->SubType == SubType);
+}
 extern int g_iCrowdVisiblePlayerCount;
 extern unsigned int g_uiCrowdAnimationFrameId;
 extern int g_iRemotePlayerJointEffectBudget;
@@ -2893,18 +2924,35 @@ void DeleteJoint(int Type, OBJECT* Target, int SubType)
 
 bool SearchJoint(int Type, OBJECT* Target, int SubType)
 {
+	const unsigned int cacheSlot = GetJointSearchCacheSlot(Type, Target, SubType);
+	JointSearchCacheEntry& Cache = g_JointSearchCache[cacheSlot];
+	if (IsCachedJointSearchHit(Cache, Type, Target, SubType))
+	{
+		return true;
+	}
+
 	for (int i = 0; i < MAX_JOINTS; i++)
 	{
 		JOINT* o = &Joints[i];
 		if (o->Live && o->Type == Type && o->Target == Target)
 		{
 			if (SubType == -1 || o->SubType == SubType)
+			{
+				Cache.Type = Type;
+				Cache.SubType = SubType;
+				Cache.Target = Target;
+				Cache.Index = i;
 				return true;
+			}
 		}
 	}
+
+	Cache.Type = Type;
+	Cache.SubType = SubType;
+	Cache.Target = Target;
+	Cache.Index = -1;
 	return false;
 }
-
 void CreateTailAxis(JOINT* o, float Matrix[3][4], BYTE axis)
 {
 	o->NumTails++;
