@@ -9110,6 +9110,21 @@ void RenderPartPerfWindow()
 		RejectTotals[PART_GPU_REJECT_MESH],
 		RejectTotals[PART_GPU_REJECT_SHADER]);
 	g_pRenderText->RenderText(18, PerfY + 26, PerfText);
+
+	int FlagRejectTotals[PART_GPU_FLAG_MAX] = { 0 };
+	for (int i = 0; i < PART_RENDER_CATEGORY_MAX; ++i)
+	{
+		for (int j = 0; j < PART_GPU_FLAG_MAX; ++j)
+			FlagRejectTotals[j] += s_PartPerfSnapshot.Bucket[i].FlagReject[j];
+	}
+	sprintf(PerfText, "PFF CHR/MET/COL/WAV/LMP/OTH: %d/%d/%d/%d/%d/%d",
+		FlagRejectTotals[PART_GPU_FLAG_CHROME],
+		FlagRejectTotals[PART_GPU_FLAG_METAL],
+		FlagRejectTotals[PART_GPU_FLAG_COLOR],
+		FlagRejectTotals[PART_GPU_FLAG_WAVE],
+		FlagRejectTotals[PART_GPU_FLAG_LIGHTMAP],
+		FlagRejectTotals[PART_GPU_FLAG_OTHER]);
+	g_pRenderText->RenderText(18, PerfY + 39, PerfText);
 }
 
 void RenderDebugWindow()

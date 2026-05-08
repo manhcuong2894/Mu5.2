@@ -81,6 +81,26 @@ static double ZzzPerfCounterToMs(__int64 Ticks)
 	return (double)Ticks * 1000.0 / (double)Frequency.QuadPart;
 }
 
+static int ZzzPerfClassifyFlagReject(int RenderFlag, int ResolvedRenderFlag)
+{
+	if (RenderFlag & (RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
+		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8))
+	{
+		return PART_GPU_FLAG_CHROME;
+	}
+	if (RenderFlag & RENDER_METAL)
+		return PART_GPU_FLAG_METAL;
+	if (RenderFlag & RENDER_COLOR)
+		return PART_GPU_FLAG_COLOR;
+	if (RenderFlag & RENDER_WAVE)
+		return PART_GPU_FLAG_WAVE;
+	if (RenderFlag & (RENDER_LIGHTMAP | RENDER_SHADOWMAP))
+		return PART_GPU_FLAG_LIGHTMAP;
+	if (ResolvedRenderFlag == RENDER_BRIGHT)
+		return PART_GPU_FLAG_OTHER;
+	return PART_GPU_FLAG_OTHER;
+}
+
 int ZzzPerfClassifyPartType(int Type)
 {
 	if (Type >= MODEL_SWORD && Type < MODEL_HELM)
@@ -1875,6 +1895,13 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					}
 
 					ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, false, partGpuReject);
+					if (partPerfCategory >= 0 && partPerfCategory < PART_RENDER_CATEGORY_MAX &&
+						partGpuReject == PART_GPU_REJECT_FLAG)
+					{
+						const int flagReject = ZzzPerfClassifyFlagReject(RenderFlag, renderFlags);
+						if (flagReject >= 0 && flagReject < PART_GPU_FLAG_MAX)
+							g_PartRenderPerfStats.Bucket[partPerfCategory].FlagReject[flagReject]++;
+					}
 
 					if (m_bGpuAssistTransformReady && !m_bGpuAssistCpuDataReady)
 					{

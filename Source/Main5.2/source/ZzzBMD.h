@@ -57,6 +57,17 @@ enum EPartGpuRejectReason
 	PART_GPU_REJECT_MAX
 };
 
+enum EPartGpuFlagRejectReason
+{
+	PART_GPU_FLAG_CHROME = 0,
+	PART_GPU_FLAG_METAL,
+	PART_GPU_FLAG_COLOR,
+	PART_GPU_FLAG_WAVE,
+	PART_GPU_FLAG_LIGHTMAP,
+	PART_GPU_FLAG_OTHER,
+	PART_GPU_FLAG_MAX
+};
+
 typedef struct
 {
 	double Ms;
@@ -66,6 +77,7 @@ typedef struct
 	int GpuHits;
 	int GpuFallbacks;
 	int Reject[PART_GPU_REJECT_MAX];
+	int FlagReject[PART_GPU_FLAG_MAX];
 } PART_RENDER_PERF_BUCKET;
 
 typedef struct
