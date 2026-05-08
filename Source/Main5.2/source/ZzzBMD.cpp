@@ -67,6 +67,7 @@ float ParentMatrix[3][4];
 
 static vec3_t LightVector = { 0.f, -0.1f, -0.8f };
 static vec3_t LightVector2 = { 0.f, -0.5f, -0.8f };
+static unsigned int g_uiGpuAssistTransformSerialCounter = 1;
 
 static bool IsGpuAssistEligibleObject(const OBJECT* pObject)
 {
@@ -380,6 +381,7 @@ void BMD::ClearGpuAssist()
 	m_fGpuAssistScale = 0.0f;
 	m_iGpuAssistObjectType = -1;
 	m_byGpuAssistObjectKind = 0;
+	m_uiGpuAssistTransformSerial = 0;
 	m_pGpuAssistBoneMatrices = NULL;
 	m_pGpuAssistOBB = NULL;
 	memset(m_vGpuAssistBoundingBoxMin, 0, sizeof(m_vGpuAssistBoundingBoxMin));
@@ -535,6 +537,9 @@ void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t Boun
 		VectorCopy(BoundingBoxMax, m_vGpuAssistBoundingBoxMax);
 		PrepareGpuAssistBounds(BoundingBoxMin, BoundingBoxMax, OBB);
 		CacheGpuAssistBoneMatrices();
+		m_uiGpuAssistTransformSerial = g_uiGpuAssistTransformSerialCounter++;
+		if (g_uiGpuAssistTransformSerialCounter == 0)
+			g_uiGpuAssistTransformSerialCounter = 1;
 		return;
 	}
 #endif // SHADER_VERSION_TEST
@@ -543,6 +548,7 @@ void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t Boun
 	m_bGpuAssistTransformReady = false;
 	m_bGpuAssistCpuDataReady = true;
 	m_pGpuAssistBoneMatrices = NULL;
+	m_uiGpuAssistTransformSerial = 0;
 }
 
 void BMD::TransformCpuInternal(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
@@ -3693,9 +3699,13 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	};
 
 	static CharacterUniformCache sUniforms = { 0 };
+	static unsigned int sUploadedTransformSerial = 0;
+	static int sUploadedNumBones = 0;
 	if (sUniforms.Program != program)
 	{
 		sUniforms.Program = program;
+		sUploadedTransformSerial = 0;
+		sUploadedNumBones = 0;
 		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
 		sUniforms.Alpha = glGetUniformLocation(program, "uAlpha");
 		sUniforms.BodyScale = glGetUniformLocation(program, "uBodyScale");
@@ -3723,20 +3733,24 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	gShaderGL->RenderShader(CShaderGL::SHADER_CHARACTER);
 	glUniform1i(sUniforms.Texture1, 0);
 	glUniform1f(sUniforms.Alpha, alpha);
-	glUniform1f(sUniforms.BodyScale, BodyScale);
-	glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
 	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
 	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
-	glUniform1i(sUniforms.Translate, m_bGpuAssistTranslate ? 1 : 0);
 	glUniform1i(sUniforms.UseLighting, enableLight ? 1 : 0);
-	glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
-	glUniformMatrix4fv(sUniforms.Bones, NumBones, GL_FALSE, &m_GpuAssistBones[0][0]);
+
+	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)
+	{
+		glUniform1f(sUniforms.BodyScale, BodyScale);
+		glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
+		glUniform1i(sUniforms.Translate, m_bGpuAssistTranslate ? 1 : 0);
+		glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
+		glUniformMatrix4fv(sUniforms.Bones, NumBones, GL_FALSE, &m_GpuAssistBones[0][0]);
+		sUploadedTransformSerial = m_uiGpuAssistTransformSerial;
+		sUploadedNumBones = NumBones;
+	}
 
 	glBindVertexArray(m->VAO);
 	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glUseProgram(0);
 #endif // SHADER_VERSION_TEST
 }

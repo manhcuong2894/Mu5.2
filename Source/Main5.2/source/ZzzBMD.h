@@ -254,6 +254,7 @@ public:
 	float        m_fGpuAssistScale;
 	int          m_iGpuAssistObjectType;
 	BYTE         m_byGpuAssistObjectKind;
+	unsigned int m_uiGpuAssistTransformSerial;
 	float      (*m_pGpuAssistBoneMatrices)[3][4];
 	OBB_t*       m_pGpuAssistOBB;
 	vec3_t       m_vGpuAssistBoundingBoxMin;
@@ -285,6 +286,7 @@ public:
 		m_fGpuAssistScale = 0.0f;
 		m_iGpuAssistObjectType = -1;
 		m_byGpuAssistObjectKind = 0;
+		m_uiGpuAssistTransformSerial = 0;
 		m_pGpuAssistBoneMatrices = NULL;
 		m_pGpuAssistOBB = NULL;
 		memset(m_vGpuAssistBoundingBoxMin, 0, sizeof(m_vGpuAssistBoundingBoxMin));
