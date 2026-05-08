@@ -12910,10 +12910,15 @@ void RenderPartObjectEdge(int Type, BMD* b, OBJECT* o, int Flag, bool Translate,
 	b->LightEnable = false;
 
 	BoneScale = Scale;
+	b->PrepareGpuAssist(o, Type, Flag, false, false, Translate);
 	if (o->EnableBoneMatrix == 1)
 	{
 		if (!o->EnsureBoneTransform(b->NumBones))
+		{
+			b->ClearGpuAssist();
+			BoneScale = 1.f;
 			return;
+		}
 
 		b->Transform(o->BoneTransform, o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
 	}
@@ -12966,6 +12971,7 @@ void RenderPartObjectEdge(int Type, BMD* b, OBJECT* o, int Flag, bool Translate,
 		b->RenderBody(Flag, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV, o->HiddenMesh);
 #endif // EFFECT_KERNEL_VERTEX
 	}
+	b->ClearGpuAssist();
 	BoneScale = 1.f;
 }
 

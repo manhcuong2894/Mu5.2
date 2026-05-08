@@ -674,7 +674,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 	if ((!Model->m_bGpuAssistBodyPath && !Model->m_bGpuAssistAttachmentPath))
 		return PART_GPU_REJECT_TYPE;
 
-	if (BoneScale != 1.f || Model->m_fGpuAssistScale != 0.0f)
+	if (Model->m_fGpuAssistScale != 0.0f)
 		return PART_GPU_REJECT_SCALE;
 
 	if (Mesh != NULL && (Mesh->VAO == 0 || Mesh->GpuVertexCount <= 0))
@@ -682,8 +682,9 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 
 	const int renderMode = GetGpuAssistRenderMode(renderFlag);
 	const bool isChromeMode = (renderMode > 0);
+	const bool isBrightOnlyMode = (resolvedRenderFlag == RENDER_BRIGHT && (renderFlag & RENDER_BRIGHT));
 
-	if (resolvedRenderFlag != RENDER_TEXTURE && !isChromeMode)
+	if (resolvedRenderFlag != RENDER_TEXTURE && !isChromeMode && !isBrightOnlyMode)
 		return PART_GPU_REJECT_FLAG;
 
 	const int gpuSafeStateFlags = RENDER_TEXTURE | RENDER_BRIGHT | RENDER_DARK | RENDER_NODEPTH |
@@ -1943,7 +1944,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					const int partGpuReject = GetGpuAssistMeshRejectReason(this, m, RenderFlag, renderFlags, EnableWave, EnableLight);
 					if (partGpuReject == PART_GPU_REJECT_NONE)
 					{
-						const int gpuRenderMode = GetGpuAssistRenderMode(RenderFlag);
+						const int gpuRenderMode = (renderFlags == RENDER_BRIGHT && (RenderFlag & RENDER_BRIGHT)) ? 10 : GetGpuAssistRenderMode(RenderFlag);
 						const bool gpuChromeOffset = (gpuRenderMode == 4 || gpuRenderMode == 8);
 						ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, true, PART_GPU_REJECT_NONE);
 						RenderMeshGpuAssist(m, EnableLight, Alpha,
@@ -3912,6 +3913,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 		GLint Texture1;
 		GLint Alpha;
 		GLint BodyScale;
+		GLint BoneScale;
 		GLint BodyOrigin;
 		GLint BodyLight;
 		GLint TexCoordOffset;
@@ -3934,6 +3936,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
 		sUniforms.Alpha = glGetUniformLocation(program, "uAlpha");
 		sUniforms.BodyScale = glGetUniformLocation(program, "uBodyScale");
+		sUniforms.BoneScale = glGetUniformLocation(program, "uBoneScale");
 		sUniforms.BodyOrigin = glGetUniformLocation(program, "uBodyOrigin");
 		sUniforms.BodyLight = glGetUniformLocation(program, "uBodyLight");
 		sUniforms.TexCoordOffset = glGetUniformLocation(program, "uTexCoordOffset");
@@ -3974,6 +3977,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)
 	{
 		glUniform1f(sUniforms.BodyScale, BodyScale);
+		glUniform1f(sUniforms.BoneScale, BoneScale);
 		glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
 		glUniform1i(sUniforms.Translate, m_bGpuAssistTranslate ? 1 : 0);
 		glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);

@@ -15,6 +15,7 @@ uniform vec3 uBodyLight;
 uniform vec3 uLightDir;
 uniform vec2 uTexCoordOffset;
 uniform float uBodyScale;
+uniform float uBoneScale;
 uniform float uAlpha;
 uniform int uTranslate;
 uniform int uUseLighting;
@@ -28,6 +29,12 @@ void main()
 
     vec3 worldPosition = (uBones[positionNode] * vec4(aPosition, 1.0)).xyz;
     vec3 worldNormal = mat3(uBones[normalNode]) * aNormal;
+
+    if (uBoneScale != 1.0)
+    {
+        vec3 boneOrigin = vec3(uBones[positionNode][3][0], uBones[positionNode][3][1], uBones[positionNode][3][2]);
+        worldPosition = (worldPosition - boneOrigin) * uBoneScale + boneOrigin;
+    }
 
     if (uTranslate != 0)
     {
