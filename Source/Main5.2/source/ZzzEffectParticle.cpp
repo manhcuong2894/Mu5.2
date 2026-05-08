@@ -25,6 +25,9 @@ vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 static const int PARTICLE_HERO_WING_RESERVE = 512;
 static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 220.f;
 
+static int g_iParticleAllocCursor = 0;
+static int g_iPriorityParticleAllocCursor = 0;
+
 static bool IsNearHeroParticlePosition(const vec3_t position)
 {
 	if (Hero == NULL)
@@ -282,12 +285,19 @@ int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int Su
 {
 	const bool priorityEffect = IsPriorityWingParticle(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_PARTICLES : (MAX_PARTICLES - PARTICLE_HERO_WING_RESERVE);
-
-	for (int i = 0; i < searchLimit; i++)
+	int& allocCursor = priorityEffect ? g_iPriorityParticleAllocCursor : g_iParticleAllocCursor;
+	if (allocCursor < 0 || allocCursor >= searchLimit)
 	{
+		allocCursor = 0;
+	}
+
+	for (int searchCount = 0; searchCount < searchLimit; searchCount++)
+	{
+		const int i = (allocCursor + searchCount) % searchLimit;
 		PARTICLE* o = &Particles[i];
 		if (!o->Live)
 		{
+			allocCursor = (i + 1) % searchLimit;
 			o->Live = true;
 			o->Type = Type;
 			o->TexType = Type;

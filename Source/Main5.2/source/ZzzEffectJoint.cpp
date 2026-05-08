@@ -20,6 +20,9 @@
 static const int JOINT_HERO_WING_RESERVE = 160;
 static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
 
+static int g_iJointAllocCursor = 0;
+static int g_iPriorityJointAllocCursor = 0;
+
 static bool IsNearHeroJointPosition(const vec3_t position)
 {
 	if (Hero == NULL)
@@ -179,12 +182,19 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 
 	const bool priorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
 	const int searchLimit = priorityEffect ? MAX_JOINTS : (MAX_JOINTS - JOINT_HERO_WING_RESERVE);
-
-	for (int i = 0; i < searchLimit; i++)
+	int& allocCursor = priorityEffect ? g_iPriorityJointAllocCursor : g_iJointAllocCursor;
+	if (allocCursor < 0 || allocCursor >= searchLimit)
 	{
+		allocCursor = 0;
+	}
+
+	for (int searchCount = 0; searchCount < searchLimit; searchCount++)
+	{
+		const int i = (allocCursor + searchCount) % searchLimit;
 		JOINT* o = &Joints[i];
 		if (!o->Live)
 		{
+			allocCursor = (i + 1) % searchLimit;
 			o->Live = true;
 			o->Type = Type;
 			o->TexType = o->Type;
