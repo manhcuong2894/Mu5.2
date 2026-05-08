@@ -8,6 +8,9 @@ Debug/
 Release/
 x64/
 x86/
+Source/BUILD/Client/MAIN/*
+!Source/BUILD/Client/MAIN/Shaders/
+!Source/BUILD/Client/MAIN/Shaders/**
 
 # Temp
 *.obj
