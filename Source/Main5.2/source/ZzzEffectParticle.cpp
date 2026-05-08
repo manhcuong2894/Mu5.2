@@ -80,6 +80,127 @@ static bool IsPriorityWingParticle(int Type, int SubType, const vec3_t Position,
 }
 
 
+struct ParticleSpriteBatch
+{
+	int Texture;
+	int VertexCount;
+	vec3_t Vertices[MAX_PARTICLES * 4];
+	vec4_t Colors[MAX_PARTICLES * 4];
+	vec2_t TexCoords[MAX_PARTICLES * 4];
+};
+
+static ParticleSpriteBatch g_ParticleSpriteBatch = { -1, 0 };
+
+static void FlushParticleSpriteBatch()
+{
+	if (g_ParticleSpriteBatch.VertexCount <= 0)
+		return;
+
+	BindTexture(g_ParticleSpriteBatch.Texture);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+	glVertexPointer(3, GL_FLOAT, 0, g_ParticleSpriteBatch.Vertices);
+	glColorPointer(4, GL_FLOAT, 0, g_ParticleSpriteBatch.Colors);
+	glTexCoordPointer(2, GL_FLOAT, 0, g_ParticleSpriteBatch.TexCoords);
+	glDrawArrays(GL_QUADS, 0, g_ParticleSpriteBatch.VertexCount);
+
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	g_ParticleSpriteBatch.Texture = -1;
+	g_ParticleSpriteBatch.VertexCount = 0;
+}
+
+static bool CanBatchPlus15ParticleSprite(const PARTICLE* o)
+{
+	if (o == NULL)
+		return false;
+
+	if (o->Type == BITMAP_WATERFALL_2)
+		return true;
+
+	if (o->Type == BITMAP_FLARE && o->SubType == 0 && o->LifeTime != 60)
+		return true;
+
+	return false;
+}
+
+static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
+{
+	if (!CanBatchPlus15ParticleSprite(o))
+		return false;
+
+	if (g_ParticleSpriteBatch.Texture != -1 && g_ParticleSpriteBatch.Texture != o->TexType)
+	{
+		FlushParticleSpriteBatch();
+	}
+
+	if (g_ParticleSpriteBatch.VertexCount + 4 > MAX_PARTICLES * 4)
+	{
+		FlushParticleSpriteBatch();
+	}
+
+	g_ParticleSpriteBatch.Texture = o->TexType;
+
+	vec3_t p2;
+	VectorTransform(o->Position, CameraMatrix, p2);
+	const float x = p2[0];
+	const float y = p2[1];
+	const float z = p2[2];
+	const float halfWidth = Width * 0.5f;
+	const float halfHeight = Height * 0.5f;
+
+	vec3_t p[4];
+	if (o->Rotation == 0.0f)
+	{
+		Vector(x - halfWidth, y - halfHeight, z, p[0]);
+		Vector(x + halfWidth, y - halfHeight, z, p[1]);
+		Vector(x + halfWidth, y + halfHeight, z, p[2]);
+		Vector(x - halfWidth, y + halfHeight, z, p[3]);
+	}
+	else
+	{
+		vec3_t local[4];
+		Vector(-halfWidth, -halfHeight, z, local[0]);
+		Vector(halfWidth, -halfHeight, z, local[1]);
+		Vector(halfWidth, halfHeight, z, local[2]);
+		Vector(-halfWidth, halfHeight, z, local[3]);
+
+		vec3_t Angle;
+		Vector(0.0f, 0.0f, o->Rotation, Angle);
+		float Matrix[3][4];
+		AngleMatrix(Angle, Matrix);
+
+		for (int i = 0; i < 4; ++i)
+		{
+			VectorRotate(local[i], Matrix, p[i]);
+			p[i][0] += x;
+			p[i][1] += y;
+		}
+	}
+
+	vec2_t texCoords[4];
+	TEXCOORD(texCoords[3], 0.0f, 0.0f);
+	TEXCOORD(texCoords[2], 1.0f, 0.0f);
+	TEXCOORD(texCoords[1], 1.0f, 1.0f);
+	TEXCOORD(texCoords[0], 0.0f, 1.0f);
+
+	const bool rgbTexture = Bitmaps[o->TexType].Components == 3;
+	const int start = g_ParticleSpriteBatch.VertexCount;
+	for (int i = 0; i < 4; ++i)
+	{
+		VectorCopy(p[i], g_ParticleSpriteBatch.Vertices[start + i]);
+		TEXCOORD(g_ParticleSpriteBatch.TexCoords[start + i], texCoords[i][0], texCoords[i][1]);
+		VectorCopy(o->Light, g_ParticleSpriteBatch.Colors[start + i]);
+		g_ParticleSpriteBatch.Colors[start + i][3] = rgbTexture ? 1.0f : o->Light[0];
+	}
+
+	g_ParticleSpriteBatch.VertexCount += 4;
+	return true;
+}
 void HandPosition(PARTICLE* o)
 {
 	OBJECT* Owner = o->Target;
@@ -8986,6 +9107,12 @@ void RenderParticles(BYTE byRenderOneMore)
 					continue;
 			}
 
+			if (g_ParticleSpriteBatch.VertexCount > 0 &&
+				(!CanBatchPlus15ParticleSprite(o) || g_ParticleSpriteBatch.Texture != o->TexType))
+			{
+				FlushParticleSpriteBatch();
+			}
+
 			BITMAP_t* pBitmap = Bitmaps.GetTexture(o->TexType);
 			float Width = pBitmap->Width * o->Scale;
 			float Height = pBitmap->Height * o->Scale;
@@ -9006,6 +9133,13 @@ void RenderParticles(BYTE byRenderOneMore)
 			{
 				DisableDepthTest();
 			}
+
+			if (AppendParticleSpriteBatch(o, Width, Height))
+			{
+				continue;
+			}
+			FlushParticleSpriteBatch();
+
 			int Frame;
 			switch (o->Type)
 			{
@@ -9340,4 +9474,5 @@ void RenderParticles(BYTE byRenderOneMore)
 			}
 		}
 	}
+	FlushParticleSpriteBatch();
 }
