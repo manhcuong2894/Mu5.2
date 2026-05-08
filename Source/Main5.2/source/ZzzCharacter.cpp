@@ -386,6 +386,29 @@ static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 	return ShouldRenderHighCostEquipmentFx(c, o);
 }
 
+static bool ShouldUpdateCrowdPlus15TransientFxThisFrame(const CHARACTER* c, const OBJECT* o)
+{
+	if (EquipmentLevelSet < 15 || gmProtect->max_item_level_on < 15)
+	{
+		return true;
+	}
+
+	const int zone = GetCrowdEquipmentFxZone(c, o);
+	if (zone == CROWD_EQUIPMENT_FX_FULL)
+	{
+		return true;
+	}
+
+	int step = 2;
+	if (zone == CROWD_EQUIPMENT_FX_FAR)
+	{
+		step = (g_iCrowdVisiblePlayerCount >= 60) ? 4 : 3;
+	}
+
+	const unsigned int seed = g_uiCrowdAnimationFrameId + 173u + (unsigned int)(((UINT_PTR)o) >> 4);
+	return (seed % (unsigned int)step) == 0;
+}
+
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 {
 	if (o == NULL || Hero == NULL)
@@ -11190,6 +11213,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 
 			if (fullset && g_pOption->GetRenderEquipment() && ShouldRenderFullSetEquipmentFx(c, o))
 			{
+				const bool updatePlus15TransientFx = ShouldUpdateCrowdPlus15TransientFxThisFrame(c, o);
 				PartObjectColor(c->BodyPart[5].Type, o->Alpha, 0.5f, Light);
 
 				if (!g_isCharacterBuff(o, eBuff_Cloaking))
@@ -11305,22 +11329,25 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 						}
 						else if (EquipmentLevelSet == 15 && gmProtect->max_item_level_on >= 15)
 						{
-							Vector(0.0f, -20.0f, 50.0f, p);
-							b->TransformPosition(o->BoneTransform[0], p, Position, true);
-							CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
-							Vector(0.0f, 0.0f, 70.0f, p);
-							b->TransformPosition(o->BoneTransform[0], p, Position, true);
-							CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
-							Vector(0.0f, 20.0f, 50.0f, p);
-							b->TransformPosition(o->BoneTransform[0], p, Position, true);
-							CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
+							if (updatePlus15TransientFx)
+							{
+								Vector(0.0f, -20.0f, 50.0f, p);
+								b->TransformPosition(o->BoneTransform[0], p, Position, true);
+								CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
+								Vector(0.0f, 0.0f, 70.0f, p);
+								b->TransformPosition(o->BoneTransform[0], p, Position, true);
+								CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
+								Vector(0.0f, 20.0f, 50.0f, p);
+								b->TransformPosition(o->BoneTransform[0], p, Position, true);
+								CreateParticleSync(BITMAP_WATERFALL_2, Position, o->Angle, o->Light, 3);
+							}
 						}
 						VectorCopy(Light, o->Light);
 					}
 				}
 				if (EquipmentLevelSet > 9)
 				{
-					if ((rand() % 20) == 0)//(o->CurrentAction<PLAYER_WALK_MALE || o->CurrentAction>PLAYER_RUN_RIDE_WEAPON) && (rand()%6)==0)
+					if (updatePlus15TransientFx && (rand() % 20) == 0)//(o->CurrentAction<PLAYER_WALK_MALE || o->CurrentAction>PLAYER_RUN_RIDE_WEAPON) && (rand()%6)==0)
 					{
 						VectorCopy(o->Light, Light);
 						Vector(1.f, 1.f, 1.f, o->Light);
@@ -11408,7 +11435,10 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 						VectorCopy(Position, o->EyeLeft);
 
 						Vector(0.09f, 0.09f, 0.8f, vColor);
-						CreateJointSync(BITMAP_JOINT_ENERGY, Position, o->Position, o->Angle, 55, o, 6.0f, -1, 0, 0, -1, vColor);
+						if (!SearchJoint(BITMAP_JOINT_ENERGY, o, 55))
+						{
+							CreateJointSync(BITMAP_JOINT_ENERGY, Position, o->Position, o->Angle, 55, o, 6.0f, -1, 0, 0, -1, vColor);
+						}
 						float fRad = (float)sinf((WorldTime) * 0.002f);
 						Vector(0.2f, 0.4f, 0.8f, vColor);
 						CreateSprite(BITMAP_SHINY + 6, Position, 0.5f * fRad, vColor, o);
@@ -11422,7 +11452,10 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 						VectorCopy(Position, o->EyeRight);
 
 						Vector(0.09f, 0.09f, 0.8f, vColor);
-						CreateJointSync(BITMAP_JOINT_ENERGY, Position, o->Position, o->Angle, 56, o, 6.0f, -1, 0, 0, -1, vColor);
+						if (!SearchJoint(BITMAP_JOINT_ENERGY, o, 56))
+						{
+							CreateJointSync(BITMAP_JOINT_ENERGY, Position, o->Position, o->Angle, 56, o, 6.0f, -1, 0, 0, -1, vColor);
+						}
 
 						Vector(0.2f, 0.4f, 0.8f, vColor);
 						CreateSprite(BITMAP_SHINY + 6, Position, 0.5f * fRad, vColor, o);
