@@ -501,6 +501,11 @@ bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enabl
 	if (resolvedRenderFlag != RENDER_TEXTURE)
 		return false;
 
+	const int gpuSafeStateFlags = RENDER_TEXTURE | RENDER_BRIGHT | RENDER_DARK | RENDER_NODEPTH |
+		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT;
+	if (renderFlag & ~gpuSafeStateFlags)
+		return false;
+
 	if (renderFlag & (RENDER_COLOR | RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 |
 		RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_CHROME6 |
 		RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL | RENDER_LIGHTMAP |
@@ -3706,7 +3711,10 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	vec3_t lightDir;
 	GLfloat currentColor[4] = { BodyLight[0], BodyLight[1], BodyLight[2], alpha };
 	ComputeGpuAssistLightDirection(lightDir);
-	glGetFloatv(GL_CURRENT_COLOR, currentColor);
+	if (!enableLight)
+	{
+		glGetFloatv(GL_CURRENT_COLOR, currentColor);
+	}
 
 	const float bodyLight0 = enableLight ? BodyLight[0] : currentColor[0];
 	const float bodyLight1 = enableLight ? BodyLight[1] : currentColor[1];
