@@ -121,6 +121,8 @@ static int ZzzPerfClassifyFlagReject(int RenderFlag, int ResolvedRenderFlag)
 
 static int GetGpuAssistRenderMode(int RenderFlag)
 {
+	if (RenderFlag & RENDER_OIL)
+		return 11;
 	if (RenderFlag & RENDER_CHROME8)
 		return 8;
 	if (RenderFlag & RENDER_CHROME7)
@@ -695,7 +697,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 	if (renderFlag & ~gpuSafeStateFlags)
 		return PART_GPU_REJECT_FLAG;
 
-	if (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
+	if (renderFlag & (RENDER_COLOR | RENDER_LIGHTMAP |
 		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
 		return PART_GPU_REJECT_FLAG;
