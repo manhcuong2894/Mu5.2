@@ -24,6 +24,7 @@ struct GpuSpriteBillboard
 	vec2_t Size;
 	vec4_t Color;
 	float Rotation;
+	vec4_t TexRect;
 };
 
 static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
@@ -61,7 +62,7 @@ static bool CanGpuBatchTransientSprite(const OBJECT* o)
 	if (o->SubType != 0)
 		return false;
 
-	return o->Type == BITMAP_LIGHT || o->Type == BITMAP_SHINY + 6 || o->Type == BITMAP_PIN_LIGHT;
+	return o->Type == BITMAP_LIGHT || o->Type == BITMAP_SHINY + 6 || o->Type == BITMAP_PIN_LIGHT || o->Type == BITMAP_MAGIC;
 }
 
 static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
@@ -98,6 +99,9 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 		VectorCopy(o->Light, billboard.Color);
 		billboard.Color[3] = (pBitmap->Components == 3) ? 1.0f : o->Light[0];
 		billboard.Rotation = o->Angle[2];
+		TEXCOORD(billboard.TexRect, 0.0f, 0.0f);
+		billboard.TexRect[2] = 1.0f;
+		billboard.TexRect[3] = 1.0f;
 	}
 
 	if (count <= 0)
@@ -118,11 +122,14 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Center[0]);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Size[0]);
 	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Color[0]);
 	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Rotation);
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].TexRect[0]);
 	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(4);
 	glDisableVertexAttribArray(3);
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(1);
@@ -152,8 +159,8 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
 		return false;
 
-	int textureList[3] = { BITMAP_LIGHT, BITMAP_SHINY + 6, BITMAP_PIN_LIGHT };
-	for (int textureIndex = 0; textureIndex < 3; ++textureIndex)
+	int textureList[4] = { BITMAP_LIGHT, BITMAP_SHINY + 6, BITMAP_PIN_LIGHT, BITMAP_MAGIC };
+	for (int textureIndex = 0; textureIndex < 4; ++textureIndex)
 	{
 		RenderGpuSpriteTexture(textureList[textureIndex], byRenderOneMore);
 	}

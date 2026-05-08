@@ -6,6 +6,7 @@ layout(triangle_strip, max_vertices = 4) out;
 in vec2 vSize[];
 in vec4 vColor[];
 in float vRotation[];
+in vec4 vTexRect[];
 
 out vec2 TexCoord;
 out vec4 VertexColor;
@@ -34,9 +35,13 @@ void main()
 
     vec4 viewCenter = gl_ModelViewMatrix * gl_in[0].gl_Position;
 
-    EmitParticleVertex(viewCenter, p0, vec2(0.0, 1.0));
-    EmitParticleVertex(viewCenter, p1, vec2(1.0, 1.0));
-    EmitParticleVertex(viewCenter, p2, vec2(0.0, 0.0));
-    EmitParticleVertex(viewCenter, p3, vec2(1.0, 0.0));
+    vec4 texRect = vTexRect[0];
+    vec2 uv0 = texRect.xy;
+    vec2 uv1 = texRect.xy + texRect.zw;
+
+    EmitParticleVertex(viewCenter, p0, vec2(uv0.x, uv1.y));
+    EmitParticleVertex(viewCenter, p1, vec2(uv1.x, uv1.y));
+    EmitParticleVertex(viewCenter, p2, vec2(uv0.x, uv0.y));
+    EmitParticleVertex(viewCenter, p3, vec2(uv1.x, uv0.y));
     EndPrimitive();
 }

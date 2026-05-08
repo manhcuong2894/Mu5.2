@@ -127,9 +127,11 @@ struct GpuParticleBillboard
 	vec2_t Size;
 	vec4_t Color;
 	float Rotation;
+	vec4_t TexRect;
 };
 
 static GpuParticleBillboard g_GpuParticleBillboards[MAX_PARTICLES];
+static bool g_bGpuParticleBatchAvailable = false;
 struct ParticleSpriteBatch
 {
 	int Texture;
@@ -169,15 +171,75 @@ static bool CanBatchPlus15ParticleSprite(const PARTICLE* o)
 	if (o == NULL)
 		return false;
 
+	switch (o->Type)
+	{
+	case BITMAP_WATERFALL_2:
+	case BITMAP_LIGHT + 3:
+	case BITMAP_MAGIC + 1:
+	case BITMAP_FIRE_CURSEDLICH:
+	case BITMAP_FIRE_HIK2_MONO:
+		return true;
+	case BITMAP_FLARE:
+		return o->SubType == 0 && o->LifeTime != 60;
+	case BITMAP_FIRE:
+	case BITMAP_FIRE + 2:
+	case BITMAP_FIRE + 3:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static void SetupGpuParticleBillboard(const PARTICLE* o, const BITMAP_t* pBitmap, GpuParticleBillboard& billboard)
+{
+	float width = pBitmap->Width * o->Scale;
+	float height = pBitmap->Height * o->Scale;
+	float rotation = o->Rotation;
+	float u = 0.0f;
+	float v = 0.0f;
+	float uw = 1.0f;
+	float vh = 1.0f;
+
+	if (o->Type == BITMAP_FIRE || o->Type == BITMAP_FIRE + 2 || o->Type == BITMAP_FIRE + 3)
+	{
+		const bool fullTexture =
+#ifdef PBG_ADD_NEWCHAR_MONK_SKILL
+			o->SubType == 18 ||
+#endif //PBG_ADD_NEWCHAR_MONK_SKILL
+			o->SubType == 14 || o->SubType == 15;
+		if (!fullTexture)
+		{
+			width *= 0.25f;
+			u = (o->Frame % 4) * 0.25f;
+			uw = 0.25f;
+			if (!(o->SubType == 17 || o->SubType == 5 || o->SubType == 7 || o->SubType == 8 || o->SubType == 11 || o->SubType == 12 || o->SubType == 13))
+			{
+				rotation = o->Angle[0];
+			}
+		}
+	}
+
+	VectorCopy(o->Position, billboard.Center);
+	TEXCOORD(billboard.Size, width, height);
+	VectorCopy(o->Light, billboard.Color);
+	billboard.Color[3] = (pBitmap->Components == 3) ? 1.0f : o->Light[0];
+	billboard.Rotation = rotation;
+	TEXCOORD(billboard.TexRect, u, v);
+	billboard.TexRect[2] = uw;
+	billboard.TexRect[3] = vh;
+}
+
+
+static bool CanCpuBatchPlus15ParticleSprite(const PARTICLE* o)
+{
+	if (o == NULL)
+		return false;
+
 	if (o->Type == BITMAP_WATERFALL_2)
 		return true;
 
-	if (o->Type == BITMAP_FLARE && o->SubType == 0 && o->LifeTime != 60)
-		return true;
-
-	return false;
+	return o->Type == BITMAP_FLARE && o->SubType == 0 && o->LifeTime != 60;
 }
-
 static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 {
 	if (!CanBatchPlus15ParticleSprite(o))
@@ -283,11 +345,7 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 			continue;
 
 		GpuParticleBillboard& billboard = g_GpuParticleBillboards[count++];
-		VectorCopy(o->Position, billboard.Center);
-		TEXCOORD(billboard.Size, pBitmap->Width * o->Scale, pBitmap->Height * o->Scale);
-		VectorCopy(o->Light, billboard.Color);
-		billboard.Color[3] = (pBitmap->Components == 3) ? 1.0f : o->Light[0];
-		billboard.Rotation = o->Rotation;
+		SetupGpuParticleBillboard(o, pBitmap, billboard);
 	}
 
 	if (count <= 0)
@@ -316,11 +374,14 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Center[0]);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Size[0]);
 	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Color[0]);
 	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Rotation);
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].TexRect[0]);
 	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(4);
 	glDisableVertexAttribArray(3);
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(1);
@@ -335,8 +396,14 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 }
 static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 {
-	int textureList[2] = { BITMAP_WATERFALL_2, BITMAP_FLARE };
-	for (int textureIndex = 0; textureIndex < 2; ++textureIndex)
+#ifdef SHADER_VERSION_TEST
+	g_bGpuParticleBatchAvailable = gShaderGL->IsGpuAssistEnabled() && gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE);
+#else
+	g_bGpuParticleBatchAvailable = false;
+#endif // SHADER_VERSION_TEST
+
+	int textureList[9] = { BITMAP_WATERFALL_2, BITMAP_FLARE, BITMAP_FIRE, BITMAP_FIRE + 2, BITMAP_FIRE + 3, BITMAP_LIGHT + 3, BITMAP_MAGIC + 1, BITMAP_FIRE_CURSEDLICH, BITMAP_FIRE_HIK2_MONO };
+	for (int textureIndex = 0; textureIndex < 9; ++textureIndex)
 	{
 		const int texture = textureList[textureIndex];
 		if (RenderGpuPlus15ParticleTexture(texture, byRenderOneMore))
@@ -355,7 +422,7 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 		for (int i = 0; i < MAX_PARTICLES; ++i)
 		{
 			PARTICLE* o = &Particles[i];
-			if (!ShouldRenderParticleInPass(o, byRenderOneMore) || !CanBatchPlus15ParticleSprite(o) || o->TexType != texture)
+			if (!ShouldRenderParticleInPass(o, byRenderOneMore) || !CanCpuBatchPlus15ParticleSprite(o) || o->TexType != texture)
 				continue;
 
 			const float Width = pBitmap->Width * o->Scale;
@@ -9279,7 +9346,7 @@ void RenderParticles(BYTE byRenderOneMore)
 			if (!ShouldRenderParticleInPass(o, byRenderOneMore))
 				continue;
 
-			if (CanBatchPlus15ParticleSprite(o))
+			if ((g_bGpuParticleBatchAvailable && CanBatchPlus15ParticleSprite(o)) || CanCpuBatchPlus15ParticleSprite(o))
 				continue;
 
 			g_EffectRenderPerfStats.ParticleCpuRender++;
