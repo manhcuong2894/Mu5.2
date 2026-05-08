@@ -71,6 +71,8 @@ static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, co
 
 extern int g_iCrowdVisiblePlayerCount;
 extern unsigned int g_uiCrowdAnimationFrameId;
+extern int g_iRemotePlayerJointEffectBudget;
+extern int g_iRemotePlayerJointEffectUsed;
 
 static bool IsRemotePlayerJointTarget(OBJECT* target)
 {
@@ -115,23 +117,19 @@ static bool IsThrottleableRemoteJoint(int Type)
 
 static bool ShouldThrottleRemoteJoint(int Type, int SubType, OBJECT* Target)
 {
+	UNREFERENCED_PARAMETER(SubType);
+
 	if (!IsRemotePlayerJointTarget(Target) || !IsThrottleableRemoteJoint(Type))
 		return false;
 
-	int period = 1;
-	if (g_iCrowdVisiblePlayerCount >= 60)
-		period = 3;
-	else if (g_iCrowdVisiblePlayerCount >= 30)
-		period = 2;
-
-	if (period <= 1)
+	if (g_iRemotePlayerJointEffectBudget < 0)
 		return false;
 
-	const unsigned int seed = g_uiCrowdAnimationFrameId
-		+ (unsigned int)(((UINT_PTR)Target) >> 4)
-		+ (unsigned int)(Type * 19)
-		+ (unsigned int)(SubType * 29);
-	return (seed % (unsigned int)period) != 0;
+	if (g_iRemotePlayerJointEffectUsed >= g_iRemotePlayerJointEffectBudget)
+		return true;
+
+	++g_iRemotePlayerJointEffectUsed;
+	return false;
 }
 extern float g_fBoneSave[10][3][4];
 

@@ -73,6 +73,8 @@ static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, O
 
 extern int g_iCrowdVisiblePlayerCount;
 extern unsigned int g_uiCrowdAnimationFrameId;
+extern int g_iRemotePlayerSpriteEffectBudget;
+extern int g_iRemotePlayerSpriteEffectUsed;
 
 static bool IsRemotePlayerEffectOwner(OBJECT* owner)
 {
@@ -117,23 +119,19 @@ static bool IsThrottleableRemoteSprite(int Type)
 
 static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
 {
+	UNREFERENCED_PARAMETER(SubType);
+
 	if (!IsRemotePlayerEffectOwner(Owner) || !IsThrottleableRemoteSprite(Type))
 		return false;
 
-	int period = 1;
-	if (g_iCrowdVisiblePlayerCount >= 60)
-		period = 3;
-	else if (g_iCrowdVisiblePlayerCount >= 30)
-		period = 2;
-
-	if (period <= 1)
+	if (g_iRemotePlayerSpriteEffectBudget < 0)
 		return false;
 
-	const unsigned int seed = g_uiCrowdAnimationFrameId
-		+ (unsigned int)(((UINT_PTR)Owner) >> 4)
-		+ (unsigned int)(Type * 17)
-		+ (unsigned int)(SubType * 31);
-	return (seed % (unsigned int)period) != 0;
+	if (g_iRemotePlayerSpriteEffectUsed >= g_iRemotePlayerSpriteEffectBudget)
+		return true;
+
+	++g_iRemotePlayerSpriteEffectUsed;
+	return false;
 }
 
 int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
