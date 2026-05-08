@@ -4003,6 +4003,14 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		GLint WorldTime;
 		GLint LightDir;
 		GLint Bones;
+		bool StateValid;
+		float AlphaValue;
+		float BodyLightValue[3];
+		float TexCoordOffsetValue[2];
+		int UseLightingValue;
+		int UseWaveValue;
+		int RenderModeValue;
+		float WorldTimeValue;
 	};
 
 	static CharacterUniformCache sUniforms = { 0 };
@@ -4027,11 +4035,10 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		sUniforms.WorldTime = glGetUniformLocation(program, "uWorldTime");
 		sUniforms.LightDir = glGetUniformLocation(program, "uLightDir");
 		sUniforms.Bones = glGetUniformLocation(program, "uBones");
+		sUniforms.StateValid = false;
 	}
 
 	const bool shaderLighting = (enableLight && renderMode == 0);
-	vec3_t lightDir;
-	ComputeGpuAssistLightDirection(lightDir);
 	GLfloat currentColor[4] = { fallbackBodyLight[0], fallbackBodyLight[1], fallbackBodyLight[2], alpha };
 	if (!shaderLighting && renderMode == 0 && !fallbackBodyLightReady)
 	{
@@ -4047,17 +4054,69 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		glUseProgram(program);
 		g_uiGpuAssistActiveProgram = program;
 	}
-	glUniform1i(sUniforms.Texture1, 0);
-	glUniform1f(sUniforms.Alpha, alpha);
-	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
-	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
-	glUniform1i(sUniforms.UseLighting, shaderLighting ? 1 : 0);
-	glUniform1i(sUniforms.UseWave, enableWaveGeometry ? 1 : 0);
-	glUniform1i(sUniforms.RenderMode, renderMode);
-	glUniform1f(sUniforms.WorldTime, (float)WorldTime);
+
+	if (!sUniforms.StateValid)
+	{
+		glUniform1i(sUniforms.Texture1, 0);
+		sUniforms.AlphaValue = -9999.0f;
+		sUniforms.BodyLightValue[0] = -9999.0f;
+		sUniforms.BodyLightValue[1] = -9999.0f;
+		sUniforms.BodyLightValue[2] = -9999.0f;
+		sUniforms.TexCoordOffsetValue[0] = -9999.0f;
+		sUniforms.TexCoordOffsetValue[1] = -9999.0f;
+		sUniforms.UseLightingValue = -1;
+		sUniforms.UseWaveValue = -1;
+		sUniforms.RenderModeValue = -1;
+		sUniforms.WorldTimeValue = -9999.0f;
+		sUniforms.StateValid = true;
+	}
+
+	if (sUniforms.AlphaValue != alpha)
+	{
+		glUniform1f(sUniforms.Alpha, alpha);
+		sUniforms.AlphaValue = alpha;
+	}
+	if (sUniforms.BodyLightValue[0] != bodyLight0 || sUniforms.BodyLightValue[1] != bodyLight1 || sUniforms.BodyLightValue[2] != bodyLight2)
+	{
+		glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
+		sUniforms.BodyLightValue[0] = bodyLight0;
+		sUniforms.BodyLightValue[1] = bodyLight1;
+		sUniforms.BodyLightValue[2] = bodyLight2;
+	}
+	if (sUniforms.TexCoordOffsetValue[0] != texCoordOffsetU || sUniforms.TexCoordOffsetValue[1] != texCoordOffsetV)
+	{
+		glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
+		sUniforms.TexCoordOffsetValue[0] = texCoordOffsetU;
+		sUniforms.TexCoordOffsetValue[1] = texCoordOffsetV;
+	}
+	const int useLightingValue = shaderLighting ? 1 : 0;
+	if (sUniforms.UseLightingValue != useLightingValue)
+	{
+		glUniform1i(sUniforms.UseLighting, useLightingValue);
+		sUniforms.UseLightingValue = useLightingValue;
+	}
+	const int useWaveValue = enableWaveGeometry ? 1 : 0;
+	if (sUniforms.UseWaveValue != useWaveValue)
+	{
+		glUniform1i(sUniforms.UseWave, useWaveValue);
+		sUniforms.UseWaveValue = useWaveValue;
+	}
+	if (sUniforms.RenderModeValue != renderMode)
+	{
+		glUniform1i(sUniforms.RenderMode, renderMode);
+		sUniforms.RenderModeValue = renderMode;
+	}
+	const float worldTimeValue = (float)WorldTime;
+	if (sUniforms.WorldTimeValue != worldTimeValue)
+	{
+		glUniform1f(sUniforms.WorldTime, worldTimeValue);
+		sUniforms.WorldTimeValue = worldTimeValue;
+	}
 
 	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)
 	{
+		vec3_t lightDir;
+		ComputeGpuAssistLightDirection(lightDir);
 		glUniform1f(sUniforms.BodyScale, BodyScale);
 		glUniform1f(sUniforms.BoneScale, BoneScale);
 		glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
