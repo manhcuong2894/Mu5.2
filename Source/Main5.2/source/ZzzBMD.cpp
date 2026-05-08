@@ -1798,10 +1798,15 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						EnableWave = true;
 
 					bool EnableLight = LightEnable;
+					vec3_t gpuFallbackBodyLight;
+					VectorCopy(BodyLight, gpuFallbackBodyLight);
+					bool gpuFallbackBodyLightReady = false;
 
 					if (i == StreamMesh)
 					{
 						glColor3fv(BodyLight);
+						VectorCopy(BodyLight, gpuFallbackBodyLight);
+						gpuFallbackBodyLightReady = true;
 						EnableLight = false;
 					}
 
@@ -1990,6 +1995,8 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 							DisableDepthTest();
 
 						glColor3f(BodyLight[0] * BlendMeshLight, BodyLight[1] * BlendMeshLight, BodyLight[2] * BlendMeshLight);
+						Vector(BodyLight[0] * BlendMeshLight, BodyLight[1] * BlendMeshLight, BodyLight[2] * BlendMeshLight, gpuFallbackBodyLight);
+						gpuFallbackBodyLightReady = true;
 						EnableLight = false;
 					}
 
@@ -2010,7 +2017,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						RenderMeshGpuAssist(m, EnableLight, Alpha,
 							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordU : 0.0f,
 							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordV : 0.0f,
-							gpuRenderMode);
+							gpuRenderMode, gpuFallbackBodyLight, gpuFallbackBodyLightReady);
 						return;
 					}
 
@@ -3963,7 +3970,7 @@ void createViewMatrix(float* matrix, float* cameraPosition, float* cameraAngles,
 }
 
 
-void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode)
+void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady)
 {
 #ifdef SHADER_VERSION_TEST
 	if (m == NULL || m->VAO == 0 || m->GpuVertexCount <= 0)
@@ -4016,9 +4023,9 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 
 	const bool shaderLighting = (enableLight && renderMode == 0);
 	vec3_t lightDir;
-	GLfloat currentColor[4] = { BodyLight[0], BodyLight[1], BodyLight[2], alpha };
 	ComputeGpuAssistLightDirection(lightDir);
-	if (!shaderLighting && renderMode == 0)
+	GLfloat currentColor[4] = { fallbackBodyLight[0], fallbackBodyLight[1], fallbackBodyLight[2], alpha };
+	if (!shaderLighting && renderMode == 0 && !fallbackBodyLightReady)
 	{
 		glGetFloatv(GL_CURRENT_COLOR, currentColor);
 	}

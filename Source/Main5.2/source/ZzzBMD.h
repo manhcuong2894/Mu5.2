@@ -385,7 +385,7 @@ public:
 	void ClearGpuAssist();
 	void EnsureCpuTransformData();
 	bool CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const;
-	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode);
+	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderMode, const vec3_t fallbackBodyLight, bool fallbackBodyLightReady);
 	void CacheGpuAssistBoneMatrices();
 	void ComputeGpuAssistLightDirection(vec3_t lightDir) const;
 	void PrepareGpuAssistBounds(vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB);
