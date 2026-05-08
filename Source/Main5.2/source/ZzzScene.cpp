@@ -33,8 +33,6 @@
 #include "GMBattleCastle.h"
 #include "GMHuntingGround.h"
 #include "GMAida.h"
-
-extern void FlushGpuAssistShaderState();
 namespace
 {
 	size_t GetUtf8CharByteLength(const char* pszText)
@@ -2574,784 +2572,6 @@ void MoveMainScene()
 	g_ConsoleDebug->UpdateMainScene();
 }
 
-namespace
-{
-	double g_DebugFrameMs = 0.0;
-	double g_DebugMoveMs = 0.0;
-	double g_DebugRenderMs = 0.0;
-	double g_DebugTerrainMs = 0.0;
-	double g_DebugObjectMs = 0.0;
-	double g_DebugCharacterMs = 0.0;
-	double g_DebugCharClientMs = 0.0;
-	double g_DebugCharItemsMs = 0.0;
-	double g_DebugCharPetsMs = 0.0;
-	double g_DebugCharBodyMs = 0.0;
-	double g_DebugCharPartMs = 0.0;
-	double g_DebugPlayerCharBodyMs = 0.0;
-	double g_DebugPlayerCharPartMs = 0.0;
-	double g_DebugPartObjectMs = 0.0;
-	double g_DebugPartTransformMs = 0.0;
-	double g_DebugPartBodyMs = 0.0;
-	double g_DebugPartFxMs = 0.0;
-	double g_DebugPartFxBrightMs = 0.0;
-	int g_DebugPartFxBrightCount = 0;
-	int g_DebugPartFxSpriteCount = 0;
-	int g_DebugPartFxJointCount = 0;
-	int g_DebugPartFxParticleCount = 0;
-	int g_DebugPartFxEffectCount = 0;
-	double g_DebugPartLinkMs = 0.0;
-	double g_DebugPlayerPartObjectMs = 0.0;
-	double g_DebugPlayerPartTransformMs = 0.0;
-	double g_DebugPlayerPartBodyMs = 0.0;
-	double g_DebugPlayerPartFxMs = 0.0;
-	double g_DebugPlayerPartLinkMs = 0.0;
-	double g_DebugPlayerPartFxMeshMs = 0.0;
-	int g_DebugPlayerPartFxMeshCount = 0;
-	int g_DebugPlayerPartFxMeshHitCount = 0;
-	int g_DebugPlayerPartFxMeshEarlyCount = 0;
-	int g_DebugPlayerPartFxMeshCpuDrawCount = 0;
-	int g_DebugPlayerPartFxGpuFailFlag = 0;
-	int g_DebugPlayerPartFxGpuFailResolved = 0;
-	int g_DebugPlayerPartFxGpuFailMesh = 0;
-	int g_DebugPlayerPartFxGpuFailScale = 0;
-	int g_DebugPlayerPartFxGpuFailOff = 0;
-	int g_DebugPlayerPartFxCpuDrawTexture = 0;
-	int g_DebugPlayerPartFxCpuDrawBright = 0;
-	int g_DebugPlayerPartFxCpuDrawChrome = 0;
-	int g_DebugPlayerPartFxCpuDrawOther = 0;
-	int g_DebugPlayerPartFxOffWeapon = 0;
-	int g_DebugPlayerPartFxOffArmor = 0;
-	int g_DebugPlayerPartFxOffWing = 0;
-	int g_DebugPlayerPartFxOffHelper = 0;
-	int g_DebugPlayerPartFxOffGrade15 = 0;
-	int g_DebugPlayerPartFxOffOther = 0;
-	int g_DebugPlayerPartFxSpriteCount = 0;
-	int g_DebugPlayerPartFxJointCount = 0;
-	int g_DebugPlayerPartFxParticleCount = 0;
-	int g_DebugPlayerPartFxEffectCount = 0;
-	double g_DebugCharFxMs = 0.0;
-	double g_DebugCharBattleCastleMs = 0.0;
-	int g_DebugGpuAssistPrep = 0;
-	int g_DebugGpuAssistOff = 0;
-	int g_DebugGpuAssistType = 0;
-	int g_DebugGpuAssistFlag = 0;
-	int g_DebugGpuAssistFlagScale = 0;
-	int g_DebugGpuAssistFlagResolved = 0;
-	int g_DebugGpuAssistFlagChrome = 0;
-	int g_DebugGpuAssistFlagMetal = 0;
-	int g_DebugGpuAssistFlagLightmap = 0;
-	int g_DebugGpuAssistFlagWave = 0;
-	int g_DebugGpuAssistFlagOther = 0;
-	int g_DebugGpuAssistMesh = 0;
-	int g_DebugGpuAssistHit = 0;
-	int g_DebugGpuAssistHitRenderMesh = 0;
-	int g_DebugGpuAssistHitBatch = 0;
-	int g_DebugGpuAssistHitTranslate = 0;
-	int g_DebugGpuEffectBatchCheck = 0;
-	int g_DebugGpuEffectBatchUsed = 0;
-	int g_DebugGpuEffectBatchBuildFail = 0;
-	int g_DebugGpuEffectBatchEmpty = 0;
-	int g_DebugGpuEffectBatchRejectNum = 0;
-	int g_DebugGpuEffectBatchRejectHidden = 0;
-	int g_DebugGpuEffectBatchRejectTexture = 0;
-	int g_DebugGpuEffectBatchRejectTransform = 0;
-	int g_DebugGpuEffectBatchRejectScale = 0;
-	int g_DebugGpuEffectBatchRejectFlag = 0;
-	int g_DebugGpuEffectBatchRejectPass = 0;
-	int g_DebugGpuEffectBatchRejectShader = 0;
-	int g_DebugGpuEffectBatchRejectReady = 0;
-	int g_DebugGpuAssistFallback = 0;
-	int g_DebugGpuAssistBoneUpload = 0;
-	int g_DebugGpuAssistBoneUploadMatrices = 0;
-	int g_DebugGpuAssistShaderBind = 0;
-	int g_DebugGpuAssistColorRead = 0;
-	int g_DebugPlayerGpuAssistHit = 0;
-	int g_DebugPlayerGpuAssistFallback = 0;
-	double g_DebugEffectMs = 0.0;
-	double g_DebugEffectJointMs = 0.0;
-	double g_DebugEffectModelMs = 0.0;
-	double g_DebugEffectSpriteMs = 0.0;
-	double g_DebugEffectParticleMs = 0.0;
-	double g_DebugEffectAfterMs = 0.0;
-	double g_DebugEffectOtherMs = 0.0;
-	int g_DebugRenderSpriteCount = 0;
-	int g_DebugRenderSpriteStateChanges = 0;
-	int g_DebugRenderSpriteTextureChanges = 0;
-	int g_DebugRenderSpriteDrawCalls = 0;
-	int g_DebugCrowdFxCap0 = 0;
-	int g_DebugCrowdFxCap1 = 0;
-	int g_DebugCrowdFxCap2 = 0;
-	int g_DebugCrowdFxCap3 = 0;
-	int g_DebugCrowdFxCap4 = 0;
-	double g_DebugUiMs = 0.0;
-
-	double DebugNowMs()
-	{
-		return (g_pTimer != NULL) ? g_pTimer->GetAbsTime() : static_cast<double>(timeGetTime());
-	}
-
-	void ResetRenderBreakdown()
-	{
-		g_DebugTerrainMs = 0.0;
-		g_DebugObjectMs = 0.0;
-		g_DebugCharacterMs = 0.0;
-		g_DebugCharClientMs = 0.0;
-		g_DebugCharItemsMs = 0.0;
-		g_DebugCharPetsMs = 0.0;
-		g_DebugCharBodyMs = 0.0;
-		g_DebugCharPartMs = 0.0;
-		g_DebugPlayerCharBodyMs = 0.0;
-		g_DebugPlayerCharPartMs = 0.0;
-		g_DebugPartObjectMs = 0.0;
-		g_DebugPartTransformMs = 0.0;
-		g_DebugPartBodyMs = 0.0;
-		g_DebugPartFxMs = 0.0;
-		g_DebugPartFxBrightMs = 0.0;
-		g_DebugPartFxBrightCount = 0;
-		g_DebugPartFxSpriteCount = 0;
-		g_DebugPartFxJointCount = 0;
-		g_DebugPartFxParticleCount = 0;
-		g_DebugPartFxEffectCount = 0;
-		g_DebugPartLinkMs = 0.0;
-		g_DebugPlayerPartObjectMs = 0.0;
-		g_DebugPlayerPartTransformMs = 0.0;
-		g_DebugPlayerPartBodyMs = 0.0;
-		g_DebugPlayerPartFxMs = 0.0;
-		g_DebugPlayerPartLinkMs = 0.0;
-		g_DebugPlayerPartFxMeshMs = 0.0;
-		g_DebugPlayerPartFxMeshCount = 0;
-		g_DebugPlayerPartFxMeshHitCount = 0;
-		g_DebugPlayerPartFxMeshEarlyCount = 0;
-		g_DebugPlayerPartFxMeshCpuDrawCount = 0;
-		g_DebugPlayerPartFxGpuFailFlag = 0;
-		g_DebugPlayerPartFxGpuFailResolved = 0;
-		g_DebugPlayerPartFxGpuFailMesh = 0;
-		g_DebugPlayerPartFxGpuFailScale = 0;
-		g_DebugPlayerPartFxGpuFailOff = 0;
-		g_DebugPlayerPartFxCpuDrawTexture = 0;
-		g_DebugPlayerPartFxCpuDrawBright = 0;
-		g_DebugPlayerPartFxCpuDrawChrome = 0;
-		g_DebugPlayerPartFxCpuDrawOther = 0;
-		g_DebugPlayerPartFxOffWeapon = 0;
-		g_DebugPlayerPartFxOffArmor = 0;
-		g_DebugPlayerPartFxOffWing = 0;
-		g_DebugPlayerPartFxOffHelper = 0;
-		g_DebugPlayerPartFxOffGrade15 = 0;
-		g_DebugPlayerPartFxOffOther = 0;
-		g_DebugPlayerPartFxSpriteCount = 0;
-		g_DebugPlayerPartFxJointCount = 0;
-		g_DebugPlayerPartFxParticleCount = 0;
-		g_DebugPlayerPartFxEffectCount = 0;
-		g_DebugCharFxMs = 0.0;
-		g_DebugCharBattleCastleMs = 0.0;
-		g_DebugGpuAssistPrep = 0;
-		g_DebugGpuAssistOff = 0;
-		g_DebugGpuAssistType = 0;
-		g_DebugGpuAssistFlag = 0;
-		g_DebugGpuAssistFlagScale = 0;
-		g_DebugGpuAssistFlagResolved = 0;
-		g_DebugGpuAssistFlagChrome = 0;
-		g_DebugGpuAssistFlagMetal = 0;
-		g_DebugGpuAssistFlagLightmap = 0;
-		g_DebugGpuAssistFlagWave = 0;
-		g_DebugGpuAssistFlagOther = 0;
-		g_DebugGpuAssistMesh = 0;
-		g_DebugGpuAssistHit = 0;
-		g_DebugGpuAssistHitRenderMesh = 0;
-		g_DebugGpuAssistHitBatch = 0;
-		g_DebugGpuAssistHitTranslate = 0;
-		g_DebugGpuEffectBatchCheck = 0;
-		g_DebugGpuEffectBatchUsed = 0;
-		g_DebugGpuEffectBatchBuildFail = 0;
-		g_DebugGpuEffectBatchEmpty = 0;
-		g_DebugGpuEffectBatchRejectNum = 0;
-		g_DebugGpuEffectBatchRejectHidden = 0;
-		g_DebugGpuEffectBatchRejectTexture = 0;
-		g_DebugGpuEffectBatchRejectTransform = 0;
-		g_DebugGpuEffectBatchRejectScale = 0;
-		g_DebugGpuEffectBatchRejectFlag = 0;
-		g_DebugGpuEffectBatchRejectPass = 0;
-		g_DebugGpuEffectBatchRejectShader = 0;
-		g_DebugGpuEffectBatchRejectReady = 0;
-		g_DebugGpuAssistFallback = 0;
-		g_DebugGpuAssistBoneUpload = 0;
-		g_DebugGpuAssistBoneUploadMatrices = 0;
-		g_DebugGpuAssistShaderBind = 0;
-		g_DebugGpuAssistColorRead = 0;
-		g_DebugPlayerGpuAssistHit = 0;
-		g_DebugPlayerGpuAssistFallback = 0;
-		g_DebugEffectMs = 0.0;
-		g_DebugEffectJointMs = 0.0;
-		g_DebugEffectModelMs = 0.0;
-		g_DebugEffectSpriteMs = 0.0;
-		g_DebugEffectParticleMs = 0.0;
-		g_DebugEffectAfterMs = 0.0;
-		g_DebugEffectOtherMs = 0.0;
-		g_DebugRenderSpriteCount = 0;
-		g_DebugRenderSpriteStateChanges = 0;
-		g_DebugRenderSpriteTextureChanges = 0;
-		g_DebugRenderSpriteDrawCalls = 0;
-		g_DebugCrowdFxCap0 = 0;
-		g_DebugCrowdFxCap1 = 0;
-		g_DebugCrowdFxCap2 = 0;
-		g_DebugCrowdFxCap3 = 0;
-		g_DebugCrowdFxCap4 = 0;
-		g_DebugUiMs = 0.0;
-	}
-
-	void DebugAddMs(double& target, double startMs)
-	{
-		target += DebugNowMs() - startMs;
-	}
-
-	void DebugAddEffectMs(double& target, double startMs)
-	{
-		const double elapsedMs = DebugNowMs() - startMs;
-		target += elapsedMs;
-		g_DebugEffectMs += elapsedMs;
-	}
-
-	void RenderFrameDebugOverlay()
-	{
-		if (SceneFlag != MAIN_SCENE || g_pRenderText == NULL)
-		{
-			return;
-		}
-
-		char text[192];
-		const float x = 6.0f;
-		float y = static_cast<float>(gwinhandle->GetScreenY()) - 562.0f;
-		if (y < 20.0f)
-		{
-			y = 20.0f;
-		}
-
-		BeginBitmap();
-		glColor4f(0.0f, 0.0f, 0.0f, 0.55f);
-		RenderColor(x, y, 392.0f, 554.0f, 0.0f, 0);
-		EndRenderColor();
-
-		g_pRenderText->SetFont(g_hFontBold ? g_hFontBold : g_hFont);
-		g_pRenderText->SetBgColor(0, 0, 0, 160);
-		g_pRenderText->SetTextColor(255, 230, 80, 255);
-
-		sprintf(text, "FRAME  : %.2f ms", g_DebugFrameMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 8.0f, text);
-		sprintf(text, "MOVE   : %.2f ms", g_DebugMoveMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 28.0f, text);
-		sprintf(text, "RENDER : %.2f ms", g_DebugRenderMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 48.0f, text);
-		sprintf(text, "TERRAIN: %.2f ms", g_DebugTerrainMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 68.0f, text);
-		sprintf(text, "OBJECT : %.2f ms", g_DebugObjectMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 88.0f, text);
-		sprintf(text, "CHAR   : %.2f ms", g_DebugCharacterMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 108.0f, text);
-		sprintf(text, "CHARACT: %.2f ms", g_DebugCharClientMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 128.0f, text);
-		sprintf(text, "ITEMS  : %.2f ms", g_DebugCharItemsMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 148.0f, text);
-		sprintf(text, "PETS   : %.2f ms", g_DebugCharPetsMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 168.0f, text);
-		sprintf(text, "CH_BODY: %.2f ms", g_DebugCharBodyMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 188.0f, text);
-		sprintf(text, "CH_PART: %.2f ms", g_DebugCharPartMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 208.0f, text);
-		sprintf(text, "PT O/X/B/F/L: %.2f/%.2f/%.2f/%.2f/%.2f", g_DebugPartObjectMs, g_DebugPartTransformMs, g_DebugPartBodyMs, g_DebugPartFxMs, g_DebugPartLinkMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 228.0f, text);
-		sprintf(text, "FX BR/C: %.2f/%d", g_DebugPartFxBrightMs, g_DebugPartFxBrightCount);
-		g_pRenderText->RenderText(x + 10.0f, y + 248.0f, text);
-		sprintf(text, "FX S/J/P/E: %d/%d/%d/%d", g_DebugPartFxSpriteCount, g_DebugPartFxJointCount, g_DebugPartFxParticleCount, g_DebugPartFxEffectCount);
-		g_pRenderText->RenderText(x + 10.0f, y + 268.0f, text);
-		sprintf(text, "CH_FX  : %.2f ms", g_DebugCharFxMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 288.0f, text);
-		sprintf(text, "CH_BC  : %.2f ms", g_DebugCharBattleCastleMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 308.0f, text);
-		sprintf(text, "PLY B/P: %.2f/%.2f", g_DebugPlayerCharBodyMs, g_DebugPlayerCharPartMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 328.0f, text);
-		sprintf(text, "PP O/X/B/F/L: %.2f/%.2f/%.2f/%.2f/%.2f", g_DebugPlayerPartObjectMs, g_DebugPlayerPartTransformMs, g_DebugPlayerPartBodyMs, g_DebugPlayerPartFxMs, g_DebugPlayerPartLinkMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 348.0f, text);
-		sprintf(text, "EFFECT : %.2f ms", g_DebugEffectMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 368.0f, text);
-		sprintf(text, "EF J/E/S/P/A/O: %.2f/%.2f/%.2f/%.2f/%.2f/%.2f", g_DebugEffectJointMs, g_DebugEffectModelMs, g_DebugEffectSpriteMs, g_DebugEffectParticleMs, g_DebugEffectAfterMs, g_DebugEffectOtherMs);
-		g_pRenderText->RenderText(x + 10.0f, y + 388.0f, text);
-		sprintf(text, "PFX M/C H/E/D: %.2f/%d %d/%d/%d", g_DebugPlayerPartFxMeshMs, g_DebugPlayerPartFxMeshCount, g_DebugPlayerPartFxMeshHitCount, g_DebugPlayerPartFxMeshEarlyCount, g_DebugPlayerPartFxMeshCpuDrawCount);
-		g_pRenderText->RenderText(x + 10.0f, y + 408.0f, text);
-		sprintf(text, "GPU SRC M/B/T: %d/%d/%d", g_DebugGpuAssistHitRenderMesh, g_DebugGpuAssistHitBatch, g_DebugGpuAssistHitTranslate);
-		g_pRenderText->RenderText(x + 10.0f, y + 428.0f, text);
-		sprintf(text, "GPU EB C/U/B/E: %d/%d/%d/%d", g_DebugGpuEffectBatchCheck, g_DebugGpuEffectBatchUsed, g_DebugGpuEffectBatchBuildFail, g_DebugGpuEffectBatchEmpty);
-		g_pRenderText->RenderText(x + 10.0f, y + 448.0f, text);
-		sprintf(text, "GPU EB N/H/T/X/SC/FL/P/S/R: %d/%d/%d/%d/%d/%d/%d/%d/%d", g_DebugGpuEffectBatchRejectNum, g_DebugGpuEffectBatchRejectHidden, g_DebugGpuEffectBatchRejectTexture, g_DebugGpuEffectBatchRejectTransform, g_DebugGpuEffectBatchRejectScale, g_DebugGpuEffectBatchRejectFlag, g_DebugGpuEffectBatchRejectPass, g_DebugGpuEffectBatchRejectShader, g_DebugGpuEffectBatchRejectReady);
-		g_pRenderText->RenderText(x + 10.0f, y + 468.0f, text);
-		sprintf(text, "GPU H/F B/M/S/C: %d/%d %d/%d/%d/%d", g_DebugPlayerGpuAssistHit, g_DebugPlayerGpuAssistFallback, g_DebugGpuAssistBoneUpload, g_DebugGpuAssistBoneUploadMatrices, g_DebugGpuAssistShaderBind, g_DebugGpuAssistColorRead);
-		g_pRenderText->RenderText(x + 10.0f, y + 488.0f, text);
-		sprintf(text, "PING   : %d ms", gsteady_clock->get_ping_time());
-		g_pRenderText->RenderText(x + 10.0f, y + 508.0f, text);
-
-		EndBitmap();
-	}
-}
-
-void DebugAddCharBodyMs(double elapsedMs)
-{
-	g_DebugCharBodyMs += elapsedMs;
-}
-
-void DebugAddCharPartMs(double elapsedMs)
-{
-	g_DebugCharPartMs += elapsedMs;
-}
-
-void DebugAddPlayerCharBodyMs(double elapsedMs)
-{
-	g_DebugCharBodyMs += elapsedMs;
-	g_DebugPlayerCharBodyMs += elapsedMs;
-}
-
-void DebugAddPlayerCharPartMs(double elapsedMs)
-{
-	g_DebugCharPartMs += elapsedMs;
-	g_DebugPlayerCharPartMs += elapsedMs;
-}
-
-void DebugAddPartObjectMs(double elapsedMs)
-{
-	g_DebugPartObjectMs += elapsedMs;
-}
-
-void DebugAddPartTransformMs(double elapsedMs)
-{
-	g_DebugPartTransformMs += elapsedMs;
-}
-
-void DebugAddPartBodyMs(double elapsedMs)
-{
-	g_DebugPartBodyMs += elapsedMs;
-}
-
-void DebugAddPartFxMs(double elapsedMs)
-{
-	g_DebugPartFxMs += elapsedMs;
-}
-
-void DebugAddPartLinkMs(double elapsedMs)
-{
-	g_DebugPartLinkMs += elapsedMs;
-}
-
-void DebugAddPlayerPartObjectMs(double elapsedMs)
-{
-	g_DebugPlayerPartObjectMs += elapsedMs;
-}
-
-void DebugAddPlayerPartTransformMs(double elapsedMs)
-{
-	g_DebugPlayerPartTransformMs += elapsedMs;
-}
-
-void DebugAddPlayerPartBodyMs(double elapsedMs)
-{
-	g_DebugPlayerPartBodyMs += elapsedMs;
-}
-
-void DebugAddPlayerPartFxMs(double elapsedMs)
-{
-	g_DebugPlayerPartFxMs += elapsedMs;
-}
-
-void DebugAddPlayerPartLinkMs(double elapsedMs)
-{
-	g_DebugPlayerPartLinkMs += elapsedMs;
-}
-
-void DebugAddPlayerPartFxMeshMs(double elapsedMs)
-{
-	g_DebugPlayerPartFxMeshMs += elapsedMs;
-	++g_DebugPlayerPartFxMeshCount;
-}
-
-void DebugAddPlayerPartFxMeshHitCount()
-{
-	++g_DebugPlayerPartFxMeshHitCount;
-}
-
-void DebugAddPlayerPartFxMeshEarlyCount()
-{
-	++g_DebugPlayerPartFxMeshEarlyCount;
-}
-
-void DebugAddPlayerPartFxMeshCpuDrawCount()
-{
-	++g_DebugPlayerPartFxMeshCpuDrawCount;
-}
-
-void DebugAddPlayerPartFxGpuFailFlag()
-{
-	++g_DebugPlayerPartFxGpuFailFlag;
-}
-
-void DebugAddPlayerPartFxGpuFailResolved()
-{
-	++g_DebugPlayerPartFxGpuFailResolved;
-}
-
-void DebugAddPlayerPartFxGpuFailMesh()
-{
-	++g_DebugPlayerPartFxGpuFailMesh;
-}
-
-void DebugAddPlayerPartFxGpuFailScale()
-{
-	++g_DebugPlayerPartFxGpuFailScale;
-}
-
-void DebugAddPlayerPartFxGpuFailOff()
-{
-	++g_DebugPlayerPartFxGpuFailOff;
-}
-
-void DebugAddPlayerPartFxCpuDrawTexture()
-{
-	++g_DebugPlayerPartFxCpuDrawTexture;
-}
-
-void DebugAddPlayerPartFxCpuDrawBright()
-{
-	++g_DebugPlayerPartFxCpuDrawBright;
-}
-
-void DebugAddPlayerPartFxCpuDrawChrome()
-{
-	++g_DebugPlayerPartFxCpuDrawChrome;
-}
-
-void DebugAddPlayerPartFxCpuDrawOther()
-{
-	++g_DebugPlayerPartFxCpuDrawOther;
-}
-
-void DebugAddPlayerPartFxOffWeapon()
-{
-	++g_DebugPlayerPartFxOffWeapon;
-}
-
-void DebugAddPlayerPartFxOffArmor()
-{
-	++g_DebugPlayerPartFxOffArmor;
-}
-
-void DebugAddPlayerPartFxOffWing()
-{
-	++g_DebugPlayerPartFxOffWing;
-}
-
-void DebugAddPlayerPartFxOffHelper()
-{
-	++g_DebugPlayerPartFxOffHelper;
-}
-
-void DebugAddPlayerPartFxOffGrade15()
-{
-	++g_DebugPlayerPartFxOffGrade15;
-}
-
-void DebugAddPlayerPartFxOffOther()
-{
-	++g_DebugPlayerPartFxOffOther;
-}
-
-void DebugAddPlayerPartFxSpriteCount()
-{
-	++g_DebugPlayerPartFxSpriteCount;
-}
-
-void DebugAddPlayerPartFxJointCount()
-{
-	++g_DebugPlayerPartFxJointCount;
-}
-
-void DebugAddPlayerPartFxParticleCount()
-{
-	++g_DebugPlayerPartFxParticleCount;
-}
-
-void DebugAddPlayerPartFxEffectCount()
-{
-	++g_DebugPlayerPartFxEffectCount;
-}
-
-void DebugAddPartFxBrightMs(double elapsedMs)
-{
-	g_DebugPartFxBrightMs += elapsedMs;
-}
-
-void DebugAddPartFxBrightCount()
-{
-	++g_DebugPartFxBrightCount;
-}
-
-void DebugAddPartFxSpriteCount()
-{
-	++g_DebugPartFxSpriteCount;
-}
-
-void DebugAddPartFxJointCount()
-{
-	++g_DebugPartFxJointCount;
-}
-
-void DebugAddPartFxParticleCount()
-{
-	++g_DebugPartFxParticleCount;
-}
-
-void DebugAddPartFxEffectCount()
-{
-	++g_DebugPartFxEffectCount;
-}
-
-void DebugAddCharFxMs(double elapsedMs)
-{
-	g_DebugCharFxMs += elapsedMs;
-}
-
-void DebugAddCharBattleCastleMs(double elapsedMs)
-{
-	g_DebugCharBattleCastleMs += elapsedMs;
-}
-
-void DebugAddGpuAssistPrep()
-{
-	++g_DebugGpuAssistPrep;
-}
-
-void DebugAddGpuAssistOff()
-{
-	++g_DebugGpuAssistOff;
-}
-
-void DebugAddGpuAssistType()
-{
-	++g_DebugGpuAssistType;
-}
-
-void DebugAddGpuAssistFlag()
-{
-	++g_DebugGpuAssistFlag;
-}
-
-void DebugAddGpuAssistFlagScale()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagScale;
-}
-
-void DebugAddGpuAssistFlagResolved()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagResolved;
-}
-
-void DebugAddGpuAssistFlagChrome()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagChrome;
-}
-
-void DebugAddGpuAssistFlagMetal()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagMetal;
-}
-
-void DebugAddGpuAssistFlagLightmap()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagLightmap;
-}
-
-void DebugAddGpuAssistFlagWave()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagWave;
-}
-
-void DebugAddGpuAssistFlagOther()
-{
-	++g_DebugGpuAssistFlag;
-	++g_DebugGpuAssistFlagOther;
-}
-
-void DebugAddGpuAssistMesh()
-{
-	++g_DebugGpuAssistMesh;
-}
-void DebugAddGpuAssistHit()
-{
-	++g_DebugGpuAssistHit;
-}
-
-void DebugAddGpuAssistHitRenderMesh()
-{
-	++g_DebugGpuAssistHit;
-	++g_DebugGpuAssistHitRenderMesh;
-}
-
-void DebugAddGpuAssistHitBatch()
-{
-	++g_DebugGpuAssistHit;
-	++g_DebugGpuAssistHitBatch;
-}
-
-void DebugAddGpuAssistHitTranslate()
-{
-	++g_DebugGpuAssistHit;
-	++g_DebugGpuAssistHitTranslate;
-}
-
-void DebugAddGpuEffectBatchCheck()
-{
-	++g_DebugGpuEffectBatchCheck;
-}
-
-void DebugAddGpuEffectBatchUsed()
-{
-	++g_DebugGpuEffectBatchUsed;
-}
-
-void DebugAddGpuEffectBatchBuildFail()
-{
-	++g_DebugGpuEffectBatchBuildFail;
-}
-
-void DebugAddGpuEffectBatchEmpty()
-{
-	++g_DebugGpuEffectBatchEmpty;
-}
-
-void DebugAddGpuEffectBatchRejectNum()
-{
-	++g_DebugGpuEffectBatchRejectNum;
-}
-
-void DebugAddGpuEffectBatchRejectHidden()
-{
-	++g_DebugGpuEffectBatchRejectHidden;
-}
-
-void DebugAddGpuEffectBatchRejectTexture()
-{
-	++g_DebugGpuEffectBatchRejectTexture;
-}
-
-void DebugAddGpuEffectBatchRejectTransform()
-{
-	++g_DebugGpuEffectBatchRejectTransform;
-}
-
-void DebugAddGpuEffectBatchRejectScale()
-{
-	++g_DebugGpuEffectBatchRejectScale;
-}
-
-void DebugAddGpuEffectBatchRejectFlag()
-{
-	++g_DebugGpuEffectBatchRejectFlag;
-}
-
-void DebugAddGpuEffectBatchRejectPass()
-{
-	++g_DebugGpuEffectBatchRejectPass;
-}
-
-void DebugAddGpuEffectBatchRejectShader()
-{
-	++g_DebugGpuEffectBatchRejectShader;
-}
-
-void DebugAddGpuEffectBatchRejectReady()
-{
-	++g_DebugGpuEffectBatchRejectReady;
-}
-void DebugAddGpuAssistFallback()
-{
-	++g_DebugGpuAssistFallback;
-}
-
-void DebugAddGpuAssistBoneUpload()
-{
-	++g_DebugGpuAssistBoneUpload;
-}
-
-void DebugAddGpuAssistBoneUploadMatrices(int count)
-{
-	g_DebugGpuAssistBoneUploadMatrices += count;
-}
-
-void DebugAddGpuAssistShaderBind()
-{
-	++g_DebugGpuAssistShaderBind;
-}
-
-void DebugAddGpuAssistColorRead()
-{
-	++g_DebugGpuAssistColorRead;
-}
-
-void DebugAddPlayerGpuAssistHit()
-{
-
-	++g_DebugPlayerGpuAssistHit;
-}
-
-void DebugAddPlayerGpuAssistFallback()
-{
-
-	++g_DebugPlayerGpuAssistFallback;
-}
-
-void DebugAddRenderSpriteCount()
-{
-	++g_DebugRenderSpriteCount;
-}
-
-void DebugAddRenderSpriteStateChange()
-{
-	++g_DebugRenderSpriteStateChanges;
-}
-
-void DebugAddRenderSpriteTextureChange()
-{
-	++g_DebugRenderSpriteTextureChanges;
-}
-
-void DebugAddRenderSpriteDrawCall()
-{
-	++g_DebugRenderSpriteDrawCalls;
-}
-
-void DebugAddCrowdFxCap(int cap)
-{
-	switch (cap)
-	{
-	case 0:
-		++g_DebugCrowdFxCap0;
-		break;
-	case 1:
-		++g_DebugCrowdFxCap1;
-		break;
-	case 2:
-		++g_DebugCrowdFxCap2;
-		break;
-	case 3:
-		++g_DebugCrowdFxCap3;
-		break;
-	case 4:
-		++g_DebugCrowdFxCap4;
-		break;
-	}
-}
-
 bool RenderMainScene()
 {
 	if (EnableMainRender == false)
@@ -3363,8 +2583,6 @@ bool RenderMainScene()
 	{
 		return false;
 	}
-
-	ResetRenderBreakdown();
 
 	FogEnable = CameraFactorPtr->IsEnable();
 
@@ -3485,47 +2703,46 @@ bool RenderMainScene()
 			if (World == WD_39KANTURU_3RD)
 			{
 				if (!g_Direction.m_CKanturu.IsMayaScene())
-					{ double t = DebugNowMs(); RenderTerrain(false); DebugAddMs(g_DebugTerrainMs, t); }
+					RenderTerrain(false);
 			}
 			else if (World != WD_10HEAVEN && World != -1)
 			{
 				if (gMapManager->IsPKField() || IsDoppelGanger2())
 				{
-					{ double t = DebugNowMs(); RenderObjects(); DebugAddMs(g_DebugObjectMs, t); }
+					RenderObjects();
 				}
-				{ double t = DebugNowMs(); RenderTerrain(false); DebugAddMs(g_DebugTerrainMs, t); }
+				RenderTerrain(false);
 			}
 		}
 
 		if (!gMapManager->IsPKField() && !IsDoppelGanger2())
-			{ double t = DebugNowMs(); RenderObjects(); DebugAddMs(g_DebugObjectMs, t); }
+			RenderObjects();
 
-		{ double t = DebugNowMs(); RenderEffectShadows(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-		{ double t = DebugNowMs(); RenderBoids(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+		RenderEffectShadows();
+		RenderBoids();
 
-		{ double t = DebugNowMs(); RenderCharactersClient(); DebugAddMs(g_DebugCharacterMs, t); DebugAddMs(g_DebugCharClientMs, t); }
-		FlushGpuAssistShaderState();
+		RenderCharactersClient();
 
 		if (EditFlag != EDIT_NONE)
-			{ double t = DebugNowMs(); RenderTerrain(true); DebugAddMs(g_DebugTerrainMs, t); }
+			RenderTerrain(true);
 
 		if (!CameraTopViewEnable)
-			{ double t = DebugNowMs(); RenderItems(); DebugAddMs(g_DebugCharacterMs, t); DebugAddMs(g_DebugCharItemsMs, t); }
+			RenderItems();
 
-		{ double t = DebugNowMs(); RenderFishs(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-		{ double t = DebugNowMs(); gGoboidManager->RenderBugs(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-		{ double t = DebugNowMs(); RenderLeaves(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+		RenderFishs();
+		gGoboidManager->RenderBugs();
+		RenderLeaves();
 
 		if (!gMapManager->InChaosCastle())
-			{ double t = DebugNowMs(); ThePetProcess().RenderPets(); DebugAddMs(g_DebugCharacterMs, t); DebugAddMs(g_DebugCharPetsMs, t); }
+			ThePetProcess().RenderPets();
 
-		{ double t = DebugNowMs(); RenderBoids(true); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-		{ double t = DebugNowMs(); RenderObjects_AfterCharacter(); DebugAddMs(g_DebugObjectMs, t); }
+		RenderBoids(true);
+		RenderObjects_AfterCharacter();
 
-		{ double t = DebugNowMs(); RenderJoints(byWaterMap); DebugAddEffectMs(g_DebugEffectJointMs, t); }
-		{ double t = DebugNowMs(); RenderEffects(); DebugAddEffectMs(g_DebugEffectModelMs, t); }
-		{ double t = DebugNowMs(); RenderBlurs(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-		{ double t = DebugNowMs(); CheckSprites(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+		RenderJoints(byWaterMap);
+		RenderEffects();
+		RenderBlurs();
+		CheckSprites();
 		BeginSprite();
 
 		if ((World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
@@ -3540,20 +2757,20 @@ bool RenderMainScene()
 			|| IsUnitedMarketPlace()
 			)
 		{
-			{ double t = DebugNowMs(); RenderLeaves(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+			RenderLeaves();
 		}
 
-		{ double t = DebugNowMs(); RenderSprites(); DebugAddEffectMs(g_DebugEffectSpriteMs, t); }
-		{ double t = DebugNowMs(); RenderParticles(); DebugAddEffectMs(g_DebugEffectParticleMs, t); }
+		RenderSprites();
+		RenderParticles();
 
 		if (IsWaterTerrain() == false)
 		{
-			{ double t = DebugNowMs(); RenderPoints(byWaterMap); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+			RenderPoints(byWaterMap);
 		}
 
 		EndSprite();
 
-		{ double t = DebugNowMs(); RenderAfterEffects(); DebugAddEffectMs(g_DebugEffectAfterMs, t); }
+		RenderAfterEffects();
 
 		if (IsWaterTerrain() == true)
 		{
@@ -3561,19 +2778,19 @@ bool RenderMainScene()
 
 			EndOpengl();
 			BeginOpengl(0, 0, Width, Height, true);
-			{ double t = DebugNowMs(); RenderWaterTerrain(); DebugAddMs(g_DebugTerrainMs, t); }
-			{ double t = DebugNowMs(); RenderJoints(byWaterMap); DebugAddEffectMs(g_DebugEffectJointMs, t); }
-			{ double t = DebugNowMs(); RenderEffects(true); DebugAddEffectMs(g_DebugEffectModelMs, t); }
-			{ double t = DebugNowMs(); RenderBlurs(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
-			{ double t = DebugNowMs(); CheckSprites(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+			RenderWaterTerrain();
+			RenderJoints(byWaterMap);
+			RenderEffects(true);
+			RenderBlurs();
+			CheckSprites();
 			BeginSprite();
 
 			if (World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
-				{ double t = DebugNowMs(); RenderLeaves(); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+				RenderLeaves();
 
-			{ double t = DebugNowMs(); RenderSprites(byWaterMap); DebugAddEffectMs(g_DebugEffectSpriteMs, t); }
-			{ double t = DebugNowMs(); RenderParticles(byWaterMap); DebugAddEffectMs(g_DebugEffectParticleMs, t); }
-			{ double t = DebugNowMs(); RenderPoints(byWaterMap); DebugAddEffectMs(g_DebugEffectOtherMs, t); }
+			RenderSprites(byWaterMap);
+			RenderParticles(byWaterMap);
+			RenderPoints(byWaterMap);
 
 			EndSprite();
 			EndOpengl();
@@ -3589,35 +2806,35 @@ bool RenderMainScene()
 		}
 	}
 
-	{ double t = DebugNowMs(); SelectObjects(); DebugAddMs(g_DebugUiMs, t); }
+	SelectObjects();
 	BeginBitmap();
-	{ double t = DebugNowMs(); RenderNotices(); DebugAddMs(g_DebugUiMs, t); }
-	{ double t = DebugNowMs(); RenderObjectDescription(); DebugAddMs(g_DebugUiMs, t); }
+	RenderNotices();
+	RenderObjectDescription();
 
 	if (gwinhandle->CheckPerformance())
 	{
 		if (CameraTopViewEnable == false)
 		{
-			{ double t = DebugNowMs(); RenderInterface(true); DebugAddMs(g_DebugUiMs, t); }
+			RenderInterface(true);
 		}
-		{ double t = DebugNowMs(); RenderTournamentInterface(); DebugAddMs(g_DebugUiMs, t); }
+		RenderTournamentInterface();
 		EndBitmap();
 
-		{ double t = DebugNowMs(); g_pPartyManager->Render(); DebugAddMs(g_DebugUiMs, t); }
-		{ double t = DebugNowMs(); g_pNewUISystem->Render(); DebugAddMs(g_DebugUiMs, t); }
+		g_pPartyManager->Render();
+		g_pNewUISystem->Render();
 
 		BeginBitmap();
 
-		{ double t = DebugNowMs(); RenderInfomation(); DebugAddMs(g_DebugUiMs, t); }
+		RenderInfomation();
 
 #ifdef ENABLE_EDIT
-		{ double t = DebugNowMs(); RenderDebugWindow(); DebugAddMs(g_DebugUiMs, t); }
+		RenderDebugWindow();
 #endif //ENABLE_EDIT
 
 		EndBitmap();
 		BeginBitmap();
 
-		{ double t = DebugNowMs(); RenderCursor(); DebugAddMs(g_DebugUiMs, t); }
+		RenderCursor();
 
 		EndBitmap();
 		EndOpengl();
@@ -3656,14 +2873,11 @@ void MoveClientManager()
 
 void MainScene(HDC hDC)
 {
-	const double debugFrameStart = DebugNowMs();
 	const uintmax_t fixedDeltaTime = gsteady_clock->Getframe_per_second();
 
 	static uintmax_t accumulatedTime = fixedDeltaTime;
 
 	gsteady_clock->LoadInformationFps();
-
-	const double debugMoveStart = DebugNowMs();
 
 	//while (accumulatedTime >= fixedDeltaTime)
 	{
@@ -3725,14 +2939,10 @@ void MainScene(HDC hDC)
 		frame_scene_desplace++;
 	}
 
-	g_DebugMoveMs = DebugNowMs() - debugMoveStart;
-
 	if (Destroy)
 	{
 		return;
 	}
-
-	const double debugRenderStart = DebugNowMs();
 
 	Bitmaps.Manage();
 
@@ -3831,8 +3041,6 @@ void MainScene(HDC hDC)
 
 	g_PhysicsManager.Render();
 
-	g_DebugRenderMs = DebugNowMs() - debugRenderStart;
-
 	if (GrabEnable)
 	{
 		SaveScreen();
@@ -3845,8 +3053,6 @@ void MainScene(HDC hDC)
 	GrabEnable = false;
 
 
-	RenderFrameDebugOverlay();
-
 	if (Success)
 	{
 		glFlush();
@@ -3854,8 +3060,6 @@ void MainScene(HDC hDC)
 	}
 
 	uintmax_t DifTimer = gsteady_clock->thread_sleep(thread_tick);
-
-	g_DebugFrameMs = DebugNowMs() - debugFrameStart;
 
 	accumulatedTime += DifTimer;
 

@@ -90,8 +90,6 @@ extern void UpdateMousePositionn();
 extern inline void TEXCOORD(float* c, float u, float v);
 extern void RenderBox(float Matrix[3][4]);
 extern void RenderPlane3D(float Width, float Height, float Matrix[3][4]);
-extern void BeginSpriteRenderBatch();
-extern void EndSpriteRenderBatch();
 extern void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_t Light, float Angle = 0.f, float u = 0.f, float v = 0.f, float uWidth = 1.f, float vHeight = 1.f);
 extern void RenderSpriteUV(int Texture, vec3_t Position, float Width, float Height, float(*UV)[2], vec3_t Light[4], float Alpha = 1.f);
 extern void RenderNumber(vec3_t Position, __int64 Num, vec3_t Color, float Alpha = 1.f, float Scale = 15.f);

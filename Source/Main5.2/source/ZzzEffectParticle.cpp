@@ -18,11 +18,6 @@
 #include "MapManager.h"
 #include "NewUISystem.h"
 
-extern int g_DebugPartFxScopeDepth;
-extern int g_DebugPlayerPartFxScopeDepth;
-extern void DebugAddPartFxParticleCount();
-extern void DebugAddPlayerPartFxParticleCount();
-
 
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
 vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
@@ -61,39 +56,6 @@ int CreateParticleSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, in
 
 int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, float Scale, OBJECT* Owner)
 {
-	if (g_DebugPartFxScopeDepth > 0)
-	{
-		DebugAddPartFxParticleCount();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxParticleCount();
-		}
-	}
-
-	if (IsHeroEffectPriorityActive() || IsHeroEffectOwner(Owner))
-	{
-		bool hasFreeSlot = false;
-		for (int i = 0; i < MAX_PARTICLES; ++i)
-		{
-			if (!Particles[i].Live)
-			{
-				hasFreeSlot = true;
-				break;
-			}
-		}
-
-		if (!hasFreeSlot)
-		{
-			for (int i = 0; i < MAX_PARTICLES; ++i)
-			{
-				if (Particles[i].Live && !IsHeroEffectOwner(Particles[i].Target))
-				{
-					Particles[i].Live = false;
-					break;
-				}
-			}
-		}
-	}
 	for (int i = 0; i < MAX_PARTICLES; i++)
 	{
 		PARTICLE* o = &Particles[i];
@@ -8948,7 +8910,6 @@ void RenderParticles(BYTE byRenderOneMore)
 	{
 		return;
 	}
-	BeginSpriteRenderBatch();
 	for (int i = 0; i < MAX_PARTICLES; i++)
 	{
 		PARTICLE* o = &Particles[i];
@@ -9319,5 +9280,4 @@ void RenderParticles(BYTE byRenderOneMore)
 			}
 		}
 	}
-	EndSpriteRenderBatch();
 }

@@ -25,11 +25,6 @@
 #include "CharacterManager.h"
 #include "SkillManager.h"
 
-extern int g_DebugPartFxScopeDepth;
-extern int g_DebugPlayerPartFxScopeDepth;
-extern void DebugAddPartFxEffectCount();
-extern void DebugAddPlayerPartFxEffectCount();
-
 
 PARTICLE  Particles[MAX_PARTICLES];
 #ifdef DEVIAS_XMAS_EVENT
@@ -473,14 +468,6 @@ void CreateEffectSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int
 
 void CreateEffect(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, OBJECT* Owner, short PKKey, WORD SkillIndex, WORD Skill, WORD SkillSerialNum, float Scale, short int sTargetIndex)
 {
-	if (g_DebugPartFxScopeDepth > 0)
-	{
-		DebugAddPartFxEffectCount();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxEffectCount();
-		}
-	}
 	for (int icntEffect = 0; icntEffect < MAX_EFFECTS; icntEffect++)
 	{
 		OBJECT* o = &Effects[icntEffect];

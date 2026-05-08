@@ -72,70 +72,6 @@ float g_fBoneSave[10][3][4];
 vec3_t BossHeadPosition;
 extern int HeroIndex;
 
-extern void DebugAddCharBodyMs(double elapsedMs);
-extern void DebugAddCharPartMs(double elapsedMs);
-extern void DebugAddPlayerCharBodyMs(double elapsedMs);
-extern void DebugAddPlayerCharPartMs(double elapsedMs);
-extern void DebugAddCharFxMs(double elapsedMs);
-extern void DebugAddCharBattleCastleMs(double elapsedMs);
-extern void DebugAddPartLinkMs(double elapsedMs);
-extern void DebugAddPlayerPartLinkMs(double elapsedMs);
-extern void DebugAddPartFxBrightMs(double elapsedMs);
-extern void DebugAddPartFxBrightCount();
-
-namespace
-{
-	typedef void (*DebugAddElapsedMsFn)(double elapsedMs);
-
-	double CharacterDebugNowMs()
-	{
-		static LARGE_INTEGER frequency = { 0 };
-		LARGE_INTEGER counter;
-
-		if (frequency.QuadPart == 0)
-		{
-			QueryPerformanceFrequency(&frequency);
-		}
-
-		QueryPerformanceCounter(&counter);
-		return (static_cast<double>(counter.QuadPart) * 1000.0) / static_cast<double>(frequency.QuadPart);
-	}
-
-	class CCharacterDebugSection
-	{
-	public:
-		CCharacterDebugSection(DebugAddElapsedMsFn addElapsedMs)
-			: m_addElapsedMs(addElapsedMs), m_startMs(CharacterDebugNowMs())
-		{
-		}
-
-		~CCharacterDebugSection()
-		{
-			Flush();
-		}
-
-		void Switch(DebugAddElapsedMsFn addElapsedMs)
-		{
-			Flush();
-			m_addElapsedMs = addElapsedMs;
-			m_startMs = CharacterDebugNowMs();
-		}
-
-	private:
-		void Flush()
-		{
-			if (m_addElapsedMs != NULL)
-			{
-				m_addElapsedMs(CharacterDebugNowMs() - m_startMs);
-				m_addElapsedMs = NULL;
-			}
-		}
-
-		DebugAddElapsedMsFn m_addElapsedMs;
-		double m_startMs;
-	};
-}
-
 static char vec_list[35] =
 {
 	 5,  6, 33, 53, 35, 49, 50, 45, 46, 41,
@@ -178,7 +114,6 @@ int g_iEquipmentFxRenderLevelCap = -1;
 int g_iLimitAttackTime = 15;
 unsigned int g_uiCrowdAnimationFrameId = 0;
 static BYTE g_byCrowdEquipmentFxZone[MAX_CHARACTERS_CLIENT] = { 0 };
-extern void DebugAddCrowdFxCap(int cap);
 extern float  ParentMatrix[3][4];
 extern int CurrentSkill;
 
@@ -192,8 +127,7 @@ static bool IsCrowdPlayerObject(const CHARACTER* c, const OBJECT* o)
 	return (c != NULL
 		&& o != NULL
 		&& c != Hero
-		&& o->Live
-		&& o->Visible
+		&& o->Kind == KIND_PLAYER
 		&& o->Type == MODEL_PLAYER);
 }
 
@@ -232,31 +166,31 @@ struct CrowdEquipmentFxThresholds
 
 static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 {
-	float fullEnterDist = 120.0f;
-	float fullExitDist = 160.0f;
-	float farEnterDist = 240.0f;
-	float farExitDist = 300.0f;
+	float fullEnterDist = 220.0f;
+	float fullExitDist = 260.0f;
+	float farEnterDist = 380.0f;
+	float farExitDist = 440.0f;
 
 	if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		fullEnterDist = 110.0f;
-		fullExitDist = 145.0f;
-		farEnterDist = 220.0f;
-		farExitDist = 280.0f;
+		fullEnterDist = 180.0f;
+		fullExitDist = 220.0f;
+		farEnterDist = 320.0f;
+		farExitDist = 380.0f;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 45)
 	{
-		fullEnterDist = 140.0f;
-		fullExitDist = 180.0f;
-		farEnterDist = 270.0f;
-		farExitDist = 340.0f;
+		fullEnterDist = 200.0f;
+		fullExitDist = 240.0f;
+		farEnterDist = 350.0f;
+		farExitDist = 410.0f;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 30)
 	{
-		fullEnterDist = 165.0f;
-		fullExitDist = 210.0f;
-		farEnterDist = 320.0f;
-		farExitDist = 400.0f;
+		fullEnterDist = 220.0f;
+		fullExitDist = 260.0f;
+		farEnterDist = 380.0f;
+		farExitDist = 440.0f;
 	}
 
 	CrowdEquipmentFxThresholds thresholds;
@@ -269,72 +203,160 @@ static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 
 static int GetCrowdEquipmentFxZone(const CHARACTER* c, const OBJECT* o)
 {
-	if (!IsCrowdPlayerObject(c, o) || g_iCrowdVisiblePlayerCount < 45)
+	if (!IsCrowdPlayerObject(c, o))
 	{
 		return CROWD_EQUIPMENT_FX_FULL;
 	}
 
-	const int index = (int)((((UINT_PTR)c) >> 4) % MAX_CHARACTERS_CLIENT);
+	if (SceneFlag != MAIN_SCENE)
+	{
+		return CROWD_EQUIPMENT_FX_FULL;
+	}
+
+	const int index = gmCharacters->GetCharacterIndex((CHARACTER*)c);
+	if (index < 0 || index >= MAX_CHARACTERS_CLIENT)
+	{
+		return CROWD_EQUIPMENT_FX_FULL;
+	}
+
+	if (Hero == NULL || g_iCrowdVisiblePlayerCount < 24)
+	{
+		g_byCrowdEquipmentFxZone[index] = CROWD_EQUIPMENT_FX_FULL;
+		return CROWD_EQUIPMENT_FX_FULL;
+	}
 
 	const CrowdEquipmentFxThresholds thresholds = GetCrowdEquipmentFxThresholds();
-	const float distance2 = GetDistance2ToHero(o);
-	BYTE zone = g_byCrowdEquipmentFxZone[index];
+	const float dist2 = GetDistance2ToHero(o);
+	int zone = (int)g_byCrowdEquipmentFxZone[index];
 
-	if (zone == CROWD_EQUIPMENT_FX_FULL)
+	if (zone < CROWD_EQUIPMENT_FX_FULL || zone > CROWD_EQUIPMENT_FX_FAR)
 	{
-		if (distance2 > thresholds.FarEnterDist2)
+		zone = CROWD_EQUIPMENT_FX_FULL;
+	}
+
+	switch (zone)
+	{
+	case CROWD_EQUIPMENT_FX_FULL:
+		if (dist2 > thresholds.FarExitDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_FAR;
 		}
-		else if (distance2 > thresholds.FullExitDist2)
+		else if (dist2 > thresholds.FullExitDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_MID;
 		}
-	}
-	else if (zone == CROWD_EQUIPMENT_FX_MID)
-	{
-		if (distance2 <= thresholds.FullEnterDist2)
+		break;
+
+	case CROWD_EQUIPMENT_FX_MID:
+		if (dist2 <= thresholds.FullEnterDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_FULL;
 		}
-		else if (distance2 > thresholds.FarEnterDist2)
+		else if (dist2 > thresholds.FarExitDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_FAR;
 		}
-	}
-	else
-	{
-		if (distance2 <= thresholds.FullEnterDist2)
+		break;
+
+	case CROWD_EQUIPMENT_FX_FAR:
+		if (dist2 <= thresholds.FullEnterDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_FULL;
 		}
-		else if (distance2 <= thresholds.FarExitDist2)
+		else if (dist2 <= thresholds.FarEnterDist2)
 		{
 			zone = CROWD_EQUIPMENT_FX_MID;
 		}
+		break;
 	}
 
-	g_byCrowdEquipmentFxZone[index] = zone;
+	g_byCrowdEquipmentFxZone[index] = (BYTE)zone;
 	return zone;
 }
+
 static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT* o, int Type)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	UNREFERENCED_PARAMETER(Type);
-	return true;
+	switch (GetCrowdEquipmentFxZone(c, o))
+	{
+	case CROWD_EQUIPMENT_FX_FULL:
+		return true;
+	case CROWD_EQUIPMENT_FX_MID:
+		return !IsCrowdWingOrHelperType(Type);
+	case CROWD_EQUIPMENT_FX_FAR:
+	default:
+		return false;
+	}
 }
+
 static int GetCrowdAdaptiveEquipmentFxCap(const CHARACTER* c, const OBJECT* o, int Type)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	UNREFERENCED_PARAMETER(Type);
-	return -1;
+	switch (GetCrowdEquipmentFxZone(c, o))
+	{
+	case CROWD_EQUIPMENT_FX_FAR:
+		return IsCrowdWingOrHelperType(Type) ? 1 : 2;
+	case CROWD_EQUIPMENT_FX_MID:
+		return IsCrowdWingOrHelperType(Type) ? 2 : 3;
+	case CROWD_EQUIPMENT_FX_FULL:
+	default:
+		return -1;
+	}
 }
+
 static int GetCrowdEquipmentFxUpdateStep(const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(o);
-	return 1;
+	if (o == NULL || Hero == NULL)
+	{
+		return 1;
+	}
+
+	if (o == &Hero->Object || o->Kind != KIND_PLAYER || o->Type != MODEL_PLAYER)
+	{
+		return 1;
+	}
+
+	if (g_iCrowdVisiblePlayerCount < 24)
+	{
+		return 1;
+	}
+
+	const float dist2 = GetDistance2ToHero(o);
+	int step = 1;
+
+	if (g_iCrowdVisiblePlayerCount >= 60)
+	{
+		if (dist2 > (320.0f * 320.0f))
+		{
+			step = 4;
+		}
+		else if (dist2 > (180.0f * 180.0f))
+		{
+			step = 3;
+		}
+		else if (dist2 > (100.0f * 100.0f))
+		{
+			step = 2;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 45)
+	{
+		if (dist2 > (260.0f * 260.0f))
+		{
+			step = 3;
+		}
+		else if (dist2 > (150.0f * 150.0f))
+		{
+			step = 2;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 30)
+	{
+		if (dist2 > (220.0f * 220.0f))
+		{
+			step = 2;
+		}
+	}
+
+	return step;
 }
 
 static bool ShouldUpdateCrowdEquipmentFxThisFrame(const OBJECT* o, unsigned int salt)
@@ -351,23 +373,95 @@ static bool ShouldUpdateCrowdEquipmentFxThisFrame(const OBJECT* o, unsigned int 
 
 static bool ShouldRenderHighCostEquipmentFx(const CHARACTER* c, const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	return true;
-}
-
-static bool ShouldUseCrowdSimpleBodyPart(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
-{
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	UNREFERENCED_PARAMETER(bodyPartIndex);
-	return false;
+	return GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL;
 }
 
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(o);
-	return 1;
+	if (o == NULL || Hero == NULL)
+	{
+		return 1;
+	}
+
+	if (o == &Hero->Object || o->Kind != KIND_PLAYER || o->Type != MODEL_PLAYER)
+	{
+		return 1;
+	}
+
+	if (g_iCrowdVisiblePlayerCount < 24)
+	{
+		return 1;
+	}
+
+	if (o->CurrentAction < PLAYER_STOP_MALE || o->CurrentAction > PLAYER_STOP_RIDE_WEAPON)
+	{
+		return 1;
+	}
+
+	const float dist2 = GetDistance2ToHero(o);
+	int step = 1;
+
+	if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		if (dist2 > (520.0f * 520.0f))
+		{
+			step = 9;
+		}
+		else if (dist2 > (340.0f * 340.0f))
+		{
+			step = 6;
+		}
+		else if (dist2 > (180.0f * 180.0f))
+		{
+			step = 4;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 55)
+	{
+		if (dist2 > (460.0f * 460.0f))
+		{
+			step = 7;
+		}
+		else if (dist2 > (260.0f * 260.0f))
+		{
+			step = 5;
+		}
+		else if (dist2 > (140.0f * 140.0f))
+		{
+			step = 3;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 40)
+	{
+		if (dist2 > (380.0f * 380.0f))
+		{
+			step = 6;
+		}
+		else if (dist2 > (220.0f * 220.0f))
+		{
+			step = 4;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 30)
+	{
+		if (dist2 > (300.0f * 300.0f))
+		{
+			step = 4;
+		}
+		else if (dist2 > (180.0f * 180.0f))
+		{
+			step = 2;
+		}
+	}
+
+	if (step > 1
+		&& (o->CurrentAction == PLAYER_STOP_MALE || o->CurrentAction == PLAYER_STOP_FEMALE)
+		&& step < 8)
+	{
+		step += 2;
+	}
+
+	return step;
 }
 
 bool ShouldUpdateCrowdPoseThisFrame(const OBJECT* o, unsigned int salt)
@@ -437,9 +531,34 @@ static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	return true;
+	if (!IsCrowdPlayerObject(c, o))
+	{
+		return true;
+	}
+
+	if (g_iCrowdVisiblePlayerCount < 24)
+	{
+		return true;
+	}
+
+	const float dist2 = GetDistance2ToHero(o);
+
+	if (g_iCrowdVisiblePlayerCount >= 60)
+	{
+		return dist2 <= (85.0f * 85.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 45)
+	{
+		return dist2 <= (130.0f * 130.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 30)
+	{
+		return dist2 <= (180.0f * 180.0f);
+	}
+
+	return dist2 <= (240.0f * 240.0f);
 }
 
 bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
@@ -6950,8 +7069,6 @@ OBJECT g_ItemObject[MAX_ITEM + MODEL_ITEM];
 
 void RenderBrightEffect(BMD* b, int Bitmap, int Link, float Scale, vec3_t Light, OBJECT* o)
 {
-	CCharacterDebugSection debugBright(DebugAddPartFxBrightMs);
-	DebugAddPartFxBrightCount();
 	vec3_t p, Position;
 	Vector(0.f, 0.f, 0.f, p);
 	b->TransformPosition(BoneTransform[Link], p, Position, true);
@@ -6961,14 +7078,13 @@ void RenderBrightEffect(BMD* b, int Bitmap, int Link, float Scale, vec3_t Light,
 
 void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Type, int Level, int Option1, bool Link, bool Translate, int RenderType, bool bRightHandItem)
 {
-	CCharacterDebugSection debugPartLink(DebugAddPartLinkMs);
 	OBB_t OBB;
 	float Matrix[3][4];
 	vec3_t Angle, p, Position;
 
 	OBJECT* pObject = &c->Object;
-	CCharacterDebugSection debugPlayerPartLink((pObject->Kind == KIND_PLAYER && pObject->Type == MODEL_PLAYER) ? DebugAddPlayerPartLinkMs : NULL);
 	BMD* pModel = gmClientModels->GetModel(Type);
+
 	if (pModel == NULL
 		|| (pObject->SubType == MODEL_CURSEDTEMPLE_ALLIED_PLAYER || pObject->SubType == MODEL_CURSEDTEMPLE_ILLUSION_PLAYER)
 		&& (Type >= MODEL_WING && Type <= (MODEL_WING + 6)
@@ -6996,13 +7112,11 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 
 	OBJECT* Object = &g_ItemObject[Type];
 	Object->Type = Type;
-	Object->Owner = pObject;
 
 	ItemObjectAttribute(Object);
 	pModel->LightEnable = Object->LightEnable;
 	pModel->LightEnable = false;
 	g_CharacterCopyBuff(Object, pObject);
-	Object->Owner = pObject;
 
 	if (Type == (MODEL_WING + 39))
 	{
@@ -7487,26 +7601,13 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	if (adaptiveFxRenderLevelCap >= 0)
 	{
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
-		DebugAddCrowdFxCap(adaptiveFxRenderLevelCap);
-	}
-
-	const bool useHeroSpritePriority = (c == Hero);
-	if (useHeroSpritePriority)
-	{
-		BeginHeroSpritePriority();
 	}
 
 	RenderPartObjectEffect(Object, Type, c->Light, pObject->Alpha, Level << 3, Option1, false, 0, RenderType);
-
-	if (useHeroSpritePriority)
-	{
-		EndHeroSpritePriority();
-	}
-
 	pModel->ClearGpuAssist();
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 
-	if (adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 3)
+	if (adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 2)
 	{
 		return;
 	}
@@ -8895,9 +8996,6 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 		return;
 	}
 
-	const bool debugIsPlayerCharacter = (o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER);
-	CCharacterDebugSection debugSection(debugIsPlayerCharacter ? DebugAddPlayerCharBodyMs : DebugAddCharBodyMs);
-
 	bool Translate = true;
 
 	vec3_t p, Position, Light;
@@ -9699,8 +9797,6 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 			VectorCopy(AbilityLight, c->Light);
 	}
 
-	debugSection.Switch(debugIsPlayerCharacter ? DebugAddPlayerCharPartMs : DebugAddCharPartMs);
-
 	if (o->Kind == KIND_NPC && World == WD_0LORENCIA && o->Type == MODEL_PLAYER && (o->SubType >= MODEL_SKELETON1 && o->SubType <= MODEL_SKELETON3))
 	{
 		RenderPartObject(&c->Object, o->SubType, NULL, c->Light, o->Alpha, c->Level << 3, 0, 0, false, false, Translate, Select);
@@ -10006,7 +10102,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 						}
 						else
 						{
-							if (i > BODYPART_HEAD && o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && (g_pOption->GetRenderEquipment() == false || ShouldUseCrowdSimpleBodyPart(c, o, i)))
+							if (i > BODYPART_HEAD && o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && g_pOption->GetRenderEquipment() == false)
 							{
 								int nobody = ((i - 1) * MODEL_BODY_NUM) + MODEL_BODY_HELM;
 
@@ -10023,21 +10119,10 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 							}
 							else
 							{
-								const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
-								const int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, o, Type);
-
-								if (adaptiveFxRenderLevelCap >= 0)
-								{
-									g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
-									DebugAddCrowdFxCap(adaptiveFxRenderLevelCap);
-								}
-
 								if (GMItemMng->IsLuckyItem((Type - MODEL_ITEM)))
 									RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, MAX_MODELS, false, false, Translate, Select);
 								else
 									RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select);
-
-								g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 							}
 						}
 					}
@@ -10345,7 +10430,8 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				}
 				float Scale;
 				if (c->PK < PVP_MURDERER2
-					&& c->Level != 4)
+					&& c->Level != 4
+					&& GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL)
 				{
 					bool Success = true;
 
@@ -10629,8 +10715,6 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 			}
 		}
 	}
-	debugSection.Switch(DebugAddCharFxMs);
-
 	switch (o->Type)
 	{
 	case MODEL_PLAYER:
@@ -11566,8 +11650,8 @@ void RenderCharactersClient()
 
 		if (visibleObject->Live
 			&& visibleObject->Visible
-			&& visibleObject->Type == MODEL_PLAYER
-			&& visibleCharacter != Hero)
+			&& visibleObject->Kind == KIND_PLAYER
+			&& visibleObject->Type == MODEL_PLAYER)
 		{
 			++g_iCrowdVisiblePlayerCount;
 		}
@@ -11636,12 +11720,7 @@ void RenderCharactersClient()
 				RenderCharacter(c, o, (i == SelectedCharacter || i == SelectedNpc));
 
 				if (o->Type == MODEL_PLAYER)
-
-				{
-					double battleCastleStartMs = CharacterDebugNowMs();
 					battleCastle::CreateBattleCastleCharacter_Visual(c, o);
-					DebugAddCharBattleCastleMs(CharacterDebugNowMs() - battleCastleStartMs);
-				}
 
 			}
 		}

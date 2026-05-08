@@ -1114,7 +1114,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLin
 	case 1: gmProtect->ajust_fps_render = 30; break;
 	case 2: gmProtect->ajust_fps_render = 40; break;
 	case 3: gmProtect->ajust_fps_render = 60; break;
-	case 4: gmProtect->ajust_fps_render = 120; break;
 	default: gmProtect->ajust_fps_render = 25; break;
 	}
 

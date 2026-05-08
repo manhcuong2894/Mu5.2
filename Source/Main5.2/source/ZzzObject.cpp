@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+ï»¿///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "ZzzOpenglUtil.h"
@@ -55,8 +55,6 @@ extern vec3_t VertexTransform[MAX_MESH][MAX_VERTICES];
 extern vec3_t LightTransform[MAX_MESH][MAX_VERTICES];
 extern float g_Luminosity;
 extern bool ShouldUpdateCrowdPoseThisFrame(const OBJECT* o, unsigned int salt);
-extern int g_iCrowdVisiblePlayerCount;
-extern unsigned int g_uiCrowdAnimationFrameId;
 
 int          g_iTotalObj = 0;
 OBJECT_BLOCK ObjectBlock[256];
@@ -71,157 +69,10 @@ static  int g_iThunderTime = 0;
 int g_iActionObjectType = -1;
 int g_iActionWorld = -1;
 extern float BoneScale;
-extern void DebugAddPartObjectMs(double elapsedMs);
-extern void DebugAddPartTransformMs(double elapsedMs);
-extern void DebugAddPartBodyMs(double elapsedMs);
-extern void DebugAddPartFxMs(double elapsedMs);
-extern void DebugAddPlayerPartObjectMs(double elapsedMs);
-extern void DebugAddPlayerPartTransformMs(double elapsedMs);
-extern void DebugAddPlayerPartBodyMs(double elapsedMs);
-extern void DebugAddPlayerPartFxMs(double elapsedMs);
-extern void DebugAddPlayerPartFxMeshMs(double elapsedMs);
 
 int g_iActionTime = -1;
 
 float g_fActionObjectVelocity = -1;
-
-int g_DebugPartFxScopeDepth = 0;
-int g_DebugPlayerPartFxScopeDepth = 0;
-int g_DebugPlayerPartFxCurrentType = -1;
-
-namespace
-{
-	typedef void (*DebugAddObjectElapsedMsFn)(double elapsedMs);
-
-	double ObjectDebugNowMs()
-	{
-		static LARGE_INTEGER frequency = { 0 };
-		LARGE_INTEGER counter;
-
-		if (frequency.QuadPart == 0)
-		{
-			QueryPerformanceFrequency(&frequency);
-		}
-
-		QueryPerformanceCounter(&counter);
-		return (static_cast<double>(counter.QuadPart) * 1000.0) / static_cast<double>(frequency.QuadPart);
-	}
-
-	static bool IsPlayerPartOwner(const OBJECT* o)
-	{
-		if (o == NULL)
-		{
-			return false;
-		}
-
-		if (o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER)
-		{
-			return true;
-		}
-
-		OBJECT* owner = o->Owner;
-		return owner != NULL && owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER;
-	}
-	static bool IsHeroPartOwner(const OBJECT* o)
-	{
-		if (Hero == NULL || o == NULL)
-		{
-			return false;
-		}
-
-		if (o == &Hero->Object)
-		{
-			return true;
-		}
-
-		OBJECT* owner = o->Owner;
-		return owner == &Hero->Object;
-	}
-
-	static bool ShouldEmitCrowdPartFxSample(const OBJECT* o, unsigned int salt, int step)
-	{
-		if (step <= 1 || g_iCrowdVisiblePlayerCount < 45 || !IsPlayerPartOwner(o) || IsHeroPartOwner(o))
-		{
-			return true;
-		}
-
-		const unsigned int seed = g_uiCrowdAnimationFrameId + salt + (unsigned int)(((UINT_PTR)o) >> 4);
-		return (seed % (unsigned int)step) == 0;
-	}
-
-
-	class CObjectDebugSection
-	{
-	public:
-		CObjectDebugSection(DebugAddObjectElapsedMsFn addElapsedMs)
-			: m_addElapsedMs(addElapsedMs), m_startMs(ObjectDebugNowMs())
-		{
-		}
-
-		~CObjectDebugSection()
-		{
-			if (m_addElapsedMs != NULL)
-			{
-				m_addElapsedMs(ObjectDebugNowMs() - m_startMs);
-			}
-		}
-
-	private:
-		DebugAddObjectElapsedMsFn m_addElapsedMs;
-		double m_startMs;
-	};
-
-	class CPartFxRenderTypeDebugScope
-	{
-	public:
-		CPartFxRenderTypeDebugScope(bool playerOwner, int type)
-			: m_previousType(g_DebugPlayerPartFxCurrentType), m_active(playerOwner)
-		{
-			if (m_active)
-			{
-				g_DebugPlayerPartFxCurrentType = type;
-			}
-		}
-
-		~CPartFxRenderTypeDebugScope()
-		{
-			if (m_active)
-			{
-				g_DebugPlayerPartFxCurrentType = m_previousType;
-			}
-		}
-
-	private:
-		int m_previousType;
-		bool m_active;
-	};
-
-	class CPartFxDebugScope
-	{
-	public:
-		CPartFxDebugScope(bool playerOwner)
-			: m_playerOwner(playerOwner)
-		{
-			++g_DebugPartFxScopeDepth;
-			if (m_playerOwner)
-			{
-				++g_DebugPlayerPartFxScopeDepth;
-			}
-		}
-
-		~CPartFxDebugScope()
-		{
-			--g_DebugPartFxScopeDepth;
-			if (m_playerOwner)
-			{
-				--g_DebugPlayerPartFxScopeDepth;
-			}
-		}
-
-	private:
-		bool m_playerOwner;
-	};
-}
 
 void ClearActionObject()
 {
@@ -1103,7 +954,7 @@ void Draw_RenderObject(OBJECT* o, bool Translate, int Select, int ExtraMon)
 
 					Vector(1.0f, 0.0f, 0.0f, vLight);
 					Vector((float)(rand() % 10 - 10) * 0.5f, 0.f, (float)(rand() % 40 - 20) * 0.5f, vPos);
-					b->TransformPosition(BoneTransform[14], vPos, vPosition, false);	// ÅÎ
+					b->TransformPosition(BoneTransform[14], vPos, vPosition, false);	// Ã…ÃŽ
 					CreateParticleSync(BITMAP_SPARK + 1, vPosition, o->Angle, vLight, 15, 0.7f + (fLuminosity * 0.05f));
 				}
 				b->StreamMesh = -1;
@@ -2575,7 +2426,7 @@ void Draw_RenderObject(OBJECT* o, bool Translate, int Select, int ExtraMon)
 					b->RenderMesh(2, RENDER_TEXTURE, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV);
 					b->RenderMesh(3, RENDER_TEXTURE, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV);
 					b->RenderMesh(4, RENDER_TEXTURE, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV);
-					// ³¯°³
+					// Â³Â¯Â°Â³
 					Vector(1.0f, 1.0f, 1.0f, b->BodyLight);
 					b->RenderMesh(5, RENDER_TEXTURE, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV);
 					b->RenderMesh(5, RENDER_TEXTURE | RENDER_BRIGHT, o->Alpha, 5, 0.1f, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV);
@@ -8847,8 +8698,6 @@ void PartObjectColor3(int Type, float Alpha, float Bright, vec3_t Light, bool Ex
 //-- (005FA710)
 void RenderPartObjectBody(BMD* b, OBJECT* o, int Type, float Alpha, int RenderType)
 {
-	CObjectDebugSection debugPartBody(DebugAddPartBodyMs);
-	CObjectDebugSection debugPlayerPartBody(IsPlayerPartOwner(o) ? DebugAddPlayerPartBodyMs : NULL);
 #ifdef EFFECT_MNG_HANDLE
 	if (GFxEffectHandle->runtime_render_Enchant(Type, b, o))
 	{
@@ -11938,11 +11787,6 @@ void NextGradeObjectRender(CHARACTER* c)
 
 void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int ItemLevel, int Option1, int ExtOption, int Select, int RenderType)
 {
-	const bool playerPartOwner = IsPlayerPartOwner(o);
-	CObjectDebugSection debugPartFx(DebugAddPartFxMs);
-	CObjectDebugSection debugPlayerPartFx(playerPartOwner ? DebugAddPlayerPartFxMs : NULL);
-	CPartFxDebugScope debugPartFxScope(playerPartOwner);
-	CPartFxRenderTypeDebugScope debugPartFxRenderType(playerPartOwner, Type);
 	int Level = (ItemLevel >> 3) & 15;
 
 	if (RenderType & RENDER_WAVE)
@@ -12013,7 +11857,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 	{
 		renderLevel = g_iEquipmentFxRenderLevelCap;
 	}
-
 
 	if (renderLevel == 0)
 	{
@@ -12193,6 +12036,7 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 	{
 		Level = 0;
 	}
+
 	if (o->Type == MODEL_SPEAR + 9)
 	{
 		Vector(0.5f, 0.5f, 1.5f, b->BodyLight);
@@ -12505,8 +12349,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 5; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 600u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[22 - i], p, posCenter, true);
 			b->TransformPosition(BoneTransform[30 - i], p, Position, true);
 			CreateJoint(BITMAP_JOINT_THUNDER, Position, posCenter, o->Angle, 14, o, Scale);
@@ -12516,8 +12358,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 5; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 700u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[7 - i], p, posCenter, true);
 			b->TransformPosition(BoneTransform[11 + i], p, Position, true);
 			CreateJoint(BITMAP_JOINT_THUNDER, Position, posCenter, o->Angle, 14, o, Scale);
@@ -12543,10 +12383,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 25; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iBone[i]], vRelativePos, vPos, true);
 			fScale = 0.5f;// (rand()%10) * 0.05f + 0.3f;
 			CreateSprite(BITMAP_CLUD64, vPos, fScale, vLight, o, WorldTime * 0.01f, 1);
@@ -12557,8 +12393,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 		{
 			for (int i = 0; i < 6; ++i)
 			{
-				if (!ShouldEmitCrowdPartFxSample(o, 360u + (unsigned int)i, 2))
-					continue;
 				b->TransformPosition(BoneTransform[iBoneThunder[i]], vRelativePos, vPos, true);
 				if (rand() % 20 == 0)
 				{
@@ -12578,10 +12412,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 22; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iBoneLight[i]], vRelativePos, vPos, true);
 			if (iBoneLight[i] == 12 || iBoneLight[i] == 64 || iBoneLight[i] == 98 || iBoneLight[i] == 52)
 			{
@@ -12607,10 +12437,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 		int iRedFlarePos[] = { 24, 31, 15, 8, 53, 35 };
 		for (int i = 0; i < 6; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iRedFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_LIGHT, Position, Scale + 1.3f, Light, o);
 		}
@@ -12621,10 +12447,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 18; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iGreenFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_LIGHT, Position, Scale + 1.5f, Light, o);
 		}
@@ -12632,10 +12454,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 4; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iGreenFlarePos2[i]], p, Position, true);
 			CreateSprite(BITMAP_LIGHT, Position, Scale + 0.5f, Light, o);
 		}
@@ -12651,10 +12469,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 		int iRedFlarePos[] = { 5, 6, 7, 8, 18, 19, 23, 24, 25, 27, 37, 38 };
 		for (int i = 0; i < 12; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iRedFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_FLARE, Position, Scale + 0.6f, Light, o);
 		}
@@ -12664,10 +12478,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 8; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iGreenFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_LIGHT, Position, 1.3f, Light, o);
 		}
@@ -12695,8 +12505,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 		int iRedFlarePos[] = { 6, 15, 24, 56, 47, 38 };
 		for (int i = 0; i < 6; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 390u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iRedFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_LIGHT, Position, Scale + 1.5f, Light, o);
 		}
@@ -12713,8 +12521,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 6; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 391u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iSparkPos[i]], p, Position, true);
 			for (int j = 0; j < iNumParticle; ++j)
 				CreateParticleSync(BITMAP_CHROME_ENERGY2, Position, o->Angle, Light, 0, 0.1f);
@@ -12722,8 +12528,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 6; i < 18; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 392u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iSparkPos[i]], p, Position, true);
 			for (int j = 0; j < iNumParticle; ++j)
 				CreateParticleSync(BITMAP_CHROME_ENERGY2, Position, o->Angle, Light, 0, 0.3f);
@@ -12731,8 +12535,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 18; i < 30; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 393u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iSparkPos[i]], p, Position, true);
 			for (int j = 0; j < iNumParticle; ++j)
 				CreateParticleSync(BITMAP_CHROME_ENERGY2, Position, o->Angle, Light, 0, 0.5f);
@@ -12740,8 +12542,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 30; i < 38; ++i)
 		{
-			if (!ShouldEmitCrowdPartFxSample(o, 394u + (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iSparkPos[i]], p, Position, true);
 			for (int j = 0; j < iNumParticle; ++j)
 				CreateParticleSync(BITMAP_CHROME_ENERGY2, Position, o->Angle, Light, 0, 0.7f);
@@ -12760,20 +12560,12 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 		int icnt;
 		for (icnt = 0; icnt < 2; ++icnt)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)icnt, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iFlarePos0[icnt]], p, Position, true);
 			CreateSprite(BITMAP_FLARE, Position, Scale + 2.0f, Light, o);
 		}
 		Vector((1.0f + Luminosity) / 4.f, (0.7f + Luminosity) / 4.f, (0.2f + Luminosity) / 4.f, Light);
 		for (; icnt < 6; ++icnt)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)icnt, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iFlarePos0[icnt]], p, Position, true);
 			CreateSprite(BITMAP_FLARE, Position, Scale + 0.5f, Light, o);
 		}
@@ -12783,10 +12575,6 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 
 		for (int i = 0; i < 6; ++i)
 		{
-			if (IsSpritePoolFullForOwner(o))
-				break;
-			if (!ShouldEmitCrowdPartFxSample(o, (unsigned int)i, 2))
-				continue;
 			b->TransformPosition(BoneTransform[iGreenFlarePos[i]], p, Position, true);
 			CreateSprite(BITMAP_FLARE, Position, Scale + 2.0f, Light, o);
 		}
@@ -13206,8 +12994,6 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		return;
 	}
 
-	CObjectDebugSection debugPartObject(DebugAddPartObjectMs);
-	CObjectDebugSection debugPlayerPartObject(IsPlayerPartOwner(o) ? DebugAddPlayerPartObjectMs : NULL);
 	PART_t* p = (PART_t*)p2;
 
 	if (Type == MODEL_POTION + 12)
@@ -13274,7 +13060,7 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		}
 		BodyLight(o, b);
 
-		const bool useGpuAssistMesh = (Select == 0);
+		const bool useGpuAssistMesh = (Select == 0 && HideSkin == false);
 		if (useGpuAssistMesh)
 		{
 			b->PrepareGpuAssist(o, Type, RenderType, p == NULL, GlobalTransform, Translate);
@@ -13284,9 +13070,6 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 			b->ClearGpuAssist();
 		}
 
-		{
-			CObjectDebugSection debugPartTransform(DebugAddPartTransformMs);
-			CObjectDebugSection debugPlayerPartTransform(IsPlayerPartOwner(o) ? DebugAddPlayerPartTransformMs : NULL);
 		if (GlobalTransform)
 		{
 			b->Transform(BoneTransform, o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
@@ -13294,7 +13077,6 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		else
 		{
 			b->Transform(o->GetBoneTransform(), o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
-		}
 		}
 
 		if (p)

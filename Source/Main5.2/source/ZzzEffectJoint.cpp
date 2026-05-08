@@ -17,24 +17,6 @@
 #include "GMBattleCastle.h"
 #include "NewUISystem.h"
 
-extern int g_DebugPartFxScopeDepth;
-extern int g_DebugPlayerPartFxScopeDepth;
-extern void DebugAddPartFxJointCount();
-extern void DebugAddPlayerPartFxJointCount();
-
-static void SetJointColor3f(GLfloat color[4], float r, float g, float b)
-{
-	color[0] = r;
-	color[1] = g;
-	color[2] = b;
-	color[3] = 1.0f;
-	glColor3f(r, g, b);
-}
-
-static void SetJointColor3fv(GLfloat color[4], const float* rgb)
-{
-	SetJointColor3f(color, rgb[0], rgb[1], rgb[2]);
-}
 
 extern float g_fBoneSave[10][3][4];
 
@@ -48,39 +30,6 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
-	if (g_DebugPartFxScopeDepth > 0)
-	{
-		DebugAddPartFxJointCount();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxJointCount();
-		}
-	}
-
-	if (IsHeroEffectPriorityActive() || IsHeroEffectOwner(Target))
-	{
-		bool hasFreeSlot = false;
-		for (int i = 0; i < MAX_JOINTS; ++i)
-		{
-			if (!Joints[i].Live)
-			{
-				hasFreeSlot = true;
-				break;
-			}
-		}
-
-		if (!hasFreeSlot)
-		{
-			for (int i = 0; i < MAX_JOINTS; ++i)
-			{
-				if (Joints[i].Live && !IsHeroEffectOwner(Joints[i].Target))
-				{
-					Joints[i].Live = false;
-					break;
-				}
-			}
-		}
-	}
 	for (int i = 0; i < MAX_JOINTS; i++)
 	{
 		JOINT* o = &Joints[i];
@@ -7343,8 +7292,6 @@ void RenderJoints(BYTE bRenderOneMore)
 				DisableDepthTest();
 			}
 
-			GLfloat baseColor[4] = { o->Light[0], o->Light[1], o->Light[2], 1.0f };
-
 			if (o->Type == MODEL_SPEARSKILL)
 			{
 				float fAlpha;
@@ -7357,7 +7304,7 @@ void RenderJoints(BYTE bRenderOneMore)
 				case 9:
 				case 10:
 					fAlpha = (float)min((float)o->LifeTime, 20) * 0.05f;
-					SetJointColor3f(baseColor, fAlpha * o->Light[0], fAlpha * o->Light[1], fAlpha * o->Light[2]);
+					glColor3f(fAlpha * o->Light[0], fAlpha * o->Light[1], fAlpha * o->Light[2]);
 					break;
 				case 3:
 				case 5:
@@ -7367,10 +7314,10 @@ void RenderJoints(BYTE bRenderOneMore)
 				case 16:
 				case 14:
 				case 17:
-					SetJointColor3fv(baseColor, o->Light);
+					glColor3f(o->Light[0], o->Light[1], o->Light[2]);
 					break;
 				case 15:
-					SetJointColor3fv(baseColor, o->Light);
+					glColor3f(o->Light[0], o->Light[1], o->Light[2]);
 					EnableAlphaBlendMinus();
 					break;
 				}
@@ -7378,12 +7325,12 @@ void RenderJoints(BYTE bRenderOneMore)
 			else if (o->Type == BITMAP_FLARE_BLUE && o->SubType == 20)
 			{
 				EnableAlphaBlend2();
-				SetJointColor3fv(baseColor, o->Light);
+				glColor3fv(o->Light);
 			}
 			else if (o->Type == BITMAP_SMOKE && o->SubType == 0)
 			{
 				float fAlpha = (float)min(o->LifeTime, 20) * 0.1f;
-				SetJointColor3f(baseColor, fAlpha * o->Light[0], fAlpha * o->Light[1], fAlpha * o->Light[2]);
+				glColor3f(fAlpha * o->Light[0], fAlpha * o->Light[1], fAlpha * o->Light[2]);
 			}
 			else if (o->Type == BITMAP_JOINT_SPARK)
 			{
@@ -7392,23 +7339,10 @@ void RenderJoints(BYTE bRenderOneMore)
 			}
 			else
 			{
-				SetJointColor3fv(baseColor, o->Light);
+				glColor3fv(o->Light);
 			}
 
 			BindTexture(o->TexType);
-
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glEnableClientState(GL_COLOR_ARRAY);
-			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-			vec2_t batchedTextCoordsOne[MAX_TAILS * 4];
-			vec3_t batchedVerticesOne[MAX_TAILS * 4];
-			vec4_t batchedColorsOne[MAX_TAILS * 4];
-			vec2_t batchedTextCoordsTwo[MAX_TAILS * 4];
-			vec3_t batchedVerticesTwo[MAX_TAILS * 4];
-			vec4_t batchedColorsTwo[MAX_TAILS * 4];
-			int batchedVertexOne = 0;
-			int batchedVertexTwo = 0;
 
 			for (int j = 0; j < o->NumTails; j++)
 			{
@@ -7465,17 +7399,18 @@ void RenderJoints(BYTE bRenderOneMore)
 					Light2 -= (Scroll);
 				}
 				GLfloat fCurColor[4];
-				VectorCopy(baseColor, fCurColor, 4);
 
 				if (o->Type == BITMAP_JOINT_FORCE && o->SubType == 0)
 				{
 					float Luminosity = ((float)((o->MaxTails - j) / (float)(o->MaxTails)) * 2);
 					Luminosity *= (o->Light[0]);
-					SetJointColor3f(fCurColor, Luminosity, Luminosity, Luminosity);
+					glColor3f(Luminosity, Luminosity, Luminosity);
 
 					vec2_t textCoords[4];
 					vec3_t vertices[4];
 					vec4_t colors[4];
+
+					glGetFloatv(GL_CURRENT_COLOR, fCurColor);
 
 					VectorCopy(fCurColor, colors[0], 4);
 					VectorCopy(fCurColor, colors[1], 4);
@@ -7496,7 +7431,7 @@ void RenderJoints(BYTE bRenderOneMore)
 					VectorCopy(o->Tails[j + 1][0], vertices[vertex_index]);
 					vertex_index++;
 
-					//SetJointColor3f(fCurColor, Luminosity, Luminosity, Luminosity);
+					//glColor3f(Luminosity, Luminosity, Luminosity);
 					//glBegin(GL_QUADS);
 					//glTexCoord2f(Light1, 0.f);
 					//glVertex3fv(o->Tails[j][0]);
@@ -7527,17 +7462,17 @@ void RenderJoints(BYTE bRenderOneMore)
 							if (fJointHeight > 0)
 							{
 								Vector(o->Light[0] - fJointHeight, o->Light[1] - fJointHeight, o->Light[2] - fJointHeight, Light);
-								SetJointColor3fv(fCurColor, Light);
+								glColor3fv(Light);
 							}
 							else
 							{
 								VectorCopy(o->Light, Light);
-								SetJointColor3fv(fCurColor, o->Light);
+								glColor3fv(o->Light);
 							}
 						}
 						else
 						{
-							SetJointColor3f(fCurColor, 1.f, 1.f, 1.f);
+							glColor3f(1.f, 1.f, 1.f);
 						}
 
 						if (j == (o->NumTails / 2))
@@ -7566,7 +7501,7 @@ void RenderJoints(BYTE bRenderOneMore)
 							o->Light[1] *= (0.9978f);
 							o->Light[2] *= (0.9978f);
 							Vector(o->Light[0] - fJointHeight, o->Light[1] - fJointHeight, o->Light[2] - fJointHeight, Light);
-							SetJointColor3fv(fCurColor, Light);
+							glColor3fv(Light);
 
 							vec3_t  Position;
 							Vector(0.f, 0.f, 0.f, Position);
@@ -7589,15 +7524,15 @@ void RenderJoints(BYTE bRenderOneMore)
 						if (tail == j)
 						{
 							float l = o->Light[2] - j;
-							SetJointColor3f(fCurColor, l, l, l);
+							glColor3f(l, l, l);
 						}
 						else if (tail < j)
 						{
-							SetJointColor3f(fCurColor, 0.f, 0.f, 0.f);
+							glColor3f(0.f, 0.f, 0.f);
 						}
 						else
 						{
-							SetJointColor3f(fCurColor, 0.7f, 0.7f, 0.7f);
+							glColor3f(0.7f, 0.7f, 0.7f);
 						}
 					}
 					else if (o->Type == BITMAP_FLARE + 1 && o->SubType == 6)
@@ -7636,13 +7571,15 @@ void RenderJoints(BYTE bRenderOneMore)
 					{
 						float Luminosity = ((float)((o->NumTails - 1 - j) / (float)(o->MaxTails)) * 2);
 
-						SetJointColor3f(fCurColor, o->Light[0] * Luminosity, o->Light[1] * Luminosity, o->Light[2] * Luminosity);
+						glColor3f(o->Light[0] * Luminosity, o->Light[1] * Luminosity, o->Light[2] * Luminosity);
 					}
 					else if (o->Type == BITMAP_JOINT_FORCE && o->SubType == 1)
 					{
 						float Luminosity = (1.f - (o->NumTails - j) / (float)(o->NumTails)) * 2.f;
-						SetJointColor3f(fCurColor, o->Light[0] * Luminosity, o->Light[1] * Luminosity, o->Light[2] * Luminosity);
+						glColor3f(o->Light[0] * Luminosity, o->Light[1] * Luminosity, o->Light[2] * Luminosity);
 					}
+
+					glGetFloatv(GL_CURRENT_COLOR, fCurColor);
 
 					if (o->Type == BITMAP_FLARE && o->SubType == 22)
 					{
@@ -7699,25 +7636,43 @@ void RenderJoints(BYTE bRenderOneMore)
 
 					if ((o->RenderFace & RENDER_FACE_ONE) == RENDER_FACE_ONE)
 					{
-						if (batchedVertexOne + 4 <= MAX_TAILS * 4)
-						{
-							VectorCopy(fCurColor, batchedColorsOne[batchedVertexOne], 4);
-							TEXCOORD(batchedTextCoordsOne[batchedVertexOne], L1, V2);
-							VectorCopy(o->Tails[j][2], batchedVerticesOne[batchedVertexOne]);
-							batchedVertexOne++;
-							VectorCopy(fCurColor, batchedColorsOne[batchedVertexOne], 4);
-							TEXCOORD(batchedTextCoordsOne[batchedVertexOne], L1, V1);
-							VectorCopy(o->Tails[j][3], batchedVerticesOne[batchedVertexOne]);
-							batchedVertexOne++;
-							VectorCopy(fCurColor, batchedColorsOne[batchedVertexOne], 4);
-							TEXCOORD(batchedTextCoordsOne[batchedVertexOne], L2, V1);
-							VectorCopy(o->Tails[j + 1][3], batchedVerticesOne[batchedVertexOne]);
-							batchedVertexOne++;
-							VectorCopy(fCurColor, batchedColorsOne[batchedVertexOne], 4);
-							TEXCOORD(batchedTextCoordsOne[batchedVertexOne], L2, V2);
-							VectorCopy(o->Tails[j + 1][2], batchedVerticesOne[batchedVertexOne]);
-							batchedVertexOne++;
-						}
+						vec2_t textCoords[4];
+						vec3_t vertices[4];
+						vec4_t colors[4];
+
+						VectorCopy(fCurColor, colors[0], 4);
+						VectorCopy(fCurColor, colors[1], 4);
+						VectorCopy(fCurColor, colors[2], 4);
+						VectorCopy(fCurColor, colors[3], 4);
+
+						int vertex_index = 0;
+						TEXCOORD(textCoords[vertex_index], L1, V2);
+						VectorCopy(o->Tails[j][2], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L1, V1);
+						VectorCopy(o->Tails[j][3], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L2, V1);
+						VectorCopy(o->Tails[j + 1][3], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L2, V2);
+						VectorCopy(o->Tails[j + 1][2], vertices[vertex_index]);
+						vertex_index++;
+
+						glEnableClientState(GL_VERTEX_ARRAY);
+						glEnableClientState(GL_COLOR_ARRAY);
+						glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+						glVertexPointer(3, GL_FLOAT, 0, vertices);
+						glColorPointer(4, GL_FLOAT, 0, colors);
+						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
+
+						glDrawArrays(GL_QUADS, 0, vertex_index);
+
+						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+						glDisableClientState(GL_COLOR_ARRAY);
+						glDisableClientState(GL_VERTEX_ARRAY);
+
 						//glBegin(GL_QUADS);
 						//glTexCoord2f(L1, V2);
 						//glVertex3fv(o->Tails[j][2]);
@@ -7738,25 +7693,43 @@ void RenderJoints(BYTE bRenderOneMore)
 							L2 += (Scroll * 2.f);
 						}
 
-						if (batchedVertexTwo + 4 <= MAX_TAILS * 4)
-						{
-							VectorCopy(fCurColor, batchedColorsTwo[batchedVertexTwo], 4);
-							TEXCOORD(batchedTextCoordsTwo[batchedVertexTwo], L1, V1);
-							VectorCopy(o->Tails[j][0], batchedVerticesTwo[batchedVertexTwo]);
-							batchedVertexTwo++;
-							VectorCopy(fCurColor, batchedColorsTwo[batchedVertexTwo], 4);
-							TEXCOORD(batchedTextCoordsTwo[batchedVertexTwo], L1, V2);
-							VectorCopy(o->Tails[j][1], batchedVerticesTwo[batchedVertexTwo]);
-							batchedVertexTwo++;
-							VectorCopy(fCurColor, batchedColorsTwo[batchedVertexTwo], 4);
-							TEXCOORD(batchedTextCoordsTwo[batchedVertexTwo], L2, V2);
-							VectorCopy(o->Tails[j + 1][1], batchedVerticesTwo[batchedVertexTwo]);
-							batchedVertexTwo++;
-							VectorCopy(fCurColor, batchedColorsTwo[batchedVertexTwo], 4);
-							TEXCOORD(batchedTextCoordsTwo[batchedVertexTwo], L2, V1);
-							VectorCopy(o->Tails[j + 1][0], batchedVerticesTwo[batchedVertexTwo]);
-							batchedVertexTwo++;
-						}
+						vec2_t textCoords[4];
+						vec3_t vertices[4];
+						vec4_t colors[4];
+
+						VectorCopy(fCurColor, colors[0], 4);
+						VectorCopy(fCurColor, colors[1], 4);
+						VectorCopy(fCurColor, colors[2], 4);
+						VectorCopy(fCurColor, colors[3], 4);
+
+						int vertex_index = 0;
+						TEXCOORD(textCoords[vertex_index], L1, V1);
+						VectorCopy(o->Tails[j][0], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L1, V2);
+						VectorCopy(o->Tails[j][1], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L2, V2);
+						VectorCopy(o->Tails[j + 1][1], vertices[vertex_index]);
+						vertex_index++;
+						TEXCOORD(textCoords[vertex_index], L2, V1);
+						VectorCopy(o->Tails[j + 1][0], vertices[vertex_index]);
+						vertex_index++;
+
+						glEnableClientState(GL_VERTEX_ARRAY);
+						glEnableClientState(GL_COLOR_ARRAY);
+						glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+						glVertexPointer(3, GL_FLOAT, 0, vertices);
+						glColorPointer(4, GL_FLOAT, 0, colors);
+						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
+
+						glDrawArrays(GL_QUADS, 0, vertex_index);
+
+						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+						glDisableClientState(GL_COLOR_ARRAY);
+						glDisableClientState(GL_VERTEX_ARRAY);
+
 						//glBegin(GL_QUADS);
 						//glTexCoord2f(L1, V1);
 						//glVertex3fv(o->Tails[j][0]);
@@ -7770,25 +7743,6 @@ void RenderJoints(BYTE bRenderOneMore)
 					}
 				}
 			}
-
-			if (batchedVertexOne > 0)
-			{
-				glVertexPointer(3, GL_FLOAT, 0, batchedVerticesOne);
-				glColorPointer(4, GL_FLOAT, 0, batchedColorsOne);
-				glTexCoordPointer(2, GL_FLOAT, 0, batchedTextCoordsOne);
-				glDrawArrays(GL_QUADS, 0, batchedVertexOne);
-			}
-			if (batchedVertexTwo > 0)
-			{
-				glVertexPointer(3, GL_FLOAT, 0, batchedVerticesTwo);
-				glColorPointer(4, GL_FLOAT, 0, batchedColorsTwo);
-				glTexCoordPointer(2, GL_FLOAT, 0, batchedTextCoordsTwo);
-				glDrawArrays(GL_QUADS, 0, batchedVertexTwo);
-			}
-
-			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-			glDisableClientState(GL_COLOR_ARRAY);
-			glDisableClientState(GL_VERTEX_ARRAY);
 
 			if (o->Type == BITMAP_JOINT_HEALING && o->SubType == 8)
 			{

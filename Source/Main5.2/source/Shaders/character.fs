@@ -6,16 +6,9 @@ in vec4 VertexColor;
 out vec4 FragColor;
 
 uniform sampler2D texture1;
-uniform int uRenderMode;
 
 void main()
 {
-    if (uRenderMode == 11)
-    {
-        FragColor = VertexColor;
-        return;
-    }
-
     vec4 textureColor = texture(texture1, TexCoord);
     float alpha = textureColor.a * VertexColor.a;
 

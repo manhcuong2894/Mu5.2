@@ -153,10 +153,6 @@ typedef struct _Mesh_t
 	GLuint VAO, VBO_Vertices, VBO_Normals, VBO_TexCoords, VBO_Colors, EBO;
 	GLuint VBO_VertexNodes, VBO_NormalNodes;
 	int GpuVertexCount;
-	int GpuBoneUploadCount;
-	unsigned char* GpuBoneMap;
-	GLenum GpuIndexType;
-	bool GpuEffectBatchIncluded;
 
 	_Mesh_t()
 	{
@@ -185,10 +181,6 @@ typedef struct _Mesh_t
 		VBO_VertexNodes = 0;
 		VBO_NormalNodes = 0;
 		GpuVertexCount = 0;
-		GpuBoneUploadCount = 0;
-		GpuBoneMap = NULL;
-		GpuIndexType = GL_UNSIGNED_SHORT;
-		GpuEffectBatchIncluded = false;
 	}
 
 } Mesh_t;
@@ -259,11 +251,6 @@ public:
 	vec3_t       m_vGpuAssistBoundingBoxMin;
 	vec3_t       m_vGpuAssistBoundingBoxMax;
 	float        m_GpuAssistBones[MAX_BONES][16];
-	unsigned int m_uiGpuAssistBoneStamp;
-	int          m_iGpuAssistBoneUploadCount;
-	Mesh_t      m_GpuEffectBatchMesh;
-	bool        m_bGpuEffectBatchTried;
-	bool        m_bGpuEffectBatchReady;
 
 	CGMLuaBase* commandLua;
 	BMD() : NumBones(0), NumActions(0), NumMeshs(0),
@@ -295,10 +282,6 @@ public:
 		memset(m_vGpuAssistBoundingBoxMin, 0, sizeof(m_vGpuAssistBoundingBoxMin));
 		memset(m_vGpuAssistBoundingBoxMax, 0, sizeof(m_vGpuAssistBoundingBoxMax));
 		memset(m_GpuAssistBones, 0, sizeof(m_GpuAssistBones));
-		m_uiGpuAssistBoneStamp = 0;
-		m_iGpuAssistBoneUploadCount = 0;
-		m_bGpuEffectBatchTried = false;
-		m_bGpuEffectBatchReady = false;
 	}
 
 	~BMD();
@@ -317,9 +300,7 @@ public:
 	void ClearGpuAssist();
 	void EnsureCpuTransformData();
 	bool CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const;
-	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderFlag, int resolvedRenderFlag, bool hasCurrentColor, const float* currentColorHint);
-	bool CanUseGpuEffectBatch(int renderFlag, float alpha, int blendMesh, float blendMeshLight, float blendMeshTexCoordU, float blendMeshTexCoordV, int hiddenMesh, int meshTexture) const;
-	bool EnsureGpuEffectBatch();
+	void RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV);
 	void CacheGpuAssistBoneMatrices();
 	void ComputeGpuAssistLightDirection(vec3_t lightDir) const;
 	void PrepareGpuAssistBounds(vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB);

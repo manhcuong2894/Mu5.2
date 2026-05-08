@@ -40,7 +40,6 @@ bool CullFaceEnable;
 bool DepthMaskEnable;
 bool AlphaTestEnable;
 int  AlphaBlendType;
-static bool g_bSpriteRenderBatch = false;
 
 
 unsigned int WindowWidth = 1024;
@@ -1014,27 +1013,6 @@ void EndSprite()
 	glPopMatrix();
 }
 
-void BeginSpriteRenderBatch()
-{
-	if (!g_bSpriteRenderBatch)
-	{
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glEnableClientState(GL_COLOR_ARRAY);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		g_bSpriteRenderBatch = true;
-	}
-}
-
-void EndSpriteRenderBatch()
-{
-	if (g_bSpriteRenderBatch)
-	{
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_COLOR_ARRAY);
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		g_bSpriteRenderBatch = false;
-	}
-}
 void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_t Light, float Rotation, float u, float v, float uWidth, float vHeight)
 {
 	BindTexture(Texture);
@@ -1101,12 +1079,9 @@ void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_
 		}
 	}
 
-	if (!g_bSpriteRenderBatch)
-	{
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glEnableClientState(GL_COLOR_ARRAY);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	}
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	glVertexPointer(3, GL_FLOAT, 0, p);
 	glTexCoordPointer(2, GL_FLOAT, 0, c);
@@ -1114,12 +1089,9 @@ void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_
 
 	glDrawArrays(GL_QUADS, 0, 4);  // 4 vertices en total
 
-	if (!g_bSpriteRenderBatch)
-	{
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_COLOR_ARRAY);
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	}
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 
 

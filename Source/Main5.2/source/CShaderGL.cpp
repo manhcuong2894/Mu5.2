@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "CShaderGL.h"
 
 #ifdef SHADER_VERSION_TEST
@@ -206,7 +206,7 @@ GLuint CShaderGL::LoadShaderProgram(const char* vertexShaderFile,
 void CShaderGL::LoadGpuAssistConfig()
 {
     char configValue[32] = {0};
-    GetPrivateProfileStringA("Graphics", "UseGpuAssist", "Force", configValue,
+    GetPrivateProfileStringA("Graphics", "UseGpuAssist", "Auto", configValue,
                              sizeof(configValue), ".\\config.ini");
 
     std::string mode = configValue;
@@ -217,9 +217,13 @@ void CShaderGL::LoadGpuAssistConfig()
     {
         m_eGpuAssistMode = GPU_ASSIST_OFF;
     }
-    else
+    else if (mode == "2" || mode == "force")
     {
         m_eGpuAssistMode = GPU_ASSIST_FORCE;
+    }
+    else
+    {
+        m_eGpuAssistMode = GPU_ASSIST_AUTO;
     }
 }
 
@@ -227,14 +231,8 @@ void CShaderGL::DetectGpuAssistSupport()
 {
     m_bGpuAssistAvailable = false;
 
-    if (shader_character_id == 0)
+    if (shader_character_id == 0 || !GLEW_VERSION_3_3)
         return;
-
-    if (m_eGpuAssistMode == GPU_ASSIST_FORCE)
-    {
-        m_bGpuAssistAvailable = true;
-        return;
-    }
 
     const char* vendorRaw = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
     const char* rendererRaw = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
@@ -249,11 +247,14 @@ void CShaderGL::DetectGpuAssistSupport()
     std::transform(renderer.begin(), renderer.end(), renderer.begin(),
                    [](unsigned char c) { return (char)std::tolower(c); });
 
-    if (vendor.find("microsoft") != std::string::npos ||
-        renderer.find("gdi generic") != std::string::npos ||
-        renderer.find("software") != std::string::npos)
+    if (m_eGpuAssistMode != GPU_ASSIST_FORCE)
     {
-        return;
+        if (vendor.find("microsoft") != std::string::npos ||
+            renderer.find("gdi generic") != std::string::npos ||
+            renderer.find("software") != std::string::npos)
+        {
+            return;
+        }
     }
 
     m_bGpuAssistAvailable = true;

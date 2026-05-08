@@ -23,12 +23,6 @@ void CreateSpark(int Type,CHARACTER *tc,vec3_t Position,vec3_t Angle);
 void CreateBlood(OBJECT *o);
 
 int CreateSprite(int Type,vec3_t Position,float Scale,vec3_t Light,OBJECT *Owner,float Rotation=0.f,int SubType=0);
-bool IsSpritePoolFull();
-bool IsSpritePoolFullForOwner(OBJECT* Owner);
-void BeginHeroSpritePriority();
-void EndHeroSpritePriority();
-bool IsHeroEffectPriorityActive();
-bool IsHeroEffectOwner(OBJECT* Owner);
 void RenderSprites ( BYTE byRenderOneMore=0 );
 void CheckSprites();
 void RenderLeaves();

@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+ï»¿///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -68,212 +68,12 @@ float ParentMatrix[3][4];
 static vec3_t LightVector = { 0.f, -0.1f, -0.8f };
 static vec3_t LightVector2 = { 0.f, -0.5f, -0.8f };
 
-static int BmdMaxInt(int a, int b)
-{
-	return (a > b) ? a : b;
-}
-
-static float BmdMaxFloat(float a, float b)
-{
-	return (a > b) ? a : b;
-}
-
-extern void DebugAddGpuAssistPrep();
-extern void DebugAddGpuAssistOff();
-extern void DebugAddGpuAssistType();
-extern void DebugAddGpuAssistFlag();
-extern void DebugAddGpuAssistFlagScale();
-extern void DebugAddGpuAssistFlagResolved();
-extern void DebugAddGpuAssistFlagChrome();
-extern void DebugAddGpuAssistFlagMetal();
-extern void DebugAddGpuAssistFlagLightmap();
-extern void DebugAddGpuAssistFlagWave();
-extern void DebugAddGpuAssistFlagOther();
-extern void DebugAddGpuAssistMesh();
-extern void DebugAddGpuAssistHit();
-extern void DebugAddGpuAssistHitRenderMesh();
-extern void DebugAddGpuAssistHitBatch();
-extern void DebugAddGpuAssistHitTranslate();
-extern void DebugAddPlayerGpuAssistHit();
-extern void DebugAddGpuAssistFallback();
-extern void DebugAddPlayerGpuAssistFallback();
-extern void DebugAddGpuAssistBoneUpload();
-extern void DebugAddGpuAssistBoneUploadMatrices(int count);
-extern void DebugAddGpuAssistShaderBind();
-extern void DebugAddGpuAssistColorRead();
-extern void DebugAddGpuEffectBatchCheck();
-extern void DebugAddGpuEffectBatchUsed();
-extern void DebugAddGpuEffectBatchBuildFail();
-extern void DebugAddGpuEffectBatchEmpty();
-extern void DebugAddGpuEffectBatchRejectNum();
-extern void DebugAddGpuEffectBatchRejectHidden();
-extern void DebugAddGpuEffectBatchRejectTexture();
-extern void DebugAddGpuEffectBatchRejectTransform();
-extern void DebugAddGpuEffectBatchRejectScale();
-extern void DebugAddGpuEffectBatchRejectFlag();
-extern void DebugAddGpuEffectBatchRejectPass();
-extern void DebugAddGpuEffectBatchRejectShader();
-extern void DebugAddGpuEffectBatchRejectReady();
-extern unsigned int g_uiCrowdAnimationFrameId;
-extern int g_DebugPlayerPartFxScopeDepth;
-extern void DebugAddPlayerPartFxMeshMs(double elapsedMs);
-extern void DebugAddPlayerPartFxMeshHitCount();
-extern void DebugAddPlayerPartFxMeshEarlyCount();
-extern void DebugAddPlayerPartFxMeshCpuDrawCount();
-extern void DebugAddPlayerPartFxGpuFailFlag();
-extern void DebugAddPlayerPartFxGpuFailResolved();
-extern void DebugAddPlayerPartFxGpuFailMesh();
-extern void DebugAddPlayerPartFxGpuFailScale();
-extern void DebugAddPlayerPartFxGpuFailOff();
-extern void DebugAddPlayerPartFxCpuDrawTexture();
-extern void DebugAddPlayerPartFxCpuDrawBright();
-extern void DebugAddPlayerPartFxCpuDrawChrome();
-extern void DebugAddPlayerPartFxCpuDrawOther();
-extern int g_DebugPlayerPartFxCurrentType;
-extern void DebugAddPlayerPartFxOffWeapon();
-extern void DebugAddPlayerPartFxOffArmor();
-extern void DebugAddPlayerPartFxOffWing();
-extern void DebugAddPlayerPartFxOffHelper();
-extern void DebugAddPlayerPartFxOffGrade15();
-extern void DebugAddPlayerPartFxOffOther();
-class CPlayerPartFxMeshDebugSection
-{
-public:
-	CPlayerPartFxMeshDebugSection()
-		: m_active(g_DebugPlayerPartFxScopeDepth > 0), m_sampleTime(false), m_startMs(0.0), m_outcome(OUTCOME_EARLY)
-	{
-		if (m_active)
-		{
-			m_sampleTime = ((++s_sampleCounter & 15) == 0);
-			if (m_sampleTime)
-			{
-				m_startMs = NowMs();
-			}
-		}
-	}
-
-	~CPlayerPartFxMeshDebugSection()
-	{
-		if (m_active)
-		{
-			if (m_sampleTime)
-			{
-				DebugAddPlayerPartFxMeshMs((NowMs() - m_startMs) * 16.0);
-			}
-
-			switch (m_outcome)
-			{
-			case OUTCOME_GPU_HIT:
-				DebugAddPlayerPartFxMeshHitCount();
-				break;
-			case OUTCOME_CPU_DRAW:
-				DebugAddPlayerPartFxMeshCpuDrawCount();
-				break;
-			default:
-				DebugAddPlayerPartFxMeshEarlyCount();
-				break;
-			}
-		}
-	}
-
-	void MarkGpuHit()
-	{
-		m_outcome = OUTCOME_GPU_HIT;
-	}
-
-	void MarkCpuDraw()
-	{
-		m_outcome = OUTCOME_CPU_DRAW;
-	}
-
-private:
-	enum Outcome
-	{
-		OUTCOME_EARLY,
-		OUTCOME_GPU_HIT,
-		OUTCOME_CPU_DRAW
-	};
-
-	static double NowMs()
-	{
-		static LARGE_INTEGER frequency = { 0 };
-		LARGE_INTEGER counter;
-
-		if (frequency.QuadPart == 0)
-		{
-			QueryPerformanceFrequency(&frequency);
-		}
-
-		QueryPerformanceCounter(&counter);
-		return (static_cast<double>(counter.QuadPart) * 1000.0) / static_cast<double>(frequency.QuadPart);
-	}
-
-	static unsigned int s_sampleCounter;
-	bool m_active;
-	bool m_sampleTime;
-	double m_startMs;
-	Outcome m_outcome;
-};
-
-unsigned int CPlayerPartFxMeshDebugSection::s_sampleCounter = 0;
-static bool g_bGpuAssistShaderStateActive = false;
-static GLuint g_uiGpuAssistActiveProgram = 0;
-static GLuint g_uiGpuAssistBoundVao = 0;
-
-static void ResetBmdArrayState()
-{
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(4);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-static void EndGpuAssistShaderState()
-{
-	ResetBmdArrayState();
-	glUseProgram(0);
-	g_bGpuAssistShaderStateActive = false;
-	g_uiGpuAssistActiveProgram = 0;
-	g_uiGpuAssistBoundVao = 0;
-}
-void FlushGpuAssistShaderState()
-{
-	EndGpuAssistShaderState();
-}
-
 static bool IsGpuAssistEligibleObject(const OBJECT* pObject)
 {
 	if (pObject == NULL)
 		return false;
 
-	return pObject->Kind == KIND_PLAYER || pObject->Kind == KIND_MONSTER || pObject->Type == MODEL_PLAYER;
-}
-
-static bool IsGpuAssistGrade15AttachmentModel(int modelType)
-{
-	switch (modelType)
-	{
-	case MODEL_15GRADE_ARMOR_OBJ_ARMLEFT:
-	case MODEL_15GRADE_ARMOR_OBJ_ARMRIGHT:
-	case MODEL_15GRADE_ARMOR_OBJ_BODYLEFT:
-	case MODEL_15GRADE_ARMOR_OBJ_BODYRIGHT:
-	case MODEL_15GRADE_ARMOR_OBJ_BOOTLEFT:
-	case MODEL_15GRADE_ARMOR_OBJ_BOOTRIGHT:
-	case MODEL_15GRADE_ARMOR_OBJ_HEAD:
-	case MODEL_15GRADE_ARMOR_OBJ_PANTLEFT:
-	case MODEL_15GRADE_ARMOR_OBJ_PANTRIGHT:
-		return true;
-	}
-
-	return false;
+	return pObject->Kind == KIND_PLAYER || pObject->Kind == KIND_MONSTER;
 }
 
 static bool IsGpuAssistEligibleAttachmentModel(int modelType)
@@ -287,121 +87,10 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	if (modelType >= MODEL_WING && modelType < MODEL_HELPER)
 		return true;
 
-	if (modelType >= MODEL_HELPER && modelType < MODEL_POTION)
-		return true;
-
 	if (modelType >= MODEL_HELM2 && modelType < MODEL_EVENT)
 		return true;
 
-	if (IsGpuAssistGrade15AttachmentModel(modelType))
-		return true;
-
 	return false;
-}
-
-static void DebugAddPlayerPartFxGpuAssistOffByType()
-{
-	if (g_DebugPlayerPartFxScopeDepth <= 0)
-		return;
-
-	DebugAddPlayerPartFxGpuFailOff();
-
-	const int type = g_DebugPlayerPartFxCurrentType;
-	if (IsGpuAssistGrade15AttachmentModel(type))
-	{
-		DebugAddPlayerPartFxOffGrade15();
-	}
-	else if (type >= MODEL_SWORD && type < MODEL_HELM)
-	{
-		DebugAddPlayerPartFxOffWeapon();
-	}
-	else if ((type >= MODEL_HELM && type < MODEL_WING) || (type >= MODEL_HELM2 && type < MODEL_EVENT))
-	{
-		DebugAddPlayerPartFxOffArmor();
-	}
-	else if (type >= MODEL_WING && type < MODEL_HELPER)
-	{
-		DebugAddPlayerPartFxOffWing();
-	}
-	else if (type >= MODEL_HELPER && type < MODEL_POTION)
-	{
-		DebugAddPlayerPartFxOffHelper();
-	}
-	else
-	{
-		DebugAddPlayerPartFxOffOther();
-	}
-}
-
-static void DebugAddGpuAssistFlagByRenderFlag(int renderFlag)
-{
-	if (renderFlag & (RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
-		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL))
-	{
-		DebugAddGpuAssistFlagChrome();
-		return;
-	}
-
-	if (renderFlag & RENDER_METAL)
-	{
-		DebugAddGpuAssistFlagMetal();
-		return;
-	}
-
-	if (renderFlag & (RENDER_LIGHTMAP | RENDER_SHADOWMAP))
-	{
-		DebugAddGpuAssistFlagLightmap();
-		return;
-	}
-
-	if (renderFlag & (RENDER_WAVE | RENDER_WAVE_EXT))
-	{
-		DebugAddGpuAssistFlagWave();
-		return;
-	}
-
-	DebugAddGpuAssistFlagOther();
-}
-
-static bool IsGpuAssistRenderFlagSupported(int renderFlag)
-{
-	return (renderFlag & (RENDER_COLOR | RENDER_LIGHTMAP | RENDER_SHADOWMAP | RENDER_WAVE | RENDER_WAVE_EXT)) == 0;
-}
-
-static bool IsGpuAssistResolvedRenderFlagSupported(int resolvedRenderFlag)
-{
-	return resolvedRenderFlag == RENDER_TEXTURE
-		|| resolvedRenderFlag == RENDER_BRIGHT
-		|| resolvedRenderFlag == RENDER_CHROME
-		|| resolvedRenderFlag == RENDER_CHROME4
-		|| resolvedRenderFlag == RENDER_CHROME8
-		|| resolvedRenderFlag == RENDER_OIL;
-}
-
-static bool IsGpuAssistPlayerOwner(const BMD* model)
-{
-	return model != NULL && (model->m_byGpuAssistObjectKind == KIND_PLAYER || model->m_iGpuAssistObjectType == MODEL_PLAYER);
-}
-static int GetGpuAssistRenderMode(int renderFlag, int resolvedRenderFlag)
-{
-	if (resolvedRenderFlag == RENDER_TEXTURE)
-		return 0;
-
-	if (resolvedRenderFlag == RENDER_BRIGHT)
-		return 11;
-
-	if (renderFlag & RENDER_CHROME2) return 2;
-	if (renderFlag & RENDER_CHROME3) return 3;
-	if (renderFlag & RENDER_CHROME4) return 4;
-	if (renderFlag & RENDER_CHROME5) return 5;
-	if (renderFlag & RENDER_CHROME6) return 6;
-	if (renderFlag & RENDER_CHROME7) return 7;
-	if (renderFlag & RENDER_CHROME8) return 8;
-	if (renderFlag & RENDER_OIL) return 9;
-	if (renderFlag & RENDER_METAL) return 10;
-	if (renderFlag & RENDER_CHROME) return 1;
-
-	return 0;
 }
 
 void BMD::Animation(float(*BoneMatrix)[3][4], float AnimationFrame, float PriorFrame, unsigned short PriorAction, vec3_t Angle, vec3_t HeadAngle, bool Parent, bool Translate)
@@ -599,36 +288,24 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	ClearGpuAssist();
 
 #ifdef SHADER_VERSION_TEST
-	DebugAddGpuAssistPrep();
-
 	if (!gShaderGL->IsGpuAssistEnabled())
-	{
-		DebugAddGpuAssistOff();
 		return;
-	}
 
 	if (!IsGpuAssistEligibleObject(pObject))
-	{
-		DebugAddGpuAssistType();
 		return;
-	}
 
 	const bool isAttachmentModel = (!isBodyModel && IsGpuAssistEligibleAttachmentModel(modelType));
 	if (!isBodyModel && !isAttachmentModel)
-	{
-		DebugAddGpuAssistType();
 		return;
-	}
 
 	if (NumBones <= 0 || NumBones > MAX_BONES || NumMeshs <= 0)
-	{
-		DebugAddGpuAssistMesh();
 		return;
-	}
 
-	if (!IsGpuAssistRenderFlagSupported(renderTypeHint))
+	if (renderTypeHint & (RENDER_COLOR | RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 |
+		RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_CHROME6 |
+		RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL | RENDER_LIGHTMAP |
+		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
-		DebugAddGpuAssistFlagByRenderFlag(renderTypeHint);
 		return;
 	}
 
@@ -700,12 +377,6 @@ void BMD::CacheGpuAssistBoneMatrices()
 	if (m_pGpuAssistBoneMatrices == NULL)
 		return;
 
-	++m_uiGpuAssistBoneStamp;
-	if (m_uiGpuAssistBoneStamp == 0)
-	{
-		m_uiGpuAssistBoneStamp = 1;
-	}
-
 	for (int i = 0; i < NumBones; ++i)
 	{
 		m_GpuAssistBones[i][0] = m_pGpuAssistBoneMatrices[i][0][0];
@@ -772,348 +443,55 @@ bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enabl
 	UNREFERENCED_PARAMETER(enableWave);
 	UNREFERENCED_PARAMETER(enableLight);
 
-	if (!m_bGpuAssistRequested && !m_bGpuAssistTransformReady)
-	{
-		DebugAddPlayerPartFxGpuAssistOffByType();
-		return false;
-	}
-
 	if (!m_bGpuAssistTransformReady || m_pGpuAssistBoneMatrices == NULL)
+		return false;
+
+	if ((!m_bGpuAssistBodyPath && !m_bGpuAssistAttachmentPath) || BoneScale != 1.f || m_fGpuAssistScale != 0.0f)
+		return false;
+
+	if (resolvedRenderFlag != RENDER_TEXTURE)
+		return false;
+
+	if (renderFlag & (RENDER_COLOR | RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 |
+		RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_CHROME6 |
+		RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL | RENDER_LIGHTMAP |
+		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
-		DebugAddGpuAssistMesh();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxGpuFailMesh();
-		}
 		return false;
 	}
 
-	if (!m_bGpuAssistBodyPath && !m_bGpuAssistAttachmentPath)
-	{
-		DebugAddGpuAssistType();
-		DebugAddPlayerPartFxGpuAssistOffByType();
-		return false;
-	}
-
-	if (BoneScale != 1.f || m_fGpuAssistScale != 0.0f)
-	{
-		DebugAddGpuAssistFlagScale();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxGpuFailScale();
-		}
-		return false;
-	}
-
-	if (!IsGpuAssistRenderFlagSupported(renderFlag))
-	{
-		DebugAddGpuAssistFlagByRenderFlag(renderFlag);
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxGpuFailFlag();
-		}
-		return false;
-	}
-
-	if (!IsGpuAssistResolvedRenderFlagSupported(resolvedRenderFlag))
-	{
-		DebugAddGpuAssistFlagResolved();
-		if (g_DebugPlayerPartFxScopeDepth > 0)
-		{
-			DebugAddPlayerPartFxGpuFailResolved();
-		}
-		return false;
-	}
-
-	if (!gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER))
-	{
-		DebugAddGpuAssistOff();
-		DebugAddPlayerPartFxGpuAssistOffByType();
-		return false;
-	}
-
-	return true;
+	return gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER);
 #else
 	return false;
 #endif // SHADER_VERSION_TEST
 }
 
-bool BMD::CanUseGpuEffectBatch(int renderFlag, float alpha, int blendMesh, float blendMeshLight, float blendMeshTexCoordU, float blendMeshTexCoordV, int hiddenMesh, int meshTexture) const
-{
-#ifdef SHADER_VERSION_TEST
-	DebugAddGpuEffectBatchCheck();
-	UNREFERENCED_PARAMETER(alpha);
-	UNREFERENCED_PARAMETER(blendMesh);
-	UNREFERENCED_PARAMETER(blendMeshLight);
-	UNREFERENCED_PARAMETER(blendMeshTexCoordU);
-	UNREFERENCED_PARAMETER(blendMeshTexCoordV);
-
-	if (NumMeshs <= 1)
-	{
-		DebugAddGpuEffectBatchRejectNum();
-		return false;
-	}
-
-	if (hiddenMesh != -1)
-	{
-		DebugAddGpuEffectBatchRejectHidden();
-		return false;
-	}
-
-	if (meshTexture != -1)
-	{
-		DebugAddGpuEffectBatchRejectTexture();
-		return false;
-	}
-
-	if (!m_bGpuAssistTransformReady || m_pGpuAssistBoneMatrices == NULL)
-	{
-		DebugAddGpuEffectBatchRejectTransform();
-		return false;
-	}
-
-	if (BoneScale != 1.f || m_fGpuAssistScale != 0.0f)
-	{
-		DebugAddGpuEffectBatchRejectScale();
-		return false;
-	}
-
-	if (!IsGpuAssistRenderFlagSupported(renderFlag))
-	{
-		DebugAddGpuEffectBatchRejectFlag();
-		return false;
-	}
-
-	const bool effectPass = (renderFlag & (RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_OIL | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8)) != 0;
-	if (!effectPass)
-	{
-		DebugAddGpuEffectBatchRejectPass();
-		return false;
-	}
-
-	if (!gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER))
-	{
-		DebugAddGpuEffectBatchRejectShader();
-		return false;
-	}
-
-	if (m_bGpuEffectBatchTried && !m_bGpuEffectBatchReady)
-	{
-		DebugAddGpuEffectBatchRejectReady();
-		return false;
-	}
-
-	return true;
-#else
-	UNREFERENCED_PARAMETER(renderFlag);
-	UNREFERENCED_PARAMETER(alpha);
-	UNREFERENCED_PARAMETER(blendMesh);
-	UNREFERENCED_PARAMETER(blendMeshLight);
-	UNREFERENCED_PARAMETER(blendMeshTexCoordU);
-	UNREFERENCED_PARAMETER(blendMeshTexCoordV);
-	UNREFERENCED_PARAMETER(hiddenMesh);
-	UNREFERENCED_PARAMETER(meshTexture);
-	return false;
-#endif // SHADER_VERSION_TEST
-}
-
-bool BMD::EnsureGpuEffectBatch()
-{
-#ifdef SHADER_VERSION_TEST
-	return false;
-#else
-	return false;
-#endif // SHADER_VERSION_TEST
-}
-static int UploadGpuAssistBonesForMesh(BMD* model, Mesh_t* mesh)
-{
-	if (model == NULL || mesh == NULL || model->m_pGpuAssistBoneMatrices == NULL)
-		return 0;
-
-	int boneCount = mesh->GpuBoneUploadCount;
-	if (boneCount <= 0 || mesh->GpuBoneMap == NULL)
-	{
-		boneCount = model->NumBones;
-	}
-	if (boneCount > MAX_BONES)
-	{
-		boneCount = MAX_BONES;
-	}
-
-	for (int i = 0; i < boneCount; ++i)
-	{
-		int sourceBone = (mesh->GpuBoneMap != NULL) ? mesh->GpuBoneMap[i] : i;
-		if (sourceBone < 0 || sourceBone >= model->NumBones)
-		{
-			sourceBone = 0;
-		}
-
-		float(*bone)[4] = model->m_pGpuAssistBoneMatrices[sourceBone];
-		model->m_GpuAssistBones[i][0] = bone[0][0];
-		model->m_GpuAssistBones[i][1] = bone[1][0];
-		model->m_GpuAssistBones[i][2] = bone[2][0];
-		model->m_GpuAssistBones[i][3] = 0.0f;
-		model->m_GpuAssistBones[i][4] = bone[0][1];
-		model->m_GpuAssistBones[i][5] = bone[1][1];
-		model->m_GpuAssistBones[i][6] = bone[2][1];
-		model->m_GpuAssistBones[i][7] = 0.0f;
-		model->m_GpuAssistBones[i][8] = bone[0][2];
-		model->m_GpuAssistBones[i][9] = bone[1][2];
-		model->m_GpuAssistBones[i][10] = bone[2][2];
-		model->m_GpuAssistBones[i][11] = 0.0f;
-		model->m_GpuAssistBones[i][12] = bone[0][3];
-		model->m_GpuAssistBones[i][13] = bone[1][3];
-		model->m_GpuAssistBones[i][14] = bone[2][3];
-		model->m_GpuAssistBones[i][15] = 1.0f;
-	}
-
-	return boneCount;
-}
-
-void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV, int renderFlag, int resolvedRenderFlag, bool hasCurrentColor, const float* currentColorHint)
-{
-#ifdef SHADER_VERSION_TEST
-	if (m == NULL || m->GpuVertexCount <= 0)
-		return;
-
-	const GLuint program = gShaderGL->GetShaderCharacterId();
-	if (program == 0)
-		return;
-
-	const int boneCount = UploadGpuAssistBonesForMesh(this, m);
-	if (boneCount <= 0)
-		return;
-
-	if (!g_bGpuAssistShaderStateActive || g_uiGpuAssistActiveProgram != program)
-	{
-		glUseProgram(program);
-		g_bGpuAssistShaderStateActive = true;
-		g_uiGpuAssistActiveProgram = program;
-		DebugAddGpuAssistShaderBind();
-	}
-
-	static GLuint s_cachedProgram = 0;
-	static GLint s_locBones = -1;
-	static GLint s_locBodyOrigin = -1;
-	static GLint s_locBodyLight = -1;
-	static GLint s_locLightDir = -1;
-	static GLint s_locTexCoordOffset = -1;
-	static GLint s_locBodyScale = -1;
-	static GLint s_locAlpha = -1;
-	static GLint s_locWave = -1;
-	static GLint s_locWave2 = -1;
-	static GLint s_locWorldTime = -1;
-	static GLint s_locChromeL = -1;
-	static GLint s_locTranslate = -1;
-	static GLint s_locUseLighting = -1;
-	static GLint s_locRenderMode = -1;
-	static GLint s_locTexture = -1;
-
-	if (s_cachedProgram != program)
-	{
-		s_cachedProgram = program;
-		s_locBones = glGetUniformLocation(program, "uBones");
-		s_locBodyOrigin = glGetUniformLocation(program, "uBodyOrigin");
-		s_locBodyLight = glGetUniformLocation(program, "uBodyLight");
-		s_locLightDir = glGetUniformLocation(program, "uLightDir");
-		s_locTexCoordOffset = glGetUniformLocation(program, "uTexCoordOffset");
-		s_locBodyScale = glGetUniformLocation(program, "uBodyScale");
-		s_locAlpha = glGetUniformLocation(program, "uAlpha");
-		s_locWave = glGetUniformLocation(program, "uWave");
-		s_locWave2 = glGetUniformLocation(program, "uWave2");
-		s_locWorldTime = glGetUniformLocation(program, "uWorldTime");
-		s_locChromeL = glGetUniformLocation(program, "uChromeL");
-		s_locTranslate = glGetUniformLocation(program, "uTranslate");
-		s_locUseLighting = glGetUniformLocation(program, "uUseLighting");
-		s_locRenderMode = glGetUniformLocation(program, "uRenderMode");
-		s_locTexture = glGetUniformLocation(program, "texture1");
-	}
-
-	if (s_locBones >= 0)
-	{
-		glUniformMatrix4fv(s_locBones, boneCount, GL_FALSE, &m_GpuAssistBones[0][0]);
-		DebugAddGpuAssistBoneUpload();
-		DebugAddGpuAssistBoneUploadMatrices(boneCount);
-	}
-
-	vec3_t lightDir;
-	ComputeGpuAssistLightDirection(lightDir);
-
-	const float wave = (int)WorldTime % 10000 * 0.0001f;
-	const float wave2 = ((int)WorldTime % 5000) * 0.00024f - 0.4f;
-	vec3_t chromeL;
-	chromeL[0] = (float)(cos(WorldTime * 0.001f));
-	chromeL[1] = (float)(sin(WorldTime * 0.002f));
-	chromeL[2] = 1.0f;
-
-	if (s_locBodyOrigin >= 0) glUniform3fv(s_locBodyOrigin, 1, BodyOrigin);
-	vec3_t shaderBodyLight;
-	VectorCopy(BodyLight, shaderBodyLight);
-	if (hasCurrentColor && currentColorHint != NULL)
-	{
-		VectorCopy(currentColorHint, shaderBodyLight);
-	}
-	if (s_locBodyLight >= 0) glUniform3fv(s_locBodyLight, 1, shaderBodyLight);
-	if (s_locLightDir >= 0) glUniform3fv(s_locLightDir, 1, lightDir);
-	if (s_locTexCoordOffset >= 0) glUniform2f(s_locTexCoordOffset, texCoordOffsetU, texCoordOffsetV);
-	if (s_locBodyScale >= 0) glUniform1f(s_locBodyScale, BodyScale);
-	if (s_locAlpha >= 0) glUniform1f(s_locAlpha, alpha);
-	if (s_locWave >= 0) glUniform1f(s_locWave, wave);
-	if (s_locWave2 >= 0) glUniform1f(s_locWave2, wave2);
-	if (s_locWorldTime >= 0) glUniform1f(s_locWorldTime, WorldTime);
-	if (s_locChromeL >= 0) glUniform3fv(s_locChromeL, 1, chromeL);
-	if (s_locTranslate >= 0) glUniform1i(s_locTranslate, m_bGpuAssistTranslate ? 1 : 0);
-	if (s_locUseLighting >= 0) glUniform1i(s_locUseLighting, enableLight ? 1 : 0);
-	if (s_locRenderMode >= 0) glUniform1i(s_locRenderMode, GetGpuAssistRenderMode(renderFlag, resolvedRenderFlag));
-	if (s_locTexture >= 0) glUniform1i(s_locTexture, 0);
-
-	glBindVertexArray(m->VAO);
-	if (g_uiGpuAssistBoundVao != m->VAO)
-	{
-		g_uiGpuAssistBoundVao = m->VAO;
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_Vertices);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3_t), (void*)0);
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_Normals);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vec3_t), (void*)0);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_TexCoords);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(TexCoord_t), (void*)0);
-	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_VertexNodes);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-	glEnableVertexAttribArray(3);
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_NormalNodes);
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-	glEnableVertexAttribArray(4);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->EBO);
-
-	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
-
-	DebugAddGpuAssistHitRenderMesh();
-	if (IsGpuAssistPlayerOwner(this))
-	{
-		DebugAddPlayerGpuAssistHit();
-	}
-#else
-	UNREFERENCED_PARAMETER(m);
-	UNREFERENCED_PARAMETER(enableLight);
-	UNREFERENCED_PARAMETER(alpha);
-	UNREFERENCED_PARAMETER(texCoordOffsetU);
-	UNREFERENCED_PARAMETER(texCoordOffsetV);
-	UNREFERENCED_PARAMETER(renderFlag);
-	UNREFERENCED_PARAMETER(resolvedRenderFlag);
-	UNREFERENCED_PARAMETER(hasCurrentColor);
-	UNREFERENCED_PARAMETER(currentColorHint);
-#endif // SHADER_VERSION_TEST
-}
-void BMD::TransformCpuInternal(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
-{
-	Transform(BoneMatrix, BoundingBoxMin, BoundingBoxMax, OBB, Translate, _Scale);
-}
 void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
+{
+#ifdef SHADER_VERSION_TEST
+	if (m_bGpuAssistRequested && BoneMatrix != NULL && BoneScale == 1.f && _Scale == 0.0f)
+	{
+		m_pGpuAssistBoneMatrices = BoneMatrix;
+		m_bGpuAssistTransformReady = true;
+		m_bGpuAssistCpuDataReady = false;
+		m_bGpuAssistTranslate = Translate;
+		m_fGpuAssistScale = _Scale;
+		m_pGpuAssistOBB = OBB;
+		VectorCopy(BoundingBoxMin, m_vGpuAssistBoundingBoxMin);
+		VectorCopy(BoundingBoxMax, m_vGpuAssistBoundingBoxMax);
+		PrepareGpuAssistBounds(BoundingBoxMin, BoundingBoxMax, OBB);
+		CacheGpuAssistBoneMatrices();
+		return;
+	}
+#endif // SHADER_VERSION_TEST
+
+	TransformCpuInternal(BoneMatrix, BoundingBoxMin, BoundingBoxMax, OBB, Translate, _Scale);
+	m_bGpuAssistTransformReady = false;
+	m_bGpuAssistCpuDataReady = true;
+	m_pGpuAssistBoneMatrices = NULL;
+}
+
+void BMD::TransformCpuInternal(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
 {
 	vec3_t LightPosition;
 
@@ -1229,9 +607,11 @@ void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t Boun
 		OBB->YAxis[1] = (BoundingBoxMax[1] - BoundingBoxMin[1]);
 		OBB->ZAxis[2] = (BoundingBoxMax[2] - BoundingBoxMin[2]);
 	}
-	fTransformedSize = BmdMaxFloat(BmdMaxFloat(BoundingMax[0] - BoundingMin[0], BoundingMax[1] - BoundingMin[1]), BoundingMax[2] - BoundingMin[2]);
 
-	//fTransformedSize *= 0.3f;
+	fTransformedSize = BoundingMax[0] - BoundingMin[0];
+	if ((BoundingMax[1] - BoundingMin[1]) > fTransformedSize) fTransformedSize = (BoundingMax[1] - BoundingMin[1]);
+	if ((BoundingMax[2] - BoundingMin[2]) > fTransformedSize) fTransformedSize = (BoundingMax[2] - BoundingMin[2]);
+
 	VectorAdd(OBB->StartPos, BodyOrigin, OBB->StartPos);
 	OBB->XAxis[1] = 0.f;
 	OBB->XAxis[2] = 0.f;
@@ -1239,19 +619,6 @@ void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t Boun
 	OBB->YAxis[2] = 0.f;
 	OBB->ZAxis[0] = 0.f;
 	OBB->ZAxis[1] = 0.f;
-
-#ifdef SHADER_VERSION_TEST
-	if (m_bGpuAssistRequested)
-	{
-		m_pGpuAssistBoneMatrices = BoneMatrix;
-		m_pGpuAssistOBB = OBB;
-		VectorCopy(BoundingBoxMin, m_vGpuAssistBoundingBoxMin);
-		VectorCopy(BoundingBoxMax, m_vGpuAssistBoundingBoxMax);
-		m_fGpuAssistScale = _Scale;
-		m_bGpuAssistTransformReady = true;
-		m_bGpuAssistCpuDataReady = true;
-	}
-#endif // SHADER_VERSION_TEST
 }
 
 void BMD::TransformByObjectBone(vec3_t vResultPosition, OBJECT* pObject, int iBoneNumber, vec3_t vRelativePosition)
@@ -1644,6 +1011,8 @@ void SmoothBitmap(int Width, int Height, unsigned char* Buffer)
 
 bool BMD::CollisionDetectLineToMesh(vec3_t Position, vec3_t Target, bool Collision, int Mesh, int Triangle)
 {
+	EnsureCpuTransformData();
+
 	int i, j;
 	for (i = 0; i < NumMeshs; i++)
 	{
@@ -1671,6 +1040,8 @@ bool BMD::CollisionDetectLineToMesh(vec3_t Position, vec3_t Target, bool Collisi
 
 void BMD::CreateLightMapSurface(Light_t* lp, Mesh_t* m, int i, int j, int MapWidth, int MapHeight, int MapWidthMax, int MapHeightMax, vec3_t BoundingMin, vec3_t BoundingMax, int Axis)
 {
+	EnsureCpuTransformData();
+
 	int k, l;
 	Triangle_t* tp = &m->Triangles[j];
 	float* np = NormalTransform[i][tp->NormalIndex[0]];
@@ -1848,6 +1219,8 @@ bool BMD::runtime_render_effect(OBJECT* pObject, float Alpha, int RenderType, in
 
 void BMD::RenderMeshEffect(int i, int iType, int iSubType, vec3_t Angle, VOID* obj)
 {
+	EnsureCpuTransformData();
+
 	if (i >= NumMeshs || i < 0)
 		return;
 
@@ -2011,8 +1384,6 @@ void BMD::RenderMeshEffect(int i, int iType, int iSubType, vec3_t Angle, VOID* o
 
 void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float BlendMeshLight, float BlendMeshTexCoordU, float BlendMeshTexCoordV, int MeshTexture)
 {
-	CPlayerPartFxMeshDebugSection playerPartFxDebug;
-
 	if (i >= 0 && i < NumMeshs)
 	{
 		Mesh_t* m = &Meshs[i];
@@ -2107,20 +1478,11 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						EnableWave = true;
 
 					bool EnableLight = LightEnable;
-					bool hasGpuCurrentColorHint = false;
-					vec3_t gpuCurrentColorHint;
 
 					if (i == StreamMesh)
 					{
 						glColor3fv(BodyLight);
 						EnableLight = false;
-					}
-					else if (EnableLight)
-					{
-						for (int j = 0; j < m->NumNormals; j++)
-						{
-							VectorScale(BodyLight, IntensityTransform[i][j], LightTransform[i][j]);
-						}
 					}
 
 					int renderFlags = RenderFlag;
@@ -2176,74 +1538,6 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 							renderFlags = RENDER_CHROME8;
 						if (RenderFlag & RENDER_OIL)
 							renderFlags = RENDER_OIL;
-
-
-						float Wave2 = ((int)WorldTime % 5000) * 0.00024f - 0.4f;
-
-						vec3_t L;
-						L[0] = (float)(cos(WorldTime * 0.001f));
-						L[1] = (float)(sin(WorldTime * 0.002f));
-						L[2] = 1.0;
-
-						for (int j = 0; j < m->NumNormals && j <= MAX_VERTICES; ++j)
-						{
-							float* Normal = NormalTransform[i][j];
-
-							if (RenderFlag & RENDER_CHROME2)
-							{
-								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
-								g_chrome[j][1] = (Normal[1] + Normal[0]) * 1.0f + Wave2 * 3.f;
-							}
-							else if (RenderFlag & RENDER_CHROME3)
-							{
-								g_chrome[j][0] = DotProduct(Normal, LightVector);
-								g_chrome[j][1] = 1.f - DotProduct(Normal, LightVector);
-							}
-							else if (RenderFlag & RENDER_CHROME4)
-							{
-								g_chrome[j][0] = DotProduct(Normal, L);
-								g_chrome[j][1] = 1.f - DotProduct(Normal, L);
-								g_chrome[j][1] -= ((Normal[2] * 0.5f + Wave * 3.f));
-								g_chrome[j][0] += ((Normal[1] * 0.5f + L[1] * 3.f));
-							}
-							else if (RenderFlag & RENDER_CHROME5)
-							{
-								g_chrome[j][0] = DotProduct(Normal, L);
-								g_chrome[j][1] = 1.f - DotProduct(Normal, L);
-								g_chrome[j][1] -= ((Normal[2] * 2.5f + Wave * 1.f));
-								g_chrome[j][0] += ((Normal[1] * 3.f + L[1] * 5.f));
-							}
-							else if (RenderFlag & RENDER_CHROME6)
-							{
-								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
-								g_chrome[j][1] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
-							}
-							else if (RenderFlag & RENDER_CHROME7)
-							{
-								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + WorldTime * 0.00006f;
-								g_chrome[j][1] = (Normal[2] + Normal[0]) * 0.8f + WorldTime * 0.00006f;
-							}
-							else if (RenderFlag & RENDER_CHROME8)
-							{
-								g_chrome[j][0] = Normal[0];
-								g_chrome[j][1] = Normal[1];
-							}
-							else if (RenderFlag & RENDER_OIL)
-							{
-								g_chrome[j][0] = Normal[0];
-								g_chrome[j][1] = Normal[1];
-							}
-							else if (RenderFlag & RENDER_CHROME)
-							{
-								g_chrome[j][0] = Normal[2] * 0.5f + Wave;
-								g_chrome[j][1] = Normal[1] * 0.5f + Wave * 2.f;
-							}
-							else
-							{
-								g_chrome[j][0] = Normal[2] * 0.5f + 0.2f;
-								g_chrome[j][1] = Normal[1] * 0.5f + 0.5f;
-							}
-						}
 
 						if (RenderFlag & RENDER_CHROME3 || RenderFlag & RENDER_CHROME4 || RenderFlag & RENDER_CHROME5 || RenderFlag & RENDER_CHROME7 || RenderFlag & RENDER_CHROME8)
 						{
@@ -2376,8 +1670,6 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 							DisableDepthTest();
 
 						glColor3f(BodyLight[0] * BlendMeshLight, BodyLight[1] * BlendMeshLight, BodyLight[2] * BlendMeshLight);
-						Vector(BodyLight[0] * BlendMeshLight, BodyLight[1] * BlendMeshLight, BodyLight[2] * BlendMeshLight, gpuCurrentColorHint);
-						hasGpuCurrentColorHint = true;
 						EnableLight = false;
 					}
 
@@ -2387,40 +1679,111 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						EnableDepthMask();
 					}
 
-					bool enableColor = (EnableLight && renderFlags == RENDER_TEXTURE)
-						|| renderFlags == RENDER_CHROME
-						|| renderFlags == RENDER_CHROME4
-						|| renderFlags == RENDER_CHROME8
-						|| renderFlags == RENDER_OIL;
-
 #ifdef SHADER_VERSION_TEST
-					if (m_bGpuAssistAttachmentPath && IsGpuAssistPlayerOwner(this) && CanUseGpuAssistMesh(RenderFlag, renderFlags, EnableWave, EnableLight) &&
-						m->VAO != 0 && m->VBO_Vertices != 0 && m->VBO_Normals != 0 &&
-						m->VBO_TexCoords != 0 && m->VBO_VertexNodes != 0 && m->VBO_NormalNodes != 0)
+					if (CanUseGpuAssistMesh(RenderFlag, renderFlags, EnableWave, EnableLight))
 					{
-						playerPartFxDebug.MarkGpuHit();
-						RenderMeshGpuAssist(m, EnableLight, Alpha, BlendMeshTexCoordU, BlendMeshTexCoordV,
-							RenderFlag, renderFlags, hasGpuCurrentColorHint, hasGpuCurrentColorHint ? gpuCurrentColorHint : NULL);
+						RenderMeshGpuAssist(m, EnableLight, Alpha,
+							EnableWave ? BlendMeshTexCoordU : 0.0f,
+							EnableWave ? BlendMeshTexCoordV : 0.0f);
 						return;
 					}
 
-					if (m_bGpuAssistRequested || m_bGpuAssistTransformReady)
+					if (m_bGpuAssistTransformReady && !m_bGpuAssistCpuDataReady)
 					{
-						DebugAddGpuAssistFallback();
-						if (IsGpuAssistPlayerOwner(this))
+						EnsureCpuTransformData();
+					}
+#endif // SHADER_VERSION_TEST
+
+					if (EnableLight && renderFlags == RENDER_TEXTURE)
+					{
+						for (int j = 0; j < m->NumNormals; j++)
 						{
-							DebugAddPlayerGpuAssistFallback();
+							VectorScale(BodyLight, IntensityTransform[i][j], LightTransform[i][j]);
 						}
 					}
 
-					EndGpuAssistShaderState();
-#endif // SHADER_VERSION_TEST
+					if (renderFlags == RENDER_CHROME || renderFlags == RENDER_CHROME4
+						|| renderFlags == RENDER_CHROME8 || renderFlags == RENDER_OIL)
+					{
+						float Wave2 = ((int)WorldTime % 5000) * 0.00024f - 0.4f;
+						vec3_t L;
+						L[0] = (float)(cos(WorldTime * 0.001f));
+						L[1] = (float)(sin(WorldTime * 0.002f));
+						L[2] = 1.0f;
+
+						for (int j = 0; j < m->NumNormals && j <= MAX_VERTICES; ++j)
+						{
+							float* Normal = NormalTransform[i][j];
+
+							if (RenderFlag & RENDER_CHROME2)
+							{
+								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
+								g_chrome[j][1] = (Normal[1] + Normal[0]) * 1.0f + Wave2 * 3.f;
+							}
+							else if (RenderFlag & RENDER_CHROME3)
+							{
+								g_chrome[j][0] = DotProduct(Normal, LightVector);
+								g_chrome[j][1] = 1.f - DotProduct(Normal, LightVector);
+							}
+							else if (RenderFlag & RENDER_CHROME4)
+							{
+								g_chrome[j][0] = DotProduct(Normal, L);
+								g_chrome[j][1] = 1.f - DotProduct(Normal, L);
+								g_chrome[j][1] -= ((Normal[2] * 0.5f + Wave * 3.f));
+								g_chrome[j][0] += ((Normal[1] * 0.5f + L[1] * 3.f));
+							}
+							else if (RenderFlag & RENDER_CHROME5)
+							{
+								g_chrome[j][0] = DotProduct(Normal, L);
+								g_chrome[j][1] = 1.f - DotProduct(Normal, L);
+								g_chrome[j][1] -= ((Normal[2] * 2.5f + Wave * 1.f));
+								g_chrome[j][0] += ((Normal[1] * 3.f + L[1] * 5.f));
+							}
+							else if (RenderFlag & RENDER_CHROME6)
+							{
+								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
+								g_chrome[j][1] = (Normal[2] + Normal[0]) * 0.8f + Wave2 * 2.f;
+							}
+							else if (RenderFlag & RENDER_CHROME7)
+							{
+								g_chrome[j][0] = (Normal[2] + Normal[0]) * 0.8f + WorldTime * 0.00006f;
+								g_chrome[j][1] = (Normal[2] + Normal[0]) * 0.8f + WorldTime * 0.00006f;
+							}
+							else if (RenderFlag & RENDER_CHROME8)
+							{
+								g_chrome[j][0] = Normal[0];
+								g_chrome[j][1] = Normal[1];
+							}
+							else if (RenderFlag & RENDER_OIL)
+							{
+								g_chrome[j][0] = Normal[0];
+								g_chrome[j][1] = Normal[1];
+							}
+							else if (RenderFlag & RENDER_CHROME)
+							{
+								g_chrome[j][0] = Normal[2] * 0.5f + Wave;
+								g_chrome[j][1] = Normal[1] * 0.5f + Wave * 2.f;
+							}
+							else
+							{
+								g_chrome[j][0] = Normal[2] * 0.5f + 0.2f;
+								g_chrome[j][1] = Normal[1] * 0.5f + 0.5f;
+							}
+						}
+					}
 
 					auto vertices = RenderArrayVertices;
 					auto colors = RenderArrayColors;
 					auto textCoords = RenderArrayTexCoords;
 
 					int target_vertex_index = -1;
+
+					bool enableColor = (EnableLight && renderFlags == RENDER_TEXTURE)
+						|| renderFlags == RENDER_CHROME
+						|| renderFlags == RENDER_CHROME4
+						|| renderFlags == RENDER_CHROME8
+						|| renderFlags == RENDER_OIL;
+
 					for (int j = 0; j < m->NumTriangles; j++)
 					{
 						Triangle_t* triangle = &m->Triangles[j];
@@ -2503,33 +1866,10 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 								}
 							}
 						}
-					}					if (target_vertex_index != -1)
+					}
+
+					if (target_vertex_index != -1)
 					{
-						playerPartFxDebug.MarkCpuDraw();
-#ifdef SHADER_VERSION_TEST
-						if (g_DebugPlayerPartFxScopeDepth > 0)
-						{
-							if (renderFlags == RENDER_TEXTURE)
-								DebugAddPlayerPartFxCpuDrawTexture();
-							else if (renderFlags == RENDER_BRIGHT)
-								DebugAddPlayerPartFxCpuDrawBright();
-							else if (renderFlags == RENDER_CHROME || renderFlags == RENDER_CHROME4 || renderFlags == RENDER_CHROME8 || renderFlags == RENDER_OIL)
-								DebugAddPlayerPartFxCpuDrawChrome();
-							else
-								DebugAddPlayerPartFxCpuDrawOther();
-						}
-						EndGpuAssistShaderState();
-						glEnableClientState(GL_VERTEX_ARRAY);
-						if (enableColor) glEnableClientState(GL_COLOR_ARRAY);
-						glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-						glVertexPointer(3, GL_FLOAT, 0, vertices);
-						if (enableColor) glColorPointer(4, GL_FLOAT, 0, colors);
-						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
-						glDrawArrays(GL_TRIANGLES, 0, target_vertex_index + 1);
-
-						ResetBmdArrayState();
-#else
 						glEnableClientState(GL_VERTEX_ARRAY);
 						if (enableColor) glEnableClientState(GL_COLOR_ARRAY);
 						glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -2540,9 +1880,8 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						glDrawArrays(GL_TRIANGLES, 0, m->NumTriangles * 3);
 
 						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-						glDisableClientState(GL_COLOR_ARRAY);
+						if (enableColor) glDisableClientState(GL_COLOR_ARRAY);
 						glDisableClientState(GL_VERTEX_ARRAY);
-#endif // SHADER_VERSION_TEST
 					}
 				}
 			}
@@ -2618,6 +1957,8 @@ void BMD::RenderBody(int Flag, float Alpha, int BlendMesh, float BlendMeshLight,
 
 void BMD::RenderMeshTranslate(int i, int RenderFlag, float Alpha, int BlendMesh, float BlendMeshLight, float BlendMeshTexCoordU, float BlendMeshTexCoordV, int MeshTexture)
 {
+	EnsureCpuTransformData();
+
 	if (i >= NumMeshs || i < 0)
 		return;
 
@@ -2960,6 +2301,8 @@ void BMD::AddClothesShadowTriangles(void* pClothes, const int clothesCount, cons
 
 void BMD::AddMeshShadowTriangles(const int blendMesh, const int hiddenMesh, const int startMesh, const int endMesh, const float sx, const float sy) const
 {
+	const_cast<BMD*>(this)->EnsureCpuTransformData();
+
 	auto vertices = RenderArrayVertices;
 	int target_vertex_index = -1;
 
@@ -3004,6 +2347,13 @@ void BMD::AddMeshShadowTriangles(const int blendMesh, const int hiddenMesh, cons
 
 void BMD::RenderBodyShadow(int BlendMesh, int HiddenMesh, int StartMeshNumber, int EndMeshNumber, void* pClothes, int ClothesCount)
 {
+	if (m_bGpuAssistTransformReady && !m_bGpuAssistCpuDataReady)
+	{
+		return;
+	}
+
+	EnsureCpuTransformData();
+
 	if (NumMeshs == 0)
 		return;
 
@@ -3228,30 +2578,20 @@ void BMD::Release()
 		{
 			Mesh_t* m = &Meshs[i];
 
+			if (m->VBO_Vertices != 0) glDeleteBuffers(1, &m->VBO_Vertices);
+			if (m->VBO_Normals != 0) glDeleteBuffers(1, &m->VBO_Normals);
+			if (m->VBO_TexCoords != 0) glDeleteBuffers(1, &m->VBO_TexCoords);
+			if (m->VBO_Colors != 0) glDeleteBuffers(1, &m->VBO_Colors);
+			if (m->VBO_VertexNodes != 0) glDeleteBuffers(1, &m->VBO_VertexNodes);
+			if (m->VBO_NormalNodes != 0) glDeleteBuffers(1, &m->VBO_NormalNodes);
+			if (m->EBO != 0) glDeleteBuffers(1, &m->EBO);
+			if (m->VAO != 0) glDeleteVertexArrays(1, &m->VAO);
+
 			SAFE_DELETE_ARRAY(m->Vertices);
 			SAFE_DELETE_ARRAY(m->Normals);
 			SAFE_DELETE_ARRAY(m->TexCoords);
 			SAFE_DELETE_ARRAY(m->Triangles);
-			SAFE_DELETE_ARRAY(m->GpuBoneMap);
 
-#ifdef SHADER_VERSION_TEST
-			if (m->VBO_Vertices) glDeleteBuffers(1, &m->VBO_Vertices);
-			if (m->VBO_Normals) glDeleteBuffers(1, &m->VBO_Normals);
-			if (m->VBO_TexCoords) glDeleteBuffers(1, &m->VBO_TexCoords);
-			if (m->VBO_Colors) glDeleteBuffers(1, &m->VBO_Colors);
-			if (m->VBO_VertexNodes) glDeleteBuffers(1, &m->VBO_VertexNodes);
-			if (m->VBO_NormalNodes) glDeleteBuffers(1, &m->VBO_NormalNodes);
-			if (m->EBO) glDeleteBuffers(1, &m->EBO);
-			if (m->VAO) glDeleteVertexArrays(1, &m->VAO);
-			m->VBO_Vertices = 0;
-			m->VBO_Normals = 0;
-			m->VBO_TexCoords = 0;
-			m->VBO_Colors = 0;
-			m->VBO_VertexNodes = 0;
-			m->VBO_NormalNodes = 0;
-			m->EBO = 0;
-			m->VAO = 0;
-#endif // SHADER_VERSION_TEST
 			if (m->m_csTScript)
 			{
 				delete m->m_csTScript;
@@ -3270,10 +2610,12 @@ void BMD::Release()
 	SAFE_DELETE_ARRAY(Actions);
 	SAFE_DELETE_ARRAY(Textures);
 	SAFE_DELETE_ARRAY(IndexTexture);
+	SAFE_DELETE_ARRAY(LightTexture);
 
 	NumBones = 0;
 	NumActions = 0;
 	NumMeshs = 0;
+	ClearGpuAssist();
 
 #ifdef LDS_FIX_SETNULLALLOCVALUE_WHEN_BMDRELEASE
 	m_bCompletedAlloc = false;
@@ -3402,12 +2744,15 @@ bool BMD::Open(char* DirName, char* ModelFileName)
 	NumBones = *((short*)(Data + DataPtr)); DataPtr += 2;
 	NumActions = *((short*)(Data + DataPtr)); DataPtr += 2;
 
-	Meshs = new Mesh_t[BmdMaxInt(1, NumMeshs)];
-	Bones = new Bone_t[BmdMaxInt(1, NumBones)];
-	Actions = new Action_t[BmdMaxInt(1, NumActions)];
-	Textures = new Texture_t[BmdMaxInt(1, NumMeshs)];
-	IndexTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
-	LightTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
+	const int meshCapacity = (NumMeshs > 0) ? NumMeshs : 1;
+	const int boneCapacity = (NumBones > 0) ? NumBones : 1;
+	const int actionCapacity = (NumActions > 0) ? NumActions : 1;
+	Meshs = new Mesh_t[meshCapacity];
+	Bones = new Bone_t[boneCapacity];
+	Actions = new Action_t[actionCapacity];
+	Textures = new Texture_t[meshCapacity];
+	IndexTexture = new GLuint[meshCapacity];
+	LightTexture = new GLuint[meshCapacity];
 
 	int i;
 	for (i = 0; i < NumMeshs; i++)
@@ -3678,12 +3023,15 @@ bool BMD::Open2(char* DirName, char* ModelFileName, bool bReAlloc)
 	assert(NumBones <= MAX_BONES && "Bones 200");
 	NumActions = *((short*)(Data + DataPtr)); DataPtr += 2;
 
-	Meshs = new Mesh_t[BmdMaxInt(1, NumMeshs)];
-	Bones = new Bone_t[BmdMaxInt(1, NumBones)];
-	Actions = new Action_t[BmdMaxInt(1, NumActions)];
-	Textures = new Texture_t[BmdMaxInt(1, NumMeshs)];
-	IndexTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
-	LightTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
+	const int meshCapacity = (NumMeshs > 0) ? NumMeshs : 1;
+	const int boneCapacity = (NumBones > 0) ? NumBones : 1;
+	const int actionCapacity = (NumActions > 0) ? NumActions : 1;
+	Meshs = new Mesh_t[meshCapacity];
+	Bones = new Bone_t[boneCapacity];
+	Actions = new Action_t[actionCapacity];
+	Textures = new Texture_t[meshCapacity];
+	IndexTexture = new GLuint[meshCapacity];
+	LightTexture = new GLuint[meshCapacity];
 
 	int i;
 
@@ -3881,12 +3229,15 @@ bool BMD::OpenPack(unsigned char* Data, long DataBytes, bool bReAlloc)
 	assert(NumBones <= MAX_BONES && "Bones 200");
 	NumActions = *((short*)(Data + DataPtr)); DataPtr += 2;
 
-	Meshs = new Mesh_t[BmdMaxInt(1, NumMeshs)];
-	Bones = new Bone_t[BmdMaxInt(1, NumBones)];
-	Actions = new Action_t[BmdMaxInt(1, NumActions)];
-	Textures = new Texture_t[BmdMaxInt(1, NumMeshs)];
-	IndexTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
-	LightTexture = new GLuint[BmdMaxInt(1, NumMeshs)];
+	const int meshCapacity = (NumMeshs > 0) ? NumMeshs : 1;
+	const int boneCapacity = (NumBones > 0) ? NumBones : 1;
+	const int actionCapacity = (NumActions > 0) ? NumActions : 1;
+	Meshs = new Mesh_t[meshCapacity];
+	Bones = new Bone_t[boneCapacity];
+	Actions = new Action_t[actionCapacity];
+	Textures = new Texture_t[meshCapacity];
+	IndexTexture = new GLuint[meshCapacity];
+	LightTexture = new GLuint[meshCapacity];
 
 	int i;
 
@@ -4135,8 +3486,6 @@ void BMD::CreateBoundingBox()
 	}
 }
 
-#include "CShaderGL.h"
-
 void createPerspectiveMatrix(float* matrix, float fov, float aspect, float _near, float _far)
 {
 	float tanHalfFOV = tan(fov * 0.5f);
@@ -4165,7 +3514,7 @@ void createPerspectiveMatrix(float* matrix, float fov, float aspect, float _near
 
 void multiplyMatrices(float* result, const float* mat1, const float* mat2)
 {
-	// Multiplicación de matrices 4x4
+	// MultiplicaciÃ³n de matrices 4x4
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			result[i * 4 + j] = 0.0f;
@@ -4178,12 +3527,12 @@ void multiplyMatrices(float* result, const float* mat1, const float* mat2)
 
 void rotateMatrix(float* matrix, float angle, float x, float y, float z)
 {
-	// Calculamos la matriz de rotación usando OpenGL
+	// Calculamos la matriz de rotaciÃ³n usando OpenGL
 	float rad = angle * (Q_PI / 180.f);
 	float cosA = cosf(rad);
 	float sinA = sinf(rad);
 
-	// Matriz de rotación 3D en torno al eje (x, y, z)
+	// Matriz de rotaciÃ³n 3D en torno al eje (x, y, z)
 	float rot[16] = {
 		cosA + (1 - cosA) * x * x,        (1 - cosA) * x * y - sinA * z, (1 - cosA) * x * z + sinA * y, 0.0f,
 		(1 - cosA) * y * x + sinA * z,    cosA + (1 - cosA) * y * y,      (1 - cosA) * y * z - sinA * x, 0.0f,
@@ -4191,13 +3540,13 @@ void rotateMatrix(float* matrix, float angle, float x, float y, float z)
 		0.0f, 0.0f, 0.0f, 1.0f
 	};
 
-	// Multiplicamos la matriz actual por la matriz de rotación
+	// Multiplicamos la matriz actual por la matriz de rotaciÃ³n
 	multiplyMatrices(matrix, matrix, rot);
 }
 
 void translateMatrix(float* matrix, float tx, float ty, float tz)
 {
-	// Matriz de traslación
+	// Matriz de traslaciÃ³n
 	float translation[16] = {
 		1.0f, 0.0f, 0.0f, tx,
 		0.0f, 1.0f, 0.0f, ty,
@@ -4205,7 +3554,7 @@ void translateMatrix(float* matrix, float tx, float ty, float tz)
 		0.0f, 0.0f, 0.0f, 1.0f
 	};
 
-	// Multiplicamos la matriz actual por la matriz de traslación
+	// Multiplicamos la matriz actual por la matriz de traslaciÃ³n
 	multiplyMatrices(matrix, matrix, translation);
 }
 
@@ -4222,152 +3571,309 @@ void createViewMatrix(float* matrix, float* cameraPosition, float* cameraAngles,
 	// Primero, copiamos la matriz de identidad al arreglo final
 	memcpy(matrix, identity, sizeof(float) * 16);
 
-	// Realizamos las rotaciones de la cámara según los ángulos
-	// Rotación en el eje Y (alrededor de Y)
+	// Realizamos las rotaciones de la cÃ¡mara segÃºn los Ã¡ngulos
+	// RotaciÃ³n en el eje Y (alrededor de Y)
 	rotateMatrix(matrix, cameraAngles[1], 0.f, 1.f, 0.f);
 
-	// Si la vista no es superior, aplicamos la rotación en el eje X
+	// Si la vista no es superior, aplicamos la rotaciÃ³n en el eje X
 	if (!cameraTopViewEnable) {
 		rotateMatrix(matrix, cameraAngles[0], 1.f, 0.f, 0.f);
 	}
 
-	// Rotación en el eje Z (alrededor de Z)
+	// RotaciÃ³n en el eje Z (alrededor de Z)
 	rotateMatrix(matrix, cameraAngles[2], 0.f, 0.f, 1.f);
 
-	// Aplicamos la traslación para posicionar la cámara (en el espacio mundial)
+	// Aplicamos la traslaciÃ³n para posicionar la cÃ¡mara (en el espacio mundial)
 	translateMatrix(matrix, -cameraPosition[0], -cameraPosition[1], -cameraPosition[2]);
 }
 
 
+void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float texCoordOffsetU, float texCoordOffsetV)
+{
+#ifdef SHADER_VERSION_TEST
+	if (m == NULL || m->VAO == 0 || m->GpuVertexCount <= 0)
+		return;
+
+	GLuint program = gShaderGL->GetShaderCharacterId();
+	if (program == 0)
+		return;
+
+	struct CharacterUniformCache
+	{
+		GLuint Program;
+		GLint Texture1;
+		GLint Alpha;
+		GLint BodyScale;
+		GLint BodyOrigin;
+		GLint BodyLight;
+		GLint TexCoordOffset;
+		GLint Translate;
+		GLint UseLighting;
+		GLint LightDir;
+		GLint Bones;
+	};
+
+	static CharacterUniformCache sUniforms = { 0 };
+	if (sUniforms.Program != program)
+	{
+		sUniforms.Program = program;
+		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
+		sUniforms.Alpha = glGetUniformLocation(program, "uAlpha");
+		sUniforms.BodyScale = glGetUniformLocation(program, "uBodyScale");
+		sUniforms.BodyOrigin = glGetUniformLocation(program, "uBodyOrigin");
+		sUniforms.BodyLight = glGetUniformLocation(program, "uBodyLight");
+		sUniforms.TexCoordOffset = glGetUniformLocation(program, "uTexCoordOffset");
+		sUniforms.Translate = glGetUniformLocation(program, "uTranslate");
+		sUniforms.UseLighting = glGetUniformLocation(program, "uUseLighting");
+		sUniforms.LightDir = glGetUniformLocation(program, "uLightDir");
+		sUniforms.Bones = glGetUniformLocation(program, "uBones");
+	}
+
+	vec3_t lightDir;
+	GLfloat currentColor[4] = { BodyLight[0], BodyLight[1], BodyLight[2], alpha };
+	ComputeGpuAssistLightDirection(lightDir);
+	glGetFloatv(GL_CURRENT_COLOR, currentColor);
+
+	const float bodyLight0 = enableLight ? BodyLight[0] : currentColor[0];
+	const float bodyLight1 = enableLight ? BodyLight[1] : currentColor[1];
+	const float bodyLight2 = enableLight ? BodyLight[2] : currentColor[2];
+
+	gShaderGL->RenderShader(CShaderGL::SHADER_CHARACTER);
+	glUniform1i(sUniforms.Texture1, 0);
+	glUniform1f(sUniforms.Alpha, alpha);
+	glUniform1f(sUniforms.BodyScale, BodyScale);
+	glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
+	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
+	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
+	glUniform1i(sUniforms.Translate, m_bGpuAssistTranslate ? 1 : 0);
+	glUniform1i(sUniforms.UseLighting, enableLight ? 1 : 0);
+	glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
+	glUniformMatrix4fv(sUniforms.Bones, NumBones, GL_FALSE, &m_GpuAssistBones[0][0]);
+
+	glBindVertexArray(m->VAO);
+	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+#endif // SHADER_VERSION_TEST
+}
+
 void BMD::RenderVertexBuffer(int i, Mesh_t* m, int vertex_index, vec3_t* vertices, vec2_t* textCoords, vec4_t* colors)
 {
 	UNREFERENCED_PARAMETER(i);
+	UNREFERENCED_PARAMETER(vertices);
+	UNREFERENCED_PARAMETER(textCoords);
+	UNREFERENCED_PARAMETER(colors);
 
-	EndGpuAssistShaderState();
+	if (m == NULL || m->VAO == 0)
+		return;
 
 	glBindVertexArray(m->VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_Vertices);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_index * sizeof(vec3_t), vertices);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3_t), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_TexCoords);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_index * sizeof(TexCoord_t), textCoords);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TexCoord_t), (void*)0);
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m->VBO_Colors);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_index * sizeof(vec4_t), colors);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vec4_t), (void*)0);
-	glEnableVertexAttribArray(2);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->EBO);
 	glDrawElements(GL_TRIANGLES, vertex_index, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 {
-	auto vertices = RenderArrayVertices;
-	auto colors = RenderArrayColors;
-	auto textCoords = RenderArrayTexCoords;
+	UNREFERENCED_PARAMETER(i);
+
+	auto resetGpuMeshBuffers = [&mesh]()
+	{
+		if (mesh.VBO_Vertices != 0) glDeleteBuffers(1, &mesh.VBO_Vertices);
+		if (mesh.VBO_Normals != 0) glDeleteBuffers(1, &mesh.VBO_Normals);
+		if (mesh.VBO_TexCoords != 0) glDeleteBuffers(1, &mesh.VBO_TexCoords);
+		if (mesh.VBO_Colors != 0) glDeleteBuffers(1, &mesh.VBO_Colors);
+		if (mesh.VBO_VertexNodes != 0) glDeleteBuffers(1, &mesh.VBO_VertexNodes);
+		if (mesh.VBO_NormalNodes != 0) glDeleteBuffers(1, &mesh.VBO_NormalNodes);
+		if (mesh.EBO != 0) glDeleteBuffers(1, &mesh.EBO);
+		if (mesh.VAO != 0) glDeleteVertexArrays(1, &mesh.VAO);
+
+		mesh.VAO = 0;
+		mesh.VBO_Vertices = 0;
+		mesh.VBO_Normals = 0;
+		mesh.VBO_TexCoords = 0;
+		mesh.VBO_Colors = 0;
+		mesh.VBO_VertexNodes = 0;
+		mesh.VBO_NormalNodes = 0;
+		mesh.EBO = 0;
+		mesh.GpuVertexCount = 0;
+	};
+
+	resetGpuMeshBuffers();
+
+	if (mesh.NumTriangles <= 0
+		|| mesh.NumVertices <= 0
+		|| mesh.NumNormals <= 0
+		|| mesh.NumTexCoords <= 0
+		|| mesh.Triangles == NULL
+		|| mesh.Vertices == NULL
+		|| mesh.Normals == NULL
+		|| mesh.TexCoords == NULL)
+	{
+		return;
+	}
+
+	std::vector<float> vertices;
+	std::vector<float> normals;
+	std::vector<float> textCoords;
+	std::vector<float> vertexNodes;
+	std::vector<float> normalNodes;
 	std::vector<unsigned short> indices;
 
 	int target_vertex_index = -1;
+	vertices.reserve(mesh.NumTriangles * 12);
+	normals.reserve(mesh.NumTriangles * 12);
+	textCoords.reserve(mesh.NumTriangles * 8);
+	vertexNodes.reserve(mesh.NumTriangles * 4);
+	normalNodes.reserve(mesh.NumTriangles * 4);
+	indices.reserve(mesh.NumTriangles * 6);
 
 	for (int j = 0; j < mesh.NumTriangles; j++)
 	{
 		Triangle_t* triangle = &mesh.Triangles[j];
+		const int polygon = (int)triangle->Polygon;
 
-		for (int k = 0; k < triangle->Polygon; k++)
+		if (polygon < 3 || polygon > 4)
 		{
-			int source_vertex_index = triangle->VertexIndex[k];
+			continue;
+		}
+
+		int source_vertex_index[4] = { 0, 0, 0, 0 };
+		int source_normal_index[4] = { 0, 0, 0, 0 };
+		int source_texcoord_index[4] = { 0, 0, 0, 0 };
+		bool validPolygon = true;
+
+		for (int k = 0; k < polygon; k++)
+		{
+			source_vertex_index[k] = triangle->VertexIndex[k];
+			source_normal_index[k] = triangle->NormalIndex[k];
+			source_texcoord_index[k] = triangle->TexCoordIndex[k];
+
+			if (source_vertex_index[k] < 0 || source_vertex_index[k] >= mesh.NumVertices
+				|| source_normal_index[k] < 0 || source_normal_index[k] >= mesh.NumNormals
+				|| source_texcoord_index[k] < 0 || source_texcoord_index[k] >= mesh.NumTexCoords)
+			{
+				validPolygon = false;
+				break;
+			}
+		}
+
+		if (!validPolygon)
+		{
+			continue;
+		}
+
+		unsigned short generatedIndices[4] = { 0, 0, 0, 0 };
+		for (int k = 0; k < polygon; k++)
+		{
+			if (target_vertex_index >= 65530)
+			{
+				validPolygon = false;
+				break;
+			}
+
+			TexCoord_t* textcoord = &mesh.TexCoords[source_texcoord_index[k]];
+			Vertex_t* vertex = &mesh.Vertices[source_vertex_index[k]];
+			Normal_t* normal = &mesh.Normals[source_normal_index[k]];
+
+			int vertexNode = vertex->Node;
+			int normalNode = normal->Node;
+			if (vertexNode < 0 || vertexNode >= NumBones)
+			{
+				vertexNode = 0;
+			}
+			if (normalNode < 0 || normalNode >= NumBones)
+			{
+				normalNode = vertexNode;
+			}
 
 			target_vertex_index++;
+			generatedIndices[k] = (unsigned short)target_vertex_index;
+			vertices.push_back(vertex->Position[0]);
+			vertices.push_back(vertex->Position[1]);
+			vertices.push_back(vertex->Position[2]);
 
-			VectorCopy(VertexTransform[i][source_vertex_index], vertices[target_vertex_index]);
+			normals.push_back(normal->Normal[0]);
+			normals.push_back(normal->Normal[1]);
+			normals.push_back(normal->Normal[2]);
 
-			TexCoord_t* textcoord = &mesh.TexCoords[triangle->TexCoordIndex[k]];
-			textCoords[target_vertex_index][0] = 0.0;
-			textCoords[target_vertex_index][1] = 0.0;
-			colors[target_vertex_index][0] = 1.f;
-			colors[target_vertex_index][1] = 1.f;
-			colors[target_vertex_index][2] = 1.f;
-			colors[target_vertex_index][3] = 1.f;
-			indices.push_back(target_vertex_index);
-		}
-	}
+			textCoords.push_back(textcoord->TexCoordU);
+			textCoords.push_back(textcoord->TexCoordV);
 
-	int vertex_count = target_vertex_index + 1;
-	mesh.GpuVertexCount = vertex_count;
-
-	glGenVertexArrays(1, &mesh.VAO);
-	glGenBuffers(1, &mesh.VBO_Vertices);
-	glGenBuffers(1, &mesh.VBO_TexCoords);
-	glGenBuffers(1, &mesh.VBO_Colors);
-	glGenBuffers(1, &mesh.EBO);
-
-	glBindVertexArray(mesh.VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_Vertices);
-	glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(vec3_t), vertices, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3_t), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_TexCoords);
-	glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(TexCoord_t), textCoords, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TexCoord_t), (void*)0);
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_Colors);
-	glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(vec4_t), colors, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vec4_t), (void*)0);
-	glEnableVertexAttribArray(2);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), indices.empty() ? NULL : &indices[0], GL_STATIC_DRAW);
-#ifdef SHADER_VERSION_TEST
-	std::vector<float> normals;
-	std::vector<float> vertexNodes;
-	std::vector<float> normalNodes;
-	normals.reserve(mesh.NumTriangles * 9);
-	vertexNodes.reserve(mesh.NumTriangles * 3);
-	normalNodes.reserve(mesh.NumTriangles * 3);
-
-	for (int j = 0; j < mesh.NumTriangles; j++)
-	{
-		Triangle_t* triangle = &mesh.Triangles[j];
-		for (int k = 0; k < triangle->Polygon; k++)
-		{
-			const int sourceVertexIndex = triangle->VertexIndex[k];
-			const int sourceNormalIndex = triangle->NormalIndex[k];
-			int vertexNode = mesh.Vertices[sourceVertexIndex].Node;
-			int normalNode = mesh.Normals[sourceNormalIndex].Node;
-			if (vertexNode < 0 || vertexNode >= MAX_BONES) vertexNode = 0;
-			if (normalNode < 0 || normalNode >= MAX_BONES) normalNode = vertexNode;
-
-			normals.push_back(mesh.Normals[sourceNormalIndex].Normal[0]);
-			normals.push_back(mesh.Normals[sourceNormalIndex].Normal[1]);
-			normals.push_back(mesh.Normals[sourceNormalIndex].Normal[2]);
 			vertexNodes.push_back((float)vertexNode);
 			normalNodes.push_back((float)normalNode);
 		}
+
+		if (!validPolygon)
+		{
+			break;
+		}
+
+		indices.push_back(generatedIndices[0]);
+		indices.push_back(generatedIndices[1]);
+		indices.push_back(generatedIndices[2]);
+
+		if (polygon == 4)
+		{
+			indices.push_back(generatedIndices[0]);
+			indices.push_back(generatedIndices[2]);
+			indices.push_back(generatedIndices[3]);
+		}
 	}
 
-	mesh.GpuBoneUploadCount = 0;
-	SAFE_DELETE_ARRAY(mesh.GpuBoneMap);
+	if (indices.empty())
+	{
+		return;
+	}
+
+	mesh.GpuVertexCount = (int)indices.size();
+
+	glGenVertexArrays(1, &mesh.VAO);
+	glGenBuffers(1, &mesh.VBO_Vertices);
 	glGenBuffers(1, &mesh.VBO_Normals);
+	glGenBuffers(1, &mesh.VBO_TexCoords);
 	glGenBuffers(1, &mesh.VBO_VertexNodes);
 	glGenBuffers(1, &mesh.VBO_NormalNodes);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_Normals);
-	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.empty() ? NULL : &normals[0], GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_VertexNodes);
-	glBufferData(GL_ARRAY_BUFFER, vertexNodes.size() * sizeof(float), vertexNodes.empty() ? NULL : &vertexNodes[0], GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_NormalNodes);
-	glBufferData(GL_ARRAY_BUFFER, normalNodes.size() * sizeof(float), normalNodes.empty() ? NULL : &normalNodes[0], GL_STATIC_DRAW);
-#endif // SHADER_VERSION_TEST
+	glGenBuffers(1, &mesh.EBO);
 
+	glBindVertexArray(mesh.VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_Vertices);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_Normals);
+	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_TexCoords);
+	glBufferData(GL_ARRAY_BUFFER, textCoords.size() * sizeof(float), textCoords.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)0);
+	glEnableVertexAttribArray(2);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_VertexNodes);
+	glBufferData(GL_ARRAY_BUFFER, vertexNodes.size() * sizeof(float), vertexNodes.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+	glEnableVertexAttribArray(3);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_NormalNodes);
+	glBufferData(GL_ARRAY_BUFFER, normalNodes.size() * sizeof(float), normalNodes.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+	glEnableVertexAttribArray(4);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), indices.data(), GL_STATIC_DRAW);
 	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
+
+
 BMD::~BMD()
 {
 	Release();
