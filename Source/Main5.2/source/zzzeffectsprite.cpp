@@ -103,6 +103,10 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	if (count <= 0)
 		return true;
 
+
+	g_EffectRenderPerfStats.SpriteGpuPass++;
+	g_EffectRenderPerfStats.SpriteGpuRender += count;
+
 	EnableAlphaBlend();
 	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
@@ -278,8 +282,12 @@ static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
 
 int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
 {
+	g_EffectRenderPerfStats.SpriteCreate++;
 	if (ShouldThrottleRemoteSprite(Type, SubType, Owner))
+	{
+		g_EffectRenderPerfStats.SpriteThrottled++;
 		return false;
+	}
 
 	const bool priorityEffect = IsPriorityWingSprite(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_SPRITES : (MAX_SPRITES - SPRITE_HERO_WING_RESERVE);
@@ -290,6 +298,7 @@ int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* O
 		if (!o->Live)
 		{
 			o->Live = true;
+			g_EffectRenderPerfStats.SpriteCreated++;
 			o->Type = Type;
 			o->SubType = SubType;
 			o->Owner = Owner;
@@ -398,6 +407,7 @@ void RenderSprites(BYTE byRenderOneMore)
 
 		if (o->Live)
 		{
+			g_EffectRenderPerfStats.SpriteLive++;
 			if (o->Type == BITMAP_FORMATION_MARK)
 			{
 				EnableAlphaTest();
@@ -418,6 +428,7 @@ void RenderSprites(BYTE byRenderOneMore)
 			{
 				EnableAlphaBlend2();
 			}
+			g_EffectRenderPerfStats.SpriteCpuRender++;
 			RenderSprite(o, o->Owner);
 
 			if (byRenderOneMore == 0 || byRenderOneMore == 2)

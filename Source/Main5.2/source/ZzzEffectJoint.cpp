@@ -177,8 +177,12 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
+	g_EffectRenderPerfStats.JointCreate++;
 	if (ShouldThrottleRemoteJoint(Type, SubType, Target))
+	{
+		g_EffectRenderPerfStats.JointThrottled++;
 		return;
+	}
 
 	const bool priorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
 	const int searchLimit = priorityEffect ? MAX_JOINTS : (MAX_JOINTS - JOINT_HERO_WING_RESERVE);
@@ -196,6 +200,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 		{
 			allocCursor = (i + 1) % searchLimit;
 			o->Live = true;
+			g_EffectRenderPerfStats.JointCreated++;
 			o->Type = Type;
 			o->TexType = o->Type;
 			o->SubType = SubType;
@@ -7601,6 +7606,7 @@ void RenderJoints(BYTE bRenderOneMore)
 
 		if (o->Live && o->NumTails > 0 && o->RenderFace != 0)
 		{
+			g_EffectRenderPerfStats.JointLive++;
 			if (bRenderOneMore == 1 && o->byOnlyOneRender == 2)
 				continue;
 			else if (bRenderOneMore == 2 && o->byOnlyOneRender == 1)
@@ -7679,14 +7685,19 @@ void RenderJoints(BYTE bRenderOneMore)
 
 			BindTexture(o->TexType);
 
+			g_EffectRenderPerfStats.JointRender++;
+
 			if (RenderJointTailsBatch(o))
 			{
+				g_EffectRenderPerfStats.JointBatchRender++;
 				if (o->Type == BITMAP_JOINT_HEALING && o->SubType == 8)
 				{
 					EnableDepthTest();
 				}
 				continue;
 			}
+
+			g_EffectRenderPerfStats.JointFallbackRender++;
 
 			for (int j = 0; j < o->NumTails; j++)
 			{

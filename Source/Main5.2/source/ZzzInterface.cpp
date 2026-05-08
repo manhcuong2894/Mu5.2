@@ -9063,11 +9063,13 @@ void RenderPartPerfWindow()
 {
 	static DWORD s_dwPartPerfLastTime = 0;
 	static PART_RENDER_PERF_STATS s_PartPerfSnapshot;
+	static EFFECT_RENDER_PERF_STATS s_EffectPerfSnapshot;
 	const DWORD dwPartPerfNow = timeGetTime();
 	if (dwPartPerfNow - s_dwPartPerfLastTime >= 500)
 	{
 		s_dwPartPerfLastTime = dwPartPerfNow;
 		ZzzPerfSnapshotPartStats(&s_PartPerfSnapshot, true);
+		ZzzPerfSnapshotEffectStats(&s_EffectPerfSnapshot, true);
 	}
 
 	char PerfText[256];
@@ -9180,6 +9182,32 @@ void RenderPartPerfWindow()
 		ReqTopPerf->ReqType[2], ReqTopPerf->ReqTypeCount[2],
 		ReqTopPerf->ReqType[3], ReqTopPerf->ReqTypeCount[3]);
 	g_pRenderText->RenderText(18, PerfY + 78, PerfText);
+
+	sprintf(PerfText, "EFX CRT S/P/J: %d/%d/%d OK %d/%d/%d THR %d/%d",
+		s_EffectPerfSnapshot.SpriteCreate,
+		s_EffectPerfSnapshot.ParticleCreate,
+		s_EffectPerfSnapshot.JointCreate,
+		s_EffectPerfSnapshot.SpriteCreated,
+		s_EffectPerfSnapshot.ParticleCreated,
+		s_EffectPerfSnapshot.JointCreated,
+		s_EffectPerfSnapshot.SpriteThrottled,
+		s_EffectPerfSnapshot.JointThrottled);
+	g_pRenderText->RenderText(18, PerfY + 91, PerfText);
+
+	sprintf(PerfText, "EFX LIVE S/P/J: %d/%d/%d",
+		s_EffectPerfSnapshot.SpriteLive,
+		s_EffectPerfSnapshot.ParticleLive,
+		s_EffectPerfSnapshot.JointLive);
+	g_pRenderText->RenderText(18, PerfY + 104, PerfText);
+
+	sprintf(PerfText, "EFX R S CPU/GPU %d/%d P %d/%d J B/F %d/%d",
+		s_EffectPerfSnapshot.SpriteCpuRender,
+		s_EffectPerfSnapshot.SpriteGpuRender,
+		s_EffectPerfSnapshot.ParticleCpuRender,
+		s_EffectPerfSnapshot.ParticleGpuRender,
+		s_EffectPerfSnapshot.JointBatchRender,
+		s_EffectPerfSnapshot.JointFallbackRender);
+	g_pRenderText->RenderText(18, PerfY + 117, PerfText);
 }
 
 void RenderDebugWindow()

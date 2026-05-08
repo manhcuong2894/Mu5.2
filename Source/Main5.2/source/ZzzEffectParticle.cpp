@@ -23,6 +23,20 @@
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
 vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
+EFFECT_RENDER_PERF_STATS g_EffectRenderPerfStats;
+
+void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset)
+{
+	if (OutStats != NULL)
+	{
+		memcpy(OutStats, &g_EffectRenderPerfStats, sizeof(EFFECT_RENDER_PERF_STATS));
+	}
+	if (Reset)
+	{
+		memset(&g_EffectRenderPerfStats, 0, sizeof(EFFECT_RENDER_PERF_STATS));
+	}
+}
+
 static const int PARTICLE_HERO_WING_RESERVE = 512;
 static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 220.f;
 
@@ -256,6 +270,10 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 	if (count <= 0)
 		return true;
 
+
+	g_EffectRenderPerfStats.ParticleGpuPass++;
+	g_EffectRenderPerfStats.ParticleGpuRender += count;
+
 	if (pBitmap->Components == 3)
 	{
 		EnableAlphaBlend();
@@ -319,7 +337,10 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 
 			const float Width = pBitmap->Width * o->Scale;
 			const float Height = pBitmap->Height * o->Scale;
-			AppendParticleSpriteBatch(o, Width, Height);
+			if (AppendParticleSpriteBatch(o, Width, Height))
+			{
+				g_EffectRenderPerfStats.ParticleCpuRender++;
+			}
 		}
 		FlushParticleSpriteBatch();
 	}
@@ -357,6 +378,8 @@ int CreateParticleSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, in
 
 int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, float Scale, OBJECT* Owner)
 {
+	g_EffectRenderPerfStats.ParticleCreate++;
+
 	const bool priorityEffect = IsPriorityWingParticle(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_PARTICLES : (MAX_PARTICLES - PARTICLE_HERO_WING_RESERVE);
 	int& allocCursor = priorityEffect ? g_iPriorityParticleAllocCursor : g_iParticleAllocCursor;
@@ -373,6 +396,7 @@ int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int Su
 		{
 			allocCursor = (i + 1) % searchLimit;
 			o->Live = true;
+			g_EffectRenderPerfStats.ParticleCreated++;
 			o->Type = Type;
 			o->TexType = Type;
 			o->SubType = SubType;
@@ -9226,11 +9250,14 @@ void RenderParticles(BYTE byRenderOneMore)
 		PARTICLE* o = &Particles[i];
 		if (o->Live)
 		{
+			g_EffectRenderPerfStats.ParticleLive++;
 			if (!ShouldRenderParticleInPass(o, byRenderOneMore))
 				continue;
 
 			if (CanBatchPlus15ParticleSprite(o))
 				continue;
+
+			g_EffectRenderPerfStats.ParticleCpuRender++;
 
 			BITMAP_t* pBitmap = Bitmaps.GetTexture(o->TexType);
 			float Width = pBitmap->Width * o->Scale;

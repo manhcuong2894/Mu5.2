@@ -10,6 +10,33 @@ extern PARTICLE  Leaves[];
 extern PARTICLE  Points[];
 extern PARTICLE  Pointers[];
 
+typedef struct
+{
+	int SpriteCreate;
+	int SpriteCreated;
+	int SpriteThrottled;
+	int SpriteLive;
+	int SpriteCpuRender;
+	int SpriteGpuRender;
+	int SpriteGpuPass;
+	int ParticleCreate;
+	int ParticleCreated;
+	int ParticleLive;
+	int ParticleCpuRender;
+	int ParticleGpuRender;
+	int ParticleGpuPass;
+	int JointCreate;
+	int JointCreated;
+	int JointThrottled;
+	int JointLive;
+	int JointRender;
+	int JointBatchRender;
+	int JointFallbackRender;
+} EFFECT_RENDER_PERF_STATS;
+
+extern EFFECT_RENDER_PERF_STATS g_EffectRenderPerfStats;
+void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset);
+
 void CreateBlur(CHARACTER *Owner,vec3_t p1,vec3_t p2,vec3_t Light,int Type,bool Short=false,int SubType = 0);
 void MoveBlurs();
 void RenderBlurs();
