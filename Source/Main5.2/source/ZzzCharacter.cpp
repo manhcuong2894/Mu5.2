@@ -382,8 +382,7 @@ static bool ShouldRenderHighCostEquipmentFx(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 {
-	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15
-		&& !IsCrowdPlayerObject(c, o))
+	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15)
 	{
 		return true;
 	}
@@ -393,25 +392,9 @@ static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldUpdateCrowdPlus15TransientFxThisFrame(const CHARACTER* c, const OBJECT* o)
 {
-	if (EquipmentLevelSet < 15 || gmProtect->max_item_level_on < 15)
-	{
-		return true;
-	}
-
-	const int zone = GetCrowdEquipmentFxZone(c, o);
-	if (zone == CROWD_EQUIPMENT_FX_FULL)
-	{
-		return true;
-	}
-
-	int step = 2;
-	if (zone == CROWD_EQUIPMENT_FX_FAR)
-	{
-		step = (g_iCrowdVisiblePlayerCount >= 60) ? 4 : 3;
-	}
-
-	const unsigned int seed = g_uiCrowdAnimationFrameId + 173u + (unsigned int)(((UINT_PTR)o) >> 4);
-	return (seed % (unsigned int)step) == 0;
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(o);
+	return true;
 }
 
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
