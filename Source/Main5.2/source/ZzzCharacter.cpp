@@ -607,46 +607,9 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 
 bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 {
-	if (!IsCrowdPlayerObject(c, o))
-	{
-		return false;
-	}
-
-	if (SceneFlag != MAIN_SCENE || g_iCrowdVisiblePlayerCount < 30)
-	{
-		return false;
-	}
-
-	const float dist2 = GetDistance2ToHero(o);
-	const bool isClass15ArmorObject = (Type >= MODEL_15GRADE_ARMOR_OBJ_ARMLEFT
-		&& Type <= MODEL_15GRADE_ARMOR_OBJ_PANTRIGHT);
-
-	if (isClass15ArmorObject)
-	{
-		if (g_iCrowdVisiblePlayerCount >= 60)
-		{
-			return dist2 > (80.0f * 80.0f);
-		}
-		if (g_iCrowdVisiblePlayerCount >= 45)
-		{
-			return dist2 > (120.0f * 120.0f);
-		}
-		return dist2 > (170.0f * 170.0f);
-	}
-
-	if (IsCrowdWingOrHelperType(Type))
-	{
-		if (g_iCrowdVisiblePlayerCount >= 60)
-		{
-			return dist2 > (160.0f * 160.0f);
-		}
-		if (g_iCrowdVisiblePlayerCount >= 45)
-		{
-			return dist2 > (220.0f * 220.0f);
-		}
-		return dist2 > (300.0f * 300.0f);
-	}
-
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(o);
+	UNREFERENCED_PARAMETER(Type);
 	return false;
 }
 
@@ -7158,11 +7121,6 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	vec3_t Angle, p, Position;
 
 	OBJECT* pObject = &c->Object;
-	if (ShouldCullCrowdLinkedObject(c, pObject, Type))
-	{
-		return;
-	}
-
 	BMD* pModel = gmClientModels->GetModel(Type);
 
 	if (pModel == NULL
