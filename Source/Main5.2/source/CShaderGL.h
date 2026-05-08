@@ -29,7 +29,8 @@ public:
         SHADER_TERRAIN = 1,
         SHADER_GLOW = 2,
         SHADER_CHARACTER = 3,
-        SHADER_COLORIZED = 4
+        SHADER_COLORIZED = 4,
+        SHADER_PARTICLE = 5
     };
 
     CShaderGL();
@@ -53,9 +54,11 @@ public:
     GLuint GetShaderGlowId() const;
     GLuint GetShaderCharacterId() const;
     GLuint GetShaderColorizedId() const;
+    GLuint GetShaderParticleId() const;
 
     // Carregamento de shaders
     GLuint LoadShaderProgram(const char* vertexShaderFile, const char* fragmentShaderFile);
+    GLuint LoadShaderProgram(const char* vertexShaderFile, const char* geometryShaderFile, const char* fragmentShaderFile);
 
     // Leitura de arquivos
     bool readshader(const char* filename, std::string& shader_text);
@@ -92,6 +95,7 @@ private:
     GLuint shader_glow_id;
     GLuint shader_character_id;
     GLuint shader_colorized_id;
+    GLuint shader_particle_id;
 
     glm::mat4 m_ProjectionMatrix;
 

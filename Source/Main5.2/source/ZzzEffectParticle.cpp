@@ -17,6 +17,7 @@
 #include "GMCrywolf1st.h"
 #include "MapManager.h"
 #include "NewUISystem.h"
+#include "CShaderGL.h"
 
 
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
@@ -83,6 +84,15 @@ static bool IsPriorityWingParticle(int Type, int SubType, const vec3_t Position,
 }
 
 
+struct GpuParticleBillboard
+{
+	vec3_t Center;
+	vec2_t Size;
+	vec4_t Color;
+	float Rotation;
+};
+
+static GpuParticleBillboard g_GpuParticleBillboards[MAX_PARTICLES];
 struct ParticleSpriteBatch
 {
 	int Texture;
@@ -221,12 +231,76 @@ static bool ShouldRenderParticleInPass(const PARTICLE* o, BYTE byRenderOneMore)
 	return true;
 }
 
+static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
+{
+#ifdef SHADER_VERSION_TEST
+	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
+		return false;
+
+	BITMAP_t* pBitmap = Bitmaps.GetTexture(texture);
+	int count = 0;
+	for (int i = 0; i < MAX_PARTICLES; ++i)
+	{
+		PARTICLE* o = &Particles[i];
+		if (!ShouldRenderParticleInPass(o, byRenderOneMore) || !CanBatchPlus15ParticleSprite(o) || o->TexType != texture)
+			continue;
+
+		GpuParticleBillboard& billboard = g_GpuParticleBillboards[count++];
+		VectorCopy(o->Position, billboard.Center);
+		TEXCOORD(billboard.Size, pBitmap->Width * o->Scale, pBitmap->Height * o->Scale);
+		VectorCopy(o->Light, billboard.Color);
+		billboard.Color[3] = (pBitmap->Components == 3) ? 1.0f : o->Light[0];
+		billboard.Rotation = o->Rotation;
+	}
+
+	if (count <= 0)
+		return true;
+
+	if (pBitmap->Components == 3)
+	{
+		EnableAlphaBlend();
+	}
+	else
+	{
+		EnableAlphaTest(false);
+	}
+
+	ZzzGpuAssistResetState();
+	const GLuint program = gShaderGL->GetShaderParticleId();
+	glUseProgram(program);
+	glUniform1i(glGetUniformLocation(program, "texture1"), 0);
+	BindTexture(texture);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Center[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Size[0]);
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Color[0]);
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Rotation);
+	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	return true;
+#else
+	UNREFERENCED_PARAMETER(texture);
+	UNREFERENCED_PARAMETER(byRenderOneMore);
+	return false;
+#endif // SHADER_VERSION_TEST
+}
 static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 {
 	int textureList[2] = { BITMAP_WATERFALL_2, BITMAP_FLARE };
 	for (int textureIndex = 0; textureIndex < 2; ++textureIndex)
 	{
 		const int texture = textureList[textureIndex];
+		if (RenderGpuPlus15ParticleTexture(texture, byRenderOneMore))
+			continue;
+
 		BITMAP_t* pBitmap = Bitmaps.GetTexture(texture);
 		if (pBitmap->Components == 3)
 		{

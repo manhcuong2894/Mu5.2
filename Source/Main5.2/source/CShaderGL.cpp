@@ -14,6 +14,7 @@ CShaderGL::CShaderGL()
       shader_glow_id(0),
       shader_character_id(0),
       shader_colorized_id(0),
+      shader_particle_id(0),
       m_ProjectionMatrix(glm::mat4(1.0f)),
       m_bInitialized(false),
       m_bGpuAssistAvailable(false),
@@ -47,6 +48,8 @@ void CShaderGL::Init()
         this->LoadShaderProgram("Shaders/character.vs", "Shaders/character.fs");
     this->shader_colorized_id =
         this->LoadShaderProgram("Shaders/colorize.vs", "Shaders/colorize.fs");
+    this->shader_particle_id =
+        this->LoadShaderProgram("Shaders/particle.vs", "Shaders/particle.gs", "Shaders/particle.fs");
 
     LoadGpuAssistConfig();
     DetectGpuAssistSupport();
@@ -66,12 +69,14 @@ void CShaderGL::Shutdown()
     if (shader_glow_id != 0) glDeleteProgram(shader_glow_id);
     if (shader_character_id != 0) glDeleteProgram(shader_character_id);
     if (shader_colorized_id != 0) glDeleteProgram(shader_colorized_id);
+    if (shader_particle_id != 0) glDeleteProgram(shader_particle_id);
 
     shader_id = 0;
     shader_terrain_id = 0;
     shader_glow_id = 0;
     shader_character_id = 0;
     shader_colorized_id = 0;
+    shader_particle_id = 0;
     m_bInitialized = false;
     m_bGpuAssistAvailable = false;
 }
@@ -93,6 +98,9 @@ void CShaderGL::RenderShader(ShaderType type)
             break;
         case SHADER_COLORIZED:
             shader = shader_colorized_id;
+            break;
+        case SHADER_PARTICLE:
+            shader = shader_particle_id;
             break;
         default:
             shader = shader_id;
@@ -117,6 +125,8 @@ bool CShaderGL::CheckedShader(ShaderType type) const
             return shader_character_id != 0;
         case SHADER_COLORIZED:
             return shader_colorized_id != 0;
+        case SHADER_PARTICLE:
+            return shader_particle_id != 0;
         default:
             return shader_id != 0;
     }
@@ -165,6 +175,11 @@ GLuint CShaderGL::GetShaderColorizedId() const
     return shader_colorized_id;
 }
 
+GLuint CShaderGL::GetShaderParticleId() const
+{
+    return shader_particle_id;
+}
+
 GLuint CShaderGL::LoadShaderProgram(const char* vertexShaderFile,
                                     const char* fragmentShaderFile)
 {
@@ -199,6 +214,50 @@ GLuint CShaderGL::LoadShaderProgram(const char* vertexShaderFile,
     }
 
     glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    return programId;
+}
+
+GLuint CShaderGL::LoadShaderProgram(const char* vertexShaderFile,
+                                    const char* geometryShaderFile,
+                                    const char* fragmentShaderFile)
+{
+    std::string vertexShaderSource, geometryShaderSource, fragmentShaderSource;
+
+    if (!this->readshader(vertexShaderFile, vertexShaderSource) ||
+        !this->readshader(geometryShaderFile, geometryShaderSource) ||
+        !this->readshader(fragmentShaderFile, fragmentShaderSource))
+        return 0;
+
+    GLuint vertexShader =
+        this->run_shader(vertexShaderSource.c_str(), GL_VERTEX_SHADER);
+    GLuint geometryShader =
+        this->run_shader(geometryShaderSource.c_str(), GL_GEOMETRY_SHADER);
+    GLuint fragmentShader =
+        this->run_shader(fragmentShaderSource.c_str(), GL_FRAGMENT_SHADER);
+
+    if (vertexShader == 0 || geometryShader == 0 || fragmentShader == 0)
+        return 0;
+
+    GLuint programId = glCreateProgram();
+    glAttachShader(programId, vertexShader);
+    glAttachShader(programId, geometryShader);
+    glAttachShader(programId, fragmentShader);
+    glLinkProgram(programId);
+
+    GLint success;
+    glGetProgramiv(programId, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        char infoLog[512];
+        glGetProgramInfoLog(programId, 512, NULL, infoLog);
+        g_ConsoleDebug->Write(MCD_ERROR, "Shader Program Link Error (%s/%s/%s): %s",
+                              vertexShaderFile, geometryShaderFile, fragmentShaderFile, infoLog);
+        return 0;
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(geometryShader);
     glDeleteShader(fragmentShader);
     return programId;
 }
