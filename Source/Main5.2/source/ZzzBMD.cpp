@@ -142,6 +142,22 @@ static int GetGpuAssistRenderMode(int RenderFlag)
 	return 0;
 }
 
+static int GetGpuAssistOffRejectReason(const BMD* Model)
+{
+#ifdef SHADER_VERSION_TEST
+	if (Model == NULL || !gShaderGL->IsGpuAssistEnabled())
+		return PART_GPU_OFF_DISABLED;
+	if (!Model->m_bGpuAssistRequested)
+		return PART_GPU_OFF_NOT_REQUESTED;
+	if (!Model->m_bGpuAssistTransformReady || Model->m_pGpuAssistBoneMatrices == NULL)
+		return PART_GPU_OFF_NO_TRANSFORM;
+	return PART_GPU_OFF_DISABLED;
+#else
+	UNREFERENCED_PARAMETER(Model);
+	return PART_GPU_OFF_DISABLED;
+#endif // SHADER_VERSION_TEST
+}
+
 int ZzzPerfClassifyPartType(int Type)
 {
 	if (Type >= MODEL_SWORD && Type < MODEL_HELM)
@@ -509,11 +525,7 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (NumBones <= 0 || NumBones > MAX_BONES || NumMeshs <= 0)
 		return;
 
-	if (renderTypeHint & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
-		RENDER_SHADOWMAP | RENDER_WAVE))
-	{
-		return;
-	}
+	UNREFERENCED_PARAMETER(renderTypeHint);
 
 	m_bGpuAssistRequested = true;
 	m_bGpuAssistBodyPath = isBodyModel;
@@ -1942,6 +1954,13 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					}
 
 					ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, false, partGpuReject);
+					if (partPerfCategory >= 0 && partPerfCategory < PART_RENDER_CATEGORY_MAX &&
+						partGpuReject == PART_GPU_REJECT_OFF)
+					{
+						const int offReject = GetGpuAssistOffRejectReason(this);
+						if (offReject >= 0 && offReject < PART_GPU_OFF_MAX)
+							g_PartRenderPerfStats.Bucket[partPerfCategory].OffReject[offReject]++;
+					}
 					if (partPerfCategory >= 0 && partPerfCategory < PART_RENDER_CATEGORY_MAX &&
 						partGpuReject == PART_GPU_REJECT_FLAG)
 					{

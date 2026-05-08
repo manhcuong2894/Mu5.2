@@ -9125,6 +9125,18 @@ void RenderPartPerfWindow()
 		FlagRejectTotals[PART_GPU_FLAG_LIGHTMAP],
 		FlagRejectTotals[PART_GPU_FLAG_OTHER]);
 	g_pRenderText->RenderText(18, PerfY + 39, PerfText);
+
+	int OffRejectTotals[PART_GPU_OFF_MAX] = { 0 };
+	for (int i = 0; i < PART_RENDER_CATEGORY_MAX; ++i)
+	{
+		for (int j = 0; j < PART_GPU_OFF_MAX; ++j)
+			OffRejectTotals[j] += s_PartPerfSnapshot.Bucket[i].OffReject[j];
+	}
+	sprintf(PerfText, "PFO DIS/REQ/TRF: %d/%d/%d",
+		OffRejectTotals[PART_GPU_OFF_DISABLED],
+		OffRejectTotals[PART_GPU_OFF_NOT_REQUESTED],
+		OffRejectTotals[PART_GPU_OFF_NO_TRANSFORM]);
+	g_pRenderText->RenderText(18, PerfY + 52, PerfText);
 }
 
 void RenderDebugWindow()

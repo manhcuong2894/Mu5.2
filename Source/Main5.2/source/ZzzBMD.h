@@ -68,6 +68,14 @@ enum EPartGpuFlagRejectReason
 	PART_GPU_FLAG_MAX
 };
 
+enum EPartGpuOffRejectReason
+{
+	PART_GPU_OFF_DISABLED = 0,
+	PART_GPU_OFF_NOT_REQUESTED,
+	PART_GPU_OFF_NO_TRANSFORM,
+	PART_GPU_OFF_MAX
+};
+
 typedef struct
 {
 	double Ms;
@@ -78,6 +86,7 @@ typedef struct
 	int GpuFallbacks;
 	int Reject[PART_GPU_REJECT_MAX];
 	int FlagReject[PART_GPU_FLAG_MAX];
+	int OffReject[PART_GPU_OFF_MAX];
 } PART_RENDER_PERF_BUCKET;
 
 typedef struct
