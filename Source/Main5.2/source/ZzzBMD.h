@@ -77,6 +77,7 @@ enum EPartGpuOffRejectReason
 };
 
 #define PART_GPU_REQ_TYPE_TOP_MAX 4
+#define PART_TIME_TYPE_TOP_MAX 4
 
 typedef struct
 {
@@ -91,6 +92,9 @@ typedef struct
 	int OffReject[PART_GPU_OFF_MAX];
 	int ReqType[PART_GPU_REQ_TYPE_TOP_MAX];
 	int ReqTypeCount[PART_GPU_REQ_TYPE_TOP_MAX];
+	int TimeType[PART_TIME_TYPE_TOP_MAX];
+	int TimeTypeCalls[PART_TIME_TYPE_TOP_MAX];
+	double TimeTypeMs[PART_TIME_TYPE_TOP_MAX];
 } PART_RENDER_PERF_BUCKET;
 
 typedef struct

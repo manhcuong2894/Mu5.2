@@ -214,6 +214,47 @@ static void ZzzPerfRecordReqType(PART_RENDER_PERF_BUCKET& Bucket, int Type)
 	Bucket.ReqTypeCount[minIndex] = 1;
 }
 
+static void ZzzPerfRecordPartTypeTime(PART_RENDER_PERF_BUCKET& Bucket, int Type, double Ms)
+{
+	if (Type < 0)
+		return;
+
+	for (int i = 0; i < PART_TIME_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.TimeType[i] == Type)
+		{
+			Bucket.TimeTypeMs[i] += Ms;
+			Bucket.TimeTypeCalls[i]++;
+			return;
+		}
+	}
+
+	for (int i = 0; i < PART_TIME_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.TimeTypeCalls[i] == 0)
+		{
+			Bucket.TimeType[i] = Type;
+			Bucket.TimeTypeMs[i] = Ms;
+			Bucket.TimeTypeCalls[i] = 1;
+			return;
+		}
+	}
+
+	int minIndex = 0;
+	for (int i = 1; i < PART_TIME_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.TimeTypeMs[i] < Bucket.TimeTypeMs[minIndex])
+			minIndex = i;
+	}
+
+	if (Ms > Bucket.TimeTypeMs[minIndex])
+	{
+		Bucket.TimeType[minIndex] = Type;
+		Bucket.TimeTypeMs[minIndex] = Ms;
+		Bucket.TimeTypeCalls[minIndex] = 1;
+	}
+}
+
 __int64 ZzzPerfBeginPart(int Category, int Type)
 {
 	LARGE_INTEGER Counter;
@@ -236,9 +277,14 @@ void ZzzPerfEndPart(int Category, __int64 StartCounter)
 {
 	LARGE_INTEGER Counter;
 	QueryPerformanceCounter(&Counter);
+	const double ElapsedMs = ZzzPerfCounterToMs(Counter.QuadPart - StartCounter);
 
 	if (Category >= 0 && Category < PART_RENDER_CATEGORY_MAX)
-		g_PartRenderPerfStats.Bucket[Category].Ms += ZzzPerfCounterToMs(Counter.QuadPart - StartCounter);
+	{
+		PART_RENDER_PERF_BUCKET& Bucket = g_PartRenderPerfStats.Bucket[Category];
+		Bucket.Ms += ElapsedMs;
+		ZzzPerfRecordPartTypeTime(Bucket, g_iActivePartPerfType, ElapsedMs);
+	}
 
 	g_iActivePartPerfCategory = -1;
 	g_iActivePartPerfType = -1;
