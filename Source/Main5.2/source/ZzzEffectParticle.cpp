@@ -174,6 +174,15 @@ static bool CanBatchPlus15ParticleSprite(const PARTICLE* o)
 	switch (o->Type)
 	{
 	case BITMAP_WATERFALL_2:
+	case BITMAP_SMOKE_BEGIN:
+	case BITMAP_SMOKELINE1:
+	case BITMAP_SMOKELINE2:
+	case BITMAP_SMOKELINE3:
+	case BITMAP_LIGHTNING_MEGA1:
+	case BITMAP_LIGHTNING_MEGA2:
+	case BITMAP_LIGHTNING_MEGA3:
+	case BITMAP_FIRE_HIK1:
+	case BITMAP_FIRE_HIK3:
 	case BITMAP_LIGHT + 3:
 	case BITMAP_MAGIC + 1:
 	case BITMAP_FIRE_CURSEDLICH:
@@ -402,8 +411,8 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 	g_bGpuParticleBatchAvailable = false;
 #endif // SHADER_VERSION_TEST
 
-	int textureList[9] = { BITMAP_WATERFALL_2, BITMAP_FLARE, BITMAP_FIRE, BITMAP_FIRE + 2, BITMAP_FIRE + 3, BITMAP_LIGHT + 3, BITMAP_MAGIC + 1, BITMAP_FIRE_CURSEDLICH, BITMAP_FIRE_HIK2_MONO };
-	for (int textureIndex = 0; textureIndex < 9; ++textureIndex)
+	int textureList[18] = { BITMAP_WATERFALL_2, BITMAP_FLARE, BITMAP_FIRE, BITMAP_FIRE + 2, BITMAP_FIRE + 3, BITMAP_LIGHT + 3, BITMAP_MAGIC + 1, BITMAP_FIRE_CURSEDLICH, BITMAP_FIRE_HIK2_MONO, BITMAP_SMOKE_BEGIN, BITMAP_SMOKELINE1, BITMAP_SMOKELINE2, BITMAP_SMOKELINE3, BITMAP_LIGHTNING_MEGA1, BITMAP_LIGHTNING_MEGA2, BITMAP_LIGHTNING_MEGA3, BITMAP_FIRE_HIK1, BITMAP_FIRE_HIK3 };
+	for (int textureIndex = 0; textureIndex < 18; ++textureIndex)
 	{
 		const int texture = textureList[textureIndex];
 		if (RenderGpuPlus15ParticleTexture(texture, byRenderOneMore))
