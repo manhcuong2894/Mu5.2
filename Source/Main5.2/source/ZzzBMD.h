@@ -108,6 +108,7 @@ int ZzzPerfGetActivePartCategory();
 int ZzzPerfGetActivePartType();
 void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset);
 const char* ZzzPerfPartCategoryName(int Category);
+void ZzzGpuAssistResetState();
 
 typedef struct
 {

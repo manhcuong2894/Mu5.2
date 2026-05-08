@@ -87,6 +87,11 @@ static void FlushGpuAssistState()
 #endif // SHADER_VERSION_TEST
 }
 
+void ZzzGpuAssistResetState()
+{
+	FlushGpuAssistState();
+}
+
 PART_RENDER_PERF_STATS g_PartRenderPerfStats;
 static int g_iActivePartPerfCategory = -1;
 static int g_iActivePartPerfType = -1;
@@ -2893,6 +2898,8 @@ void BlurShadow()
 
 void BMD::Release()
 {
+	FlushGpuAssistState();
+
 	for (int i = 0; i < NumBones; i++)
 	{
 		Bone_t* b = &Bones[i];

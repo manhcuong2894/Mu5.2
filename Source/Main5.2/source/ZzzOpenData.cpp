@@ -5350,6 +5350,7 @@ void OpenLogoSceneData()
 
 void ReleaseLogoSceneData()
 {
+	ZzzGpuAssistResetState();
 	for (int i = BITMAP_LOG_IN; i <= BITMAP_LOG_IN_END; ++i)
 		::DeleteBitmap(i);
 	for (int i = BITMAP_TEMP; i < BITMAP_TEMP + 30; i++)
@@ -5421,6 +5422,7 @@ void OpenCharacterSceneData()
 
 void ReleaseCharacterSceneData()
 {
+	ZzzGpuAssistResetState();
 	for (int i = BITMAP_LOG_IN; i <= BITMAP_LOG_IN_END; ++i)
 		::DeleteBitmap(i);
 
@@ -6160,6 +6162,7 @@ void OpenTextData()
 
 void ReleaseMainData()
 {
+	ZzzGpuAssistResetState();
 	gMapManager->DeleteObjects();
 	DeleteNpcs();
 	DeleteMonsters();
