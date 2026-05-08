@@ -373,6 +373,9 @@ bool Calc_RenderObject(OBJECT* o, bool Translate, int Select, int ExtraMon)
 
 	if (o->EnableBoneMatrix)
 	{
+		if (!o->EnsureBoneTransform(b->NumBones))
+			return false;
+
 		b->Animation(o->BoneTransform, o->AnimationFrame, o->PriorAnimationFrame, o->PriorAction, o->Angle, o->HeadAngle, false, !Translate);
 	}
 	else
@@ -449,6 +452,9 @@ bool Calc_RenderObject(OBJECT* o, bool Translate, int Select, int ExtraMon)
 
 	if (o->EnableBoneMatrix)
 	{
+		if (!o->EnsureBoneTransform(b->NumBones))
+			return false;
+
 		b->Transform(o->BoneTransform, o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
 	}
 	else
@@ -486,6 +492,9 @@ bool Calc_ObjectAnimation(OBJECT* o, bool Translate, int Select)
 
 			if (o->EnableBoneMatrix)
 			{
+				if (!o->EnsureBoneTransform(pModel->NumBones))
+					return false;
+
 				pModel->Animation(o->GetBoneTransform(), o->AnimationFrame, o->PriorAnimationFrame, o->PriorAction, o->Angle, o->HeadAngle, false, !Translate);
 			}
 			else
@@ -12903,6 +12912,9 @@ void RenderPartObjectEdge(int Type, BMD* b, OBJECT* o, int Flag, bool Translate,
 	BoneScale = Scale;
 	if (o->EnableBoneMatrix == 1)
 	{
+		if (!o->EnsureBoneTransform(b->NumBones))
+			return;
+
 		b->Transform(o->BoneTransform, o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
 	}
 	else
@@ -13062,7 +13074,12 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		}
 		BodyLight(o, b);
 
-		const bool useGpuAssistMesh = (Select == 0 && HideSkin == false);
+		bool useGpuAssistMesh = (Select == 0 && HideSkin == false);
+		if (!GlobalTransform && !o->EnsureBoneTransform(b->NumBones))
+		{
+			b->ClearGpuAssist();
+			return;
+		}
 		if (useGpuAssistMesh)
 		{
 			b->PrepareGpuAssist(o, Type, RenderType, p == NULL, GlobalTransform, Translate);

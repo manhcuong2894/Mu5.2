@@ -128,6 +128,7 @@ public:
 	void Destroy();
 
 	void CreateBoneTransform(int NumBones);
+	bool EnsureBoneTransform(int NumBones);
 	void DeleteBoneTransform();
 	vec34_t* GetBoneTransform();
 	vec4_t* GetBoneTransform(int index);

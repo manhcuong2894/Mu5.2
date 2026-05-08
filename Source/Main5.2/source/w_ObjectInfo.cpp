@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "SkillManager.h"
 #include "w_ObjectInfo.h"
+#include <malloc.h>
 
 void CInterpolateContainer::GetCurrentValue(vec3_t& v3Out, float fCurrentRate, VEC_INTERPOLATES& vecInterpolates)
 {
@@ -216,6 +217,19 @@ void OBJECT::CreateBoneTransform(int NumBones)
 {
 	this->DeleteBoneTransform();
 	this->BoneTransform = new vec34_t[NumBones];
+}
+
+bool OBJECT::EnsureBoneTransform(int NumBones)
+{
+	if (NumBones <= 0)
+		return false;
+
+	const size_t RequiredSize = sizeof(vec34_t) * NumBones;
+	if (this->BoneTransform != NULL && _msize(this->BoneTransform) >= RequiredSize)
+		return true;
+
+	this->CreateBoneTransform(NumBones);
+	return this->BoneTransform != NULL;
 }
 
 void OBJECT::DeleteBoneTransform()
