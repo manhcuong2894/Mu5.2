@@ -17,53 +17,6 @@
 #include "GMBattleCastle.h"
 #include "NewUISystem.h"
 
-static const int JOINT_HERO_WING_RESERVE = 160;
-static const float JOINT_HERO_WING_PRIORITY_RADIUS = 520.f;
-
-static bool IsNearHeroJointPosition(const vec3_t position)
-{
-	if (Hero == NULL)
-		return false;
-
-	const float dx = position[0] - Hero->Object.Position[0];
-	const float dy = position[1] - Hero->Object.Position[1];
-	const float dz = position[2] - Hero->Object.Position[2];
-	return (dx * dx + dy * dy + dz * dz) <= (JOINT_HERO_WING_PRIORITY_RADIUS * JOINT_HERO_WING_PRIORITY_RADIUS);
-}
-
-static bool IsHeroOrWingJointTarget(OBJECT* target)
-{
-	if (target == NULL)
-		return false;
-
-	if (Hero != NULL && target == &Hero->Object)
-		return true;
-
-	return target->Type >= MODEL_WING && target->Type < MODEL_HELPER;
-}
-
-static bool IsWingGlowJointType(int Type, int SubType)
-{
-	switch (Type)
-	{
-	case BITMAP_FLARE_BLUE:
-	case BITMAP_LIGHT:
-	case BITMAP_SPARK + 1:
-		return true;
-	case BITMAP_FLARE:
-	case BITMAP_FLARE + 1:
-		return SubType == 0 || SubType == 3 || SubType == 6 || SubType == 8 || SubType == 20;
-	default:
-		return false;
-	}
-}
-
-static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, const vec3_t TargetPosition, OBJECT* Target)
-{
-	return IsHeroOrWingJointTarget(Target)
-		|| (IsWingGlowJointType(Type, SubType) && (IsNearHeroJointPosition(Position) || IsNearHeroJointPosition(TargetPosition)));
-}
-
 
 extern float g_fBoneSave[10][3][4];
 
@@ -77,10 +30,7 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
-	const bool priorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
-	const int searchLimit = priorityEffect ? MAX_JOINTS : (MAX_JOINTS - JOINT_HERO_WING_RESERVE);
-
-	for (int i = 0; i < searchLimit; i++)
+	for (int i = 0; i < MAX_JOINTS; i++)
 	{
 		JOINT* o = &Joints[i];
 		if (!o->Live)
@@ -7300,164 +7250,6 @@ void MoveJoints()
 	}
 }
 
-static bool IsJointTailBatchSafe(const JOINT* o)
-{
-	if (o == NULL || o->NumTails < 2)
-		return false;
-
-	if (o->Type == MODEL_SPEARSKILL || o->Type == BITMAP_JOINT_FORCE || o->Type == BITMAP_FLARE_FORCE)
-		return false;
-
-	if (o->Type == BITMAP_FLARE && o->SubType == 22)
-		return false;
-
-	if (o->Type == BITMAP_FLARE + 1 && (o->SubType == 6 || o->SubType == 8))
-		return false;
-
-	if (o->Type == BITMAP_JOINT_HEALING && (o->SubType == 9 || o->SubType == 10))
-		return false;
-
-	if (o->Type == BITMAP_JOINT_THUNDER + 1 && (o->SubType == 0 || o->SubType == 6))
-		return false;
-
-	return true;
-}
-
-static void AppendJointQuad(vec2_t* textCoords, vec3_t* vertices, vec4_t* colors, int& vertexIndex,
-	float u1, float v1, const vec3_t p1, float u2, float v2, const vec3_t p2,
-	float u3, float v3, const vec3_t p3, float u4, float v4, const vec3_t p4, const GLfloat* color)
-{
-	TEXCOORD(textCoords[vertexIndex], u1, v1);
-	VectorCopy(p1, vertices[vertexIndex]);
-	VectorCopy(color, colors[vertexIndex], 4);
-	vertexIndex++;
-	TEXCOORD(textCoords[vertexIndex], u2, v2);
-	VectorCopy(p2, vertices[vertexIndex]);
-	VectorCopy(color, colors[vertexIndex], 4);
-	vertexIndex++;
-	TEXCOORD(textCoords[vertexIndex], u3, v3);
-	VectorCopy(p3, vertices[vertexIndex]);
-	VectorCopy(color, colors[vertexIndex], 4);
-	vertexIndex++;
-	TEXCOORD(textCoords[vertexIndex], u4, v4);
-	VectorCopy(p4, vertices[vertexIndex]);
-	VectorCopy(color, colors[vertexIndex], 4);
-	vertexIndex++;
-}
-
-static bool RenderJointTailsBatch(JOINT* o)
-{
-	if (!IsJointTailBatchSafe(o))
-		return false;
-
-	vec2_t textCoordsOne[MAX_TAILS * 4];
-	vec3_t verticesOne[MAX_TAILS * 4];
-	vec4_t colorsOne[MAX_TAILS * 4];
-	vec2_t textCoordsTwo[MAX_TAILS * 4];
-	vec3_t verticesTwo[MAX_TAILS * 4];
-	vec4_t colorsTwo[MAX_TAILS * 4];
-	int vertexOne = 0;
-	int vertexTwo = 0;
-	GLfloat currentColor[4];
-	glGetFloatv(GL_CURRENT_COLOR, currentColor);
-
-	const int lastTail = o->NumTails - 1;
-	for (int j = 0; j < lastTail; ++j)
-	{
-		if (o->Type == BITMAP_SMOKE && o->SubType == 0 && j < 1)
-			continue;
-
-		float Light1, Light2;
-		if (o->bTileMapping)
-		{
-			Light1 = (o->NumTails - j) / 16.f;
-			Light2 = (o->NumTails - (j + 1)) / 16.f;
-		}
-		else if (o->m_byReverseUV == 3)
-		{
-			Light1 = 1.f - j / (float)(o->MaxTails - 1);
-			Light2 = 1.f - (j + 1) / (float)(o->MaxTails - 1);
-		}
-		else
-		{
-			Light1 = (o->NumTails - j) / (float)(o->MaxTails - 1);
-			Light2 = (o->NumTails - (j + 1)) / (float)(o->MaxTails - 1);
-		}
-
-		float Scroll = (float)((int)WorldTime % 1000) * 0.001f;
-		if (o->Type == BITMAP_JOINT_THUNDER || o->Type == BITMAP_JOINT_THUNDER + 1)
-		{
-			Light1 = Light1 * 2.f - Scroll;
-			Light2 = Light2 * 2.f - Scroll;
-		}
-		if (o->bTileMapping)
-		{
-			Scroll *= 2.f;
-			Light1 = Light1 * 2.f - Scroll;
-			Light2 = Light2 * 2.f - Scroll;
-		}
-
-		float V1 = 0.f;
-		float V2 = 1.f;
-		float L1 = Light1;
-		float L2 = Light2;
-		if (o->m_byReverseUV == 1)
-		{
-			V1 = 1.f;
-			V2 = 0.f;
-		}
-		else if (o->m_byReverseUV == 2)
-		{
-			L1 = 1.f - L1;
-			L2 = 1.f - L2;
-		}
-
-		if ((o->RenderFace & RENDER_FACE_ONE) == RENDER_FACE_ONE)
-		{
-			AppendJointQuad(textCoordsOne, verticesOne, colorsOne, vertexOne,
-				L1, V2, o->Tails[j][2], L1, V1, o->Tails[j][3],
-				L2, V1, o->Tails[j + 1][3], L2, V2, o->Tails[j + 1][2], currentColor);
-		}
-
-		if ((o->RenderFace & RENDER_FACE_TWO) == RENDER_FACE_TWO)
-		{
-			float faceTwoL1 = L1;
-			float faceTwoL2 = L2;
-			if (o->Type == BITMAP_JOINT_THUNDER || o->Type == BITMAP_JOINT_THUNDER + 1)
-			{
-				faceTwoL1 += Scroll * 2.f;
-				faceTwoL2 += Scroll * 2.f;
-			}
-			AppendJointQuad(textCoordsTwo, verticesTwo, colorsTwo, vertexTwo,
-				faceTwoL1, V1, o->Tails[j][0], faceTwoL1, V2, o->Tails[j][1],
-				faceTwoL2, V2, o->Tails[j + 1][1], faceTwoL2, V1, o->Tails[j + 1][0], currentColor);
-		}
-	}
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	if (vertexOne > 0)
-	{
-		glVertexPointer(3, GL_FLOAT, 0, verticesOne);
-		glColorPointer(4, GL_FLOAT, 0, colorsOne);
-		glTexCoordPointer(2, GL_FLOAT, 0, textCoordsOne);
-		glDrawArrays(GL_QUADS, 0, vertexOne);
-	}
-	if (vertexTwo > 0)
-	{
-		glVertexPointer(3, GL_FLOAT, 0, verticesTwo);
-		glColorPointer(4, GL_FLOAT, 0, colorsTwo);
-		glTexCoordPointer(2, GL_FLOAT, 0, textCoordsTwo);
-		glDrawArrays(GL_QUADS, 0, vertexTwo);
-	}
-
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	return true;
-}
 void RenderJoints(BYTE bRenderOneMore)
 {
 	if (g_pOption->GetRenderEffect() == false)
@@ -7551,15 +7343,6 @@ void RenderJoints(BYTE bRenderOneMore)
 			}
 
 			BindTexture(o->TexType);
-
-			if (RenderJointTailsBatch(o))
-			{
-				if (o->Type == BITMAP_JOINT_HEALING && o->SubType == 8)
-				{
-					EnableDepthTest();
-				}
-				continue;
-			}
 
 			for (int j = 0; j < o->NumTails; j++)
 			{

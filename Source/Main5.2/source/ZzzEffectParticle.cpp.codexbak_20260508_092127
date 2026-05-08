@@ -22,59 +22,6 @@
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
 vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
-static const int PARTICLE_HERO_WING_RESERVE = 512;
-static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 520.f;
-
-static bool IsNearHeroParticlePosition(const vec3_t position)
-{
-	if (Hero == NULL)
-		return false;
-
-	const float dx = position[0] - Hero->Object.Position[0];
-	const float dy = position[1] - Hero->Object.Position[1];
-	const float dz = position[2] - Hero->Object.Position[2];
-	return (dx * dx + dy * dy + dz * dz) <= (PARTICLE_HERO_WING_PRIORITY_RADIUS * PARTICLE_HERO_WING_PRIORITY_RADIUS);
-}
-
-static bool IsHeroOrWingParticleOwner(OBJECT* owner)
-{
-	if (owner == NULL)
-		return false;
-
-	if (Hero != NULL && owner == &Hero->Object)
-		return true;
-
-	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER;
-}
-
-static bool IsWingGlowParticleType(int Type, int SubType)
-{
-	switch (Type)
-	{
-	case BITMAP_FLARE_BLUE:
-	case BITMAP_TRUE_BLUE:
-	case BITMAP_BLUE_BLUR:
-	case BITMAP_LIGHT:
-	case BITMAP_LIGHT + 1:
-	case BITMAP_LIGHT + 2:
-	case BITMAP_SHINY:
-	case BITMAP_SHINY + 1:
-	case BITMAP_SHINY + 6:
-		return true;
-	case BITMAP_FLARE:
-	case BITMAP_FLARE + 1:
-		return SubType == 0 || SubType == 3 || SubType == 6 || SubType == 8;
-	default:
-		return false;
-	}
-}
-
-static bool IsPriorityWingParticle(int Type, int SubType, const vec3_t Position, OBJECT* Owner)
-{
-	return IsHeroOrWingParticleOwner(Owner)
-		|| (IsWingGlowParticleType(Type, SubType) && IsNearHeroParticlePosition(Position));
-}
-
 
 void HandPosition(PARTICLE* o)
 {
@@ -109,10 +56,7 @@ int CreateParticleSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, in
 
 int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, float Scale, OBJECT* Owner)
 {
-	const bool priorityEffect = IsPriorityWingParticle(Type, SubType, Position, Owner);
-	const int searchLimit = priorityEffect ? MAX_PARTICLES : (MAX_PARTICLES - PARTICLE_HERO_WING_RESERVE);
-
-	for (int i = 0; i < searchLimit; i++)
+	for (int i = 0; i < MAX_PARTICLES; i++)
 	{
 		PARTICLE* o = &Particles[i];
 		if (!o->Live)

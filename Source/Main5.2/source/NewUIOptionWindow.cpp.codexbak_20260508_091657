@@ -207,7 +207,6 @@ bool SEASON3B::CNewUIOptionWindow::UpdateMouseEvent()
 	if (SEASON3B::IsPress(VK_LBUTTON) && CheckMouseIn(RenderFrameX + 310.0, RenderFrameY + 63.0, 15, 15)) { SetFpsIndex(1); return false; }
 	if (SEASON3B::IsPress(VK_LBUTTON) && CheckMouseIn(RenderFrameX + 310.0, RenderFrameY + 81.0, 15, 15)) { SetFpsIndex(2); return false; }
 	if (SEASON3B::IsPress(VK_LBUTTON) && CheckMouseIn(RenderFrameX + 310.0, RenderFrameY + 99.0, 15, 15)) { SetFpsIndex(3); return false; }
-	if (SEASON3B::IsPress(VK_LBUTTON) && CheckMouseIn(RenderFrameX + 310.0, RenderFrameY + 117.0, 15, 15)) { SetFpsIndex(4); return false; }
 
 	return !CheckMouseIn(RenderFrameX, RenderFrameY, 340.0, 270.0);
 }
@@ -441,7 +440,6 @@ void SEASON3B::CNewUIOptionWindow::RenderContents()
 	g_pRenderText->RenderText(RenderFrameX + 250, RenderFrameY + 63, "30 FPS");
 	g_pRenderText->RenderText(RenderFrameX + 250, RenderFrameY + 81, "40 FPS");
 	g_pRenderText->RenderText(RenderFrameX + 250, RenderFrameY + 99, "60 FPS");
-	g_pRenderText->RenderText(RenderFrameX + 250, RenderFrameY + 117, "120 FPS");
 
 
 }
@@ -477,7 +475,6 @@ void SEASON3B::CNewUIOptionWindow::RenderButtons()
 	RenderChecked(RenderFrameX + 310.0, RenderFrameY + 63, m_iFpsIndex == 1);
 	RenderChecked(RenderFrameX + 310.0, RenderFrameY + 81, m_iFpsIndex == 2);
 	RenderChecked(RenderFrameX + 310.0, RenderFrameY + 99, m_iFpsIndex == 3);
-	RenderChecked(RenderFrameX + 310.0, RenderFrameY + 117, m_iFpsIndex == 4);
 
 
 	RenderImage(IMAGE_OPTION_VOLUME_BACK, RenderFrameX + 108, RenderFrameY + 185, 124.f, 16.f);
@@ -749,7 +746,6 @@ void SEASON3B::CNewUIOptionWindow::SetFpsIndex(int index)
 	case 1: gmProtect->ajust_fps_render = 30; break;
 	case 2: gmProtect->ajust_fps_render = 40; break;
 	case 3: gmProtect->ajust_fps_render = 60; break;
-	case 4: gmProtect->ajust_fps_render = 120; break;
 	default: gmProtect->ajust_fps_render = 25; break;
 	}
 }

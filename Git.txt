@@ -1,0 +1,24 @@
+3 lệnh upload cơ bản
+
+1. Add file thay đổi
+git add .
+
+2. Commit
+git commit -m "Update source"
+
+Ví dụ:
+
+git commit -m "Fix login bug"
+3. Upload lên GitHub
+git push
+
+Xem file nào thay đổi
+git status
+
+Xem code thay đổi chi tiết
+git diff
+
+Nếu Codex sửa code lung tung
+Quay lại trạng thái commit trước:
+
+git reset --hard
