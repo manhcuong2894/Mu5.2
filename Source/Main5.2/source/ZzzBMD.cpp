@@ -89,6 +89,7 @@ static void FlushGpuAssistState()
 
 PART_RENDER_PERF_STATS g_PartRenderPerfStats;
 static int g_iActivePartPerfCategory = -1;
+static int g_iActivePartPerfType = -1;
 
 static double ZzzPerfCounterToMs(__int64 Ticks)
 {
@@ -171,14 +172,53 @@ int ZzzPerfClassifyPartType(int Type)
 	return PART_RENDER_OTHER;
 }
 
-__int64 ZzzPerfBeginPart(int Category)
+static void ZzzPerfRecordReqType(PART_RENDER_PERF_BUCKET& Bucket, int Type)
+{
+	if (Type < 0)
+		return;
+
+	for (int i = 0; i < PART_GPU_REQ_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.ReqType[i] == Type)
+		{
+			Bucket.ReqTypeCount[i]++;
+			return;
+		}
+	}
+
+	for (int i = 0; i < PART_GPU_REQ_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.ReqTypeCount[i] == 0)
+		{
+			Bucket.ReqType[i] = Type;
+			Bucket.ReqTypeCount[i] = 1;
+			return;
+		}
+	}
+
+	int minIndex = 0;
+	for (int i = 1; i < PART_GPU_REQ_TYPE_TOP_MAX; ++i)
+	{
+		if (Bucket.ReqTypeCount[i] < Bucket.ReqTypeCount[minIndex])
+			minIndex = i;
+	}
+
+	Bucket.ReqType[minIndex] = Type;
+	Bucket.ReqTypeCount[minIndex] = 1;
+}
+
+__int64 ZzzPerfBeginPart(int Category, int Type)
 {
 	LARGE_INTEGER Counter;
 	QueryPerformanceCounter(&Counter);
 
+	g_iActivePartPerfCategory = -1;
+	g_iActivePartPerfType = -1;
+
 	if (Category >= 0 && Category < PART_RENDER_CATEGORY_MAX)
 	{
 		g_iActivePartPerfCategory = Category;
+		g_iActivePartPerfType = Type;
 		g_PartRenderPerfStats.Bucket[Category].Calls++;
 	}
 
@@ -194,6 +234,7 @@ void ZzzPerfEndPart(int Category, __int64 StartCounter)
 		g_PartRenderPerfStats.Bucket[Category].Ms += ZzzPerfCounterToMs(Counter.QuadPart - StartCounter);
 
 	g_iActivePartPerfCategory = -1;
+	g_iActivePartPerfType = -1;
 }
 
 void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectReason)
@@ -219,6 +260,11 @@ void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectR
 int ZzzPerfGetActivePartCategory()
 {
 	return g_iActivePartPerfCategory;
+}
+
+int ZzzPerfGetActivePartType()
+{
+	return g_iActivePartPerfType;
 }
 
 void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset)
@@ -1960,7 +2006,11 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					{
 						const int offReject = GetGpuAssistOffRejectReason(this);
 						if (offReject >= 0 && offReject < PART_GPU_OFF_MAX)
+						{
 							g_PartRenderPerfStats.Bucket[partPerfCategory].OffReject[offReject]++;
+							if (offReject == PART_GPU_OFF_NOT_REQUESTED)
+								ZzzPerfRecordReqType(g_PartRenderPerfStats.Bucket[partPerfCategory], ZzzPerfGetActivePartType());
+						}
 					}
 					if (partPerfCategory >= 0 && partPerfCategory < PART_RENDER_CATEGORY_MAX &&
 						partGpuReject == PART_GPU_REJECT_FLAG)

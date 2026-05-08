@@ -9137,6 +9137,23 @@ void RenderPartPerfWindow()
 		OffRejectTotals[PART_GPU_OFF_NOT_REQUESTED],
 		OffRejectTotals[PART_GPU_OFF_NO_TRANSFORM]);
 	g_pRenderText->RenderText(18, PerfY + 52, PerfText);
+
+	sprintf(PerfText, "PFO REQ WP/AR/WG/HP/OT: %d/%d/%d/%d/%d",
+		WeaponPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED],
+		ArmorPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED],
+		WingPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED],
+		HelperPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED],
+		OtherPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED]);
+	g_pRenderText->RenderText(18, PerfY + 65, PerfText);
+
+	const PART_RENDER_PERF_BUCKET& ReqTopPerf =
+		(ArmorPerf.OffReject[PART_GPU_OFF_NOT_REQUESTED] > 0) ? ArmorPerf : WeaponPerf;
+	sprintf(PerfText, "PFO TYPE %d:%d %d:%d %d:%d %d:%d",
+		ReqTopPerf.ReqType[0], ReqTopPerf.ReqTypeCount[0],
+		ReqTopPerf.ReqType[1], ReqTopPerf.ReqTypeCount[1],
+		ReqTopPerf.ReqType[2], ReqTopPerf.ReqTypeCount[2],
+		ReqTopPerf.ReqType[3], ReqTopPerf.ReqTypeCount[3]);
+	g_pRenderText->RenderText(18, PerfY + 78, PerfText);
 }
 
 void RenderDebugWindow()

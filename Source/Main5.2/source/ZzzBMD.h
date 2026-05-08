@@ -76,6 +76,8 @@ enum EPartGpuOffRejectReason
 	PART_GPU_OFF_MAX
 };
 
+#define PART_GPU_REQ_TYPE_TOP_MAX 4
+
 typedef struct
 {
 	double Ms;
@@ -87,6 +89,8 @@ typedef struct
 	int Reject[PART_GPU_REJECT_MAX];
 	int FlagReject[PART_GPU_FLAG_MAX];
 	int OffReject[PART_GPU_OFF_MAX];
+	int ReqType[PART_GPU_REQ_TYPE_TOP_MAX];
+	int ReqTypeCount[PART_GPU_REQ_TYPE_TOP_MAX];
 } PART_RENDER_PERF_BUCKET;
 
 typedef struct
@@ -97,10 +101,11 @@ typedef struct
 extern PART_RENDER_PERF_STATS g_PartRenderPerfStats;
 
 int ZzzPerfClassifyPartType(int Type);
-__int64 ZzzPerfBeginPart(int Category);
+__int64 ZzzPerfBeginPart(int Category, int Type);
 void ZzzPerfEndPart(int Category, __int64 StartCounter);
 void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectReason);
 int ZzzPerfGetActivePartCategory();
+int ZzzPerfGetActivePartType();
 void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset);
 const char* ZzzPerfPartCategoryName(int Category);
 
