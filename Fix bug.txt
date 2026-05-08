@@ -1,0 +1,36 @@
+- Fix bug bảng H
+- Fix bug icon buff + tooltip buff + hiển thị vị trí
+- Thêm gửi ngọc nhanh bằng chuột phải khi đang mở ngân hang + Sửa giao diện ngân hàng ngọc
+- Thêm tính năng customPositon.xml qua getmain (ItemPosition.xml trong Local getmain)
+- Tối ưu 1 chút FPS
+- Thêm tính năng BotMix
+- Thêm tính năng F5: Chụp ảnh tự sướng
+- Sửa lại BXH F8
+- Fix lỗi tối màu trang bị khi tháo xuống, mặc lại
+- Fix khi mở chọn skill dài quá (Thường là class DW bị, do có quá nhiều skill) bị lỗi hiển thị khi đang ở độ phân giải 800x600
+- Fix UI guild
+- Fix lỗi nv gen không hiện phần thưởng
+- Fix /change lỗi mt3
+- Fix lỗi dung skill khi mang ngựa/thú cưỡi của MG, RF, DL
+- Thêm tính năng add wc,lvl,rs,.... khi tạo nhân vật mới
+- Thêm tính năng Xem thông tin người chơi
+- Fix readd về point mặc định của all class (Lỗi readd về 15 stats)
+- Fix nút Enter lúc ở màn hình chọn nhân vật (Lỗi hover vào nv nào, Enter sẽ vào nv đó, chứ k theo chọn)
+- Fix phím Enter có thể đăng ký
+- Fix trade khi di chuyển
+- Fix tặng đồ khi tạo nhân vật
+- Tăng giới hạn máu + dmg > 2.1 tỷ
+- Thêm BXH dmg boss + health bar boss
+- Thêm kiểu lasthit boss hay tổng dmg lên boss để tính người chơi ăn boss
+- Thêm yêu cầu pass khi dung lệnh /disconnect <Name> -> /disconnect <Name> <Password>
+- Fix khi thêm claw RF custom thì lỗi dùng skill Ảo ảnh
+- Thêm tính năng gift code + tích lũy tiêu phí
+- Thêm config cho Sub GM
+- Thêm tính năng đổi item
+- Thêm tính năng VQMM
+- Thêm tính năng auto nạp + mốc nạp
+- Fix bug tràn data inven
+- Thêm tính năng Chợ trời
+- Fix lỗi _mbclen > GetMessageCharByteLength
+- Thêm Antihack vào GS+main
+- Thêm BOT train
