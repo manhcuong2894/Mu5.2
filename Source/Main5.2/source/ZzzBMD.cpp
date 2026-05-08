@@ -93,6 +93,55 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	return false;
 }
 
+static void BuildRenderMeshCache(Mesh_t& mesh)
+{
+	SAFE_DELETE_ARRAY(mesh.RenderVertexIndices);
+	SAFE_DELETE_ARRAY(mesh.RenderNormalIndices);
+	SAFE_DELETE_ARRAY(mesh.RenderTexCoords);
+	mesh.RenderVertexCount = 0;
+
+	if (mesh.NumTriangles <= 0 || mesh.Triangles == NULL || mesh.TexCoords == NULL)
+		return;
+
+	int vertexCount = 0;
+	for (int j = 0; j < mesh.NumTriangles; ++j)
+	{
+		const int polygon = (int)mesh.Triangles[j].Polygon;
+		if (polygon > 0 && polygon <= 4)
+			vertexCount += polygon;
+	}
+
+	if (vertexCount <= 0)
+		return;
+
+	mesh.RenderVertexIndices = new short[vertexCount];
+	mesh.RenderNormalIndices = new short[vertexCount];
+	mesh.RenderTexCoords = new vec2_t[vertexCount];
+
+	int target = 0;
+	for (int j = 0; j < mesh.NumTriangles; ++j)
+	{
+		Triangle_t* triangle = &mesh.Triangles[j];
+		const int polygon = (int)triangle->Polygon;
+		if (polygon <= 0 || polygon > 4)
+			continue;
+
+		for (int k = 0; k < polygon; ++k)
+		{
+			const int texCoordIndex = triangle->TexCoordIndex[k];
+			TexCoord_t* texCoord = &mesh.TexCoords[texCoordIndex];
+
+			mesh.RenderVertexIndices[target] = triangle->VertexIndex[k];
+			mesh.RenderNormalIndices[target] = triangle->NormalIndex[k];
+			mesh.RenderTexCoords[target][0] = texCoord->TexCoordU;
+			mesh.RenderTexCoords[target][1] = texCoord->TexCoordV;
+			++target;
+		}
+	}
+
+	mesh.RenderVertexCount = target;
+}
+
 void BMD::Animation(float(*BoneMatrix)[3][4], float AnimationFrame, float PriorFrame, unsigned short PriorAction, vec3_t Angle, vec3_t HeadAngle, bool Parent, bool Translate)
 {
 	if (NumActions <= 0)
@@ -1784,58 +1833,71 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						|| renderFlags == RENDER_CHROME8
 						|| renderFlags == RENDER_OIL;
 
-					for (int j = 0; j < m->NumTriangles; j++)
-					{
-						Triangle_t* triangle = &m->Triangles[j];
+					const bool enableTexCoord = renderFlags != RENDER_COLOR && renderFlags != RENDER_BRIGHT;
 
-						for (int k = 0; k < triangle->Polygon; k++)
+					if (m->RenderVertexCount <= 0 || m->RenderVertexIndices == NULL
+						|| m->RenderNormalIndices == NULL || m->RenderTexCoords == NULL)
+					{
+						BuildRenderMeshCache(*m);
+					}
+
+					if (m->RenderVertexCount > 0 && m->RenderVertexIndices != NULL
+						&& m->RenderNormalIndices != NULL && m->RenderTexCoords != NULL)
+					{
+						for (int vertexIndex = 0; vertexIndex < m->RenderVertexCount; ++vertexIndex)
 						{
-							int source_vertex_index = triangle->VertexIndex[k];
+							const int source_vertex_index = m->RenderVertexIndices[vertexIndex];
+							const int normalIndex = m->RenderNormalIndices[vertexIndex];
+							const float texCoordU = m->RenderTexCoords[vertexIndex][0];
+							const float texCoordV = m->RenderTexCoords[vertexIndex][1];
 
 							target_vertex_index++;
 
 							VectorCopy(VertexTransform[i][source_vertex_index], vertices[target_vertex_index]);
 
-							colors[target_vertex_index][3] = Alpha;
-							colors[target_vertex_index][0] = BodyLight[0];
-							colors[target_vertex_index][1] = BodyLight[1];
-							colors[target_vertex_index][2] = BodyLight[2];
-
-							int normalIndex = triangle->NormalIndex[k];
-
-							TexCoord_t* textcoord = &m->TexCoords[triangle->TexCoordIndex[k]];
-							textCoords[target_vertex_index][0] = textcoord->TexCoordU;
-							textCoords[target_vertex_index][1] = textcoord->TexCoordV;
-
-							switch (renderFlags)
+							if (enableColor)
 							{
-							case RENDER_TEXTURE:
-								if (EnableWave)
+								colors[target_vertex_index][3] = Alpha;
+								colors[target_vertex_index][0] = BodyLight[0];
+								colors[target_vertex_index][1] = BodyLight[1];
+								colors[target_vertex_index][2] = BodyLight[2];
+							}
+
+							if (enableTexCoord)
+							{
+								textCoords[target_vertex_index][0] = texCoordU;
+								textCoords[target_vertex_index][1] = texCoordV;
+
+								switch (renderFlags)
 								{
-									textCoords[target_vertex_index][0] += BlendMeshTexCoordU;
-									textCoords[target_vertex_index][1] += BlendMeshTexCoordV;
+								case RENDER_TEXTURE:
+									if (EnableWave)
+									{
+										textCoords[target_vertex_index][0] += BlendMeshTexCoordU;
+										textCoords[target_vertex_index][1] += BlendMeshTexCoordV;
+									}
+									if (EnableLight)
+									{
+										colors[target_vertex_index][3] = Alpha;
+										colors[target_vertex_index][0] = LightTransform[i][normalIndex][0];
+										colors[target_vertex_index][1] = LightTransform[i][normalIndex][1];
+										colors[target_vertex_index][2] = LightTransform[i][normalIndex][2];
+									}
+									break;
+								case RENDER_OIL:
+									textCoords[target_vertex_index][0] = (g_chrome[normalIndex][0] * texCoordU) + BlendMeshTexCoordU;
+									textCoords[target_vertex_index][1] = (g_chrome[normalIndex][1] * texCoordV) + BlendMeshTexCoordV;
+									break;
+								case RENDER_CHROME:
+									textCoords[target_vertex_index][0] = g_chrome[normalIndex][0];
+									textCoords[target_vertex_index][1] = g_chrome[normalIndex][1];
+									break;
+								case RENDER_CHROME4:
+								case RENDER_CHROME8:
+									textCoords[target_vertex_index][0] = g_chrome[normalIndex][0] + BlendMeshTexCoordU;
+									textCoords[target_vertex_index][1] = g_chrome[normalIndex][1] + BlendMeshTexCoordV;
+									break;
 								}
-								if (EnableLight)
-								{
-									colors[target_vertex_index][3] = Alpha;
-									colors[target_vertex_index][0] = LightTransform[i][normalIndex][0];
-									colors[target_vertex_index][1] = LightTransform[i][normalIndex][1];
-									colors[target_vertex_index][2] = LightTransform[i][normalIndex][2];
-								}
-								break;
-							case RENDER_OIL:
-								textCoords[target_vertex_index][0] = (g_chrome[normalIndex][0] * textcoord->TexCoordU) + BlendMeshTexCoordU;
-								textCoords[target_vertex_index][1] = (g_chrome[normalIndex][1] * textcoord->TexCoordV) + BlendMeshTexCoordV;
-								break;
-							case RENDER_CHROME:
-								textCoords[target_vertex_index][0] = g_chrome[normalIndex][0];
-								textCoords[target_vertex_index][1] = g_chrome[normalIndex][1];
-								break;
-							case RENDER_CHROME4:
-							case RENDER_CHROME8:
-								textCoords[target_vertex_index][0] = g_chrome[normalIndex][0] + BlendMeshTexCoordU;
-								textCoords[target_vertex_index][1] = g_chrome[normalIndex][1] + BlendMeshTexCoordV;
-								break;
 							}
 
 							if (RenderFlag & RENDER_SHADOWMAP)
@@ -1870,16 +1932,20 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 
 					if (target_vertex_index != -1)
 					{
+						const int legacyDrawCount = m->NumTriangles * 3;
+						const int drawVertexCount = (target_vertex_index + 1 < legacyDrawCount)
+							? target_vertex_index + 1 : legacyDrawCount;
+
 						glEnableClientState(GL_VERTEX_ARRAY);
 						if (enableColor) glEnableClientState(GL_COLOR_ARRAY);
-						glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+						if (enableTexCoord) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 						glVertexPointer(3, GL_FLOAT, 0, vertices);
 						if (enableColor) glColorPointer(4, GL_FLOAT, 0, colors);
-						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
-						glDrawArrays(GL_TRIANGLES, 0, m->NumTriangles * 3);
+						if (enableTexCoord) glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
+						glDrawArrays(GL_TRIANGLES, 0, drawVertexCount);
 
-						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+						if (enableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 						if (enableColor) glDisableClientState(GL_COLOR_ARRAY);
 						glDisableClientState(GL_VERTEX_ARRAY);
 					}
@@ -2591,6 +2657,10 @@ void BMD::Release()
 			SAFE_DELETE_ARRAY(m->Normals);
 			SAFE_DELETE_ARRAY(m->TexCoords);
 			SAFE_DELETE_ARRAY(m->Triangles);
+			SAFE_DELETE_ARRAY(m->RenderVertexIndices);
+			SAFE_DELETE_ARRAY(m->RenderNormalIndices);
+			SAFE_DELETE_ARRAY(m->RenderTexCoords);
+			m->RenderVertexCount = 0;
 
 			if (m->m_csTScript)
 			{
@@ -2798,6 +2868,7 @@ bool BMD::Open(char* DirName, char* ModelFileName)
 		{
 			m->m_csTScript = NULL;
 		}
+		BuildRenderMeshCache(*m);
 		CreateVertexBuffer(i, *m);
 	}
 	//#ifdef USE_SHADOWVOLUME
@@ -3094,6 +3165,8 @@ bool BMD::Open2(char* DirName, char* ModelFileName, bool bReAlloc)
 			m->m_csTScript = NULL;
 		}
 
+		BuildRenderMeshCache(*m);
+
 #ifdef SHADER_VERSION_TEST
 		this->CreateVertexBuffer(i, *m);
 #endif // SHADER_VERSION_TEST
@@ -3285,6 +3358,7 @@ bool BMD::OpenPack(unsigned char* Data, long DataBytes, bool bReAlloc)
 		{
 			m->m_csTScript = NULL;
 		}
+		BuildRenderMeshCache(*m);
 	}
 
 	for (i = 0; i < NumActions; i++)

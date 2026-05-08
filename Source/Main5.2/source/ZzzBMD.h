@@ -149,6 +149,10 @@ typedef struct _Mesh_t
 	Triangle_t*		Triangles;
 	unsigned char*	Commands; //ver1.1
 	TextureScript*	m_csTScript;
+	short*			RenderVertexIndices;
+	short*			RenderNormalIndices;
+	vec2_t*			RenderTexCoords;
+	int				RenderVertexCount;
 
 	GLuint VAO, VBO_Vertices, VBO_Normals, VBO_TexCoords, VBO_Colors, EBO;
 	GLuint VBO_VertexNodes, VBO_NormalNodes;
@@ -164,6 +168,10 @@ typedef struct _Mesh_t
 
 		TexCoords = NULL;
 		VertexColors = NULL;
+		RenderVertexIndices = NULL;
+		RenderNormalIndices = NULL;
+		RenderTexCoords = NULL;
+		RenderVertexCount = 0;
 
 		Texture = -1;
 		NumCommandBytes = 0;
