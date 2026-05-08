@@ -88,6 +88,10 @@ void main()
     {
         TexCoord = worldNormal.xy + uTexCoordOffset;
     }
+    else if (uRenderMode == 9)
+    {
+        TexCoord = vec2(worldNormal.z * 0.5 + 0.2, worldNormal.y * 0.5 + 0.5);
+    }
     else
     {
         TexCoord = aTexCoord + uTexCoordOffset;

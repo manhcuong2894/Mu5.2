@@ -119,6 +119,8 @@ static int GetGpuAssistRenderMode(int RenderFlag)
 		return 2;
 	if (RenderFlag & RENDER_CHROME)
 		return 1;
+	if (RenderFlag & RENDER_METAL)
+		return 9;
 	return 0;
 }
 
@@ -489,9 +491,7 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (NumBones <= 0 || NumBones > MAX_BONES || NumMeshs <= 0)
 		return;
 
-	if (renderTypeHint & (RENDER_COLOR | RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 |
-		RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_CHROME6 |
-		RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL | RENDER_LIGHTMAP |
+	if (renderTypeHint & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
 		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
 		return;
@@ -659,11 +659,12 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 	const int gpuSafeStateFlags = RENDER_TEXTURE | RENDER_BRIGHT | RENDER_DARK | RENDER_NODEPTH |
 		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 		RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
-		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8;
+		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
+		RENDER_METAL;
 	if (renderFlag & ~gpuSafeStateFlags)
 		return PART_GPU_REJECT_FLAG;
 
-	if (renderFlag & (RENDER_COLOR | RENDER_METAL | RENDER_OIL | RENDER_LIGHTMAP |
+	if (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
 		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
 		return PART_GPU_REJECT_FLAG;
