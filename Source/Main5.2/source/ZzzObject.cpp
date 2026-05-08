@@ -13010,6 +13010,8 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		}
 	}
 
+	const int partPerfCategory = ZzzPerfClassifyPartType(Type);
+	const __int64 partPerfStart = ZzzPerfBeginPart(partPerfCategory);
 	BMD* b = gmClientModels->GetModel(Type);
 
 	if (b != NULL)
@@ -13162,6 +13164,7 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 
 		b->ClearGpuAssist();
 	}
+	ZzzPerfEndPart(partPerfCategory, partPerfStart);
 }
 
 float AmbientShadowAngle = 180.f;

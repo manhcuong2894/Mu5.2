@@ -69,6 +69,103 @@ static vec3_t LightVector = { 0.f, -0.1f, -0.8f };
 static vec3_t LightVector2 = { 0.f, -0.5f, -0.8f };
 static unsigned int g_uiGpuAssistTransformSerialCounter = 1;
 
+PART_RENDER_PERF_STATS g_PartRenderPerfStats;
+static int g_iActivePartPerfCategory = -1;
+
+static double ZzzPerfCounterToMs(__int64 Ticks)
+{
+	static LARGE_INTEGER Frequency = { 0 };
+	if (Frequency.QuadPart == 0)
+		QueryPerformanceFrequency(&Frequency);
+
+	return (double)Ticks * 1000.0 / (double)Frequency.QuadPart;
+}
+
+int ZzzPerfClassifyPartType(int Type)
+{
+	if (Type >= MODEL_SWORD && Type < MODEL_HELM)
+		return PART_RENDER_WEAPON;
+	if ((Type >= MODEL_HELM && Type < MODEL_WING) || (Type >= MODEL_HELM2 && Type < MODEL_EVENT))
+		return PART_RENDER_ARMOR;
+	if (Type >= MODEL_WING && Type < MODEL_HELPER)
+		return PART_RENDER_WING;
+	if (Type >= MODEL_HELPER && Type < MODEL_POTION)
+		return PART_RENDER_HELPER;
+	return PART_RENDER_OTHER;
+}
+
+__int64 ZzzPerfBeginPart(int Category)
+{
+	LARGE_INTEGER Counter;
+	QueryPerformanceCounter(&Counter);
+
+	if (Category >= 0 && Category < PART_RENDER_CATEGORY_MAX)
+	{
+		g_iActivePartPerfCategory = Category;
+		g_PartRenderPerfStats.Bucket[Category].Calls++;
+	}
+
+	return Counter.QuadPart;
+}
+
+void ZzzPerfEndPart(int Category, __int64 StartCounter)
+{
+	LARGE_INTEGER Counter;
+	QueryPerformanceCounter(&Counter);
+
+	if (Category >= 0 && Category < PART_RENDER_CATEGORY_MAX)
+		g_PartRenderPerfStats.Bucket[Category].Ms += ZzzPerfCounterToMs(Counter.QuadPart - StartCounter);
+
+	g_iActivePartPerfCategory = -1;
+}
+
+void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectReason)
+{
+	if (Category < 0 || Category >= PART_RENDER_CATEGORY_MAX)
+		return;
+
+	PART_RENDER_PERF_BUCKET& Bucket = g_PartRenderPerfStats.Bucket[Category];
+	Bucket.MeshCalls++;
+	Bucket.Triangles += Triangles;
+	if (GpuHit)
+	{
+		Bucket.GpuHits++;
+	}
+	else
+	{
+		Bucket.GpuFallbacks++;
+		if (RejectReason > PART_GPU_REJECT_NONE && RejectReason < PART_GPU_REJECT_MAX)
+			Bucket.Reject[RejectReason]++;
+	}
+}
+
+int ZzzPerfGetActivePartCategory()
+{
+	return g_iActivePartPerfCategory;
+}
+
+void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset)
+{
+	if (OutStats != NULL)
+		memcpy(OutStats, &g_PartRenderPerfStats, sizeof(PART_RENDER_PERF_STATS));
+
+	if (Reset)
+		memset(&g_PartRenderPerfStats, 0, sizeof(g_PartRenderPerfStats));
+}
+
+const char* ZzzPerfPartCategoryName(int Category)
+{
+	switch (Category)
+	{
+	case PART_RENDER_WEAPON: return "WP";
+	case PART_RENDER_ARMOR: return "AR";
+	case PART_RENDER_WING: return "WG";
+	case PART_RENDER_HELPER: return "HP";
+	case PART_RENDER_OTHER: return "OT";
+	default: return "??";
+	}
+}
+
 static bool IsGpuAssistEligibleObject(const OBJECT* pObject)
 {
 	if (pObject == NULL)
@@ -488,38 +585,64 @@ void BMD::EnsureCpuTransformData()
 	m_bGpuAssistCpuDataReady = true;
 }
 
-bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const
+static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight)
 {
 #ifdef SHADER_VERSION_TEST
 	UNREFERENCED_PARAMETER(enableWave);
 	UNREFERENCED_PARAMETER(enableLight);
 
-	if (!m_bGpuAssistTransformReady || m_pGpuAssistBoneMatrices == NULL)
-		return false;
+	if (Model == NULL)
+		return PART_GPU_REJECT_OFF;
 
-	if ((!m_bGpuAssistBodyPath && !m_bGpuAssistAttachmentPath) || BoneScale != 1.f || m_fGpuAssistScale != 0.0f)
-		return false;
+	if (!Model->m_bGpuAssistRequested || !gShaderGL->IsGpuAssistEnabled())
+		return PART_GPU_REJECT_OFF;
+
+	if (!Model->m_bGpuAssistTransformReady || Model->m_pGpuAssistBoneMatrices == NULL)
+		return PART_GPU_REJECT_OFF;
+
+	if ((!Model->m_bGpuAssistBodyPath && !Model->m_bGpuAssistAttachmentPath))
+		return PART_GPU_REJECT_TYPE;
+
+	if (BoneScale != 1.f || Model->m_fGpuAssistScale != 0.0f)
+		return PART_GPU_REJECT_SCALE;
+
+	if (Mesh != NULL && (Mesh->VAO == 0 || Mesh->GpuVertexCount <= 0))
+		return PART_GPU_REJECT_MESH;
 
 	if (resolvedRenderFlag != RENDER_TEXTURE)
-		return false;
+		return PART_GPU_REJECT_FLAG;
 
 	const int gpuSafeStateFlags = RENDER_TEXTURE | RENDER_BRIGHT | RENDER_DARK | RENDER_NODEPTH |
 		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT;
 	if (renderFlag & ~gpuSafeStateFlags)
-		return false;
+		return PART_GPU_REJECT_FLAG;
 
 	if (renderFlag & (RENDER_COLOR | RENDER_CHROME | RENDER_METAL | RENDER_CHROME2 |
 		RENDER_CHROME3 | RENDER_CHROME4 | RENDER_CHROME5 | RENDER_CHROME6 |
 		RENDER_CHROME7 | RENDER_CHROME8 | RENDER_OIL | RENDER_LIGHTMAP |
 		RENDER_SHADOWMAP | RENDER_WAVE))
 	{
-		return false;
+		return PART_GPU_REJECT_FLAG;
 	}
 
-	return gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER);
+	if (!gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER))
+		return PART_GPU_REJECT_SHADER;
+
+	return PART_GPU_REJECT_NONE;
 #else
-	return false;
+	UNREFERENCED_PARAMETER(Model);
+	UNREFERENCED_PARAMETER(Mesh);
+	UNREFERENCED_PARAMETER(renderFlag);
+	UNREFERENCED_PARAMETER(resolvedRenderFlag);
+	UNREFERENCED_PARAMETER(enableWave);
+	UNREFERENCED_PARAMETER(enableLight);
+	return PART_GPU_REJECT_OFF;
 #endif // SHADER_VERSION_TEST
+}
+
+bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const
+{
+	return GetGpuAssistMeshRejectReason(this, NULL, renderFlag, resolvedRenderFlag, enableWave, enableLight) == PART_GPU_REJECT_NONE;
 }
 
 void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
@@ -1740,13 +1863,18 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					}
 
 #ifdef SHADER_VERSION_TEST
-					if (CanUseGpuAssistMesh(RenderFlag, renderFlags, EnableWave, EnableLight))
+					const int partPerfCategory = ZzzPerfGetActivePartCategory();
+					const int partGpuReject = GetGpuAssistMeshRejectReason(this, m, RenderFlag, renderFlags, EnableWave, EnableLight);
+					if (partGpuReject == PART_GPU_REJECT_NONE)
 					{
+						ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, true, PART_GPU_REJECT_NONE);
 						RenderMeshGpuAssist(m, EnableLight, Alpha,
 							EnableWave ? BlendMeshTexCoordU : 0.0f,
 							EnableWave ? BlendMeshTexCoordV : 0.0f);
 						return;
 					}
+
+					ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, false, partGpuReject);
 
 					if (m_bGpuAssistTransformReady && !m_bGpuAssistCpuDataReady)
 					{

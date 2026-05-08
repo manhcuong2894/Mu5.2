@@ -35,6 +35,54 @@
 
 #define MAX_MONSTER_SOUND   11
 
+enum EPartRenderPerfCategory
+{
+	PART_RENDER_WEAPON = 0,
+	PART_RENDER_ARMOR,
+	PART_RENDER_WING,
+	PART_RENDER_HELPER,
+	PART_RENDER_OTHER,
+	PART_RENDER_CATEGORY_MAX
+};
+
+enum EPartGpuRejectReason
+{
+	PART_GPU_REJECT_NONE = 0,
+	PART_GPU_REJECT_OFF,
+	PART_GPU_REJECT_TYPE,
+	PART_GPU_REJECT_SCALE,
+	PART_GPU_REJECT_FLAG,
+	PART_GPU_REJECT_MESH,
+	PART_GPU_REJECT_SHADER,
+	PART_GPU_REJECT_MAX
+};
+
+typedef struct
+{
+	double Ms;
+	int Calls;
+	int MeshCalls;
+	int Triangles;
+	int GpuHits;
+	int GpuFallbacks;
+	int Reject[PART_GPU_REJECT_MAX];
+} PART_RENDER_PERF_BUCKET;
+
+typedef struct
+{
+	PART_RENDER_PERF_BUCKET Bucket[PART_RENDER_CATEGORY_MAX];
+} PART_RENDER_PERF_STATS;
+
+extern PART_RENDER_PERF_STATS g_PartRenderPerfStats;
+
+int ZzzPerfClassifyPartType(int Type);
+__int64 ZzzPerfBeginPart(int Category);
+void ZzzPerfEndPart(int Category, __int64 StartCounter);
+void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectReason);
+int ZzzPerfGetActivePartCategory();
+void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset);
+const char* ZzzPerfPartCategoryName(int Category);
+
 typedef struct
 {
 	vec3_t Position;

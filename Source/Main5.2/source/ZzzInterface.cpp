@@ -9071,6 +9071,56 @@ void RenderDebugWindow()
 		TotalPacketSize = 0;
 	}
 
+	static DWORD s_dwPartPerfLastTime = 0;
+	static PART_RENDER_PERF_STATS s_PartPerfSnapshot;
+	const DWORD dwPartPerfNow = timeGetTime();
+	if (dwPartPerfNow - s_dwPartPerfLastTime >= 500)
+	{
+		s_dwPartPerfLastTime = dwPartPerfNow;
+		ZzzPerfSnapshotPartStats(&s_PartPerfSnapshot, true);
+	}
+
+	char PerfText[256];
+	int PerfY = gwinhandle->GetScreenY() - 118;
+	g_pRenderText->SetFont(g_hFont);
+	g_pRenderText->SetTextColor(255, 220, 80, 255);
+	g_pRenderText->SetBgColor(0, 0, 0, 180);
+	sprintf(PerfText, "PART ms WP/AR/WG/HP/OT: %.2f/%.2f/%.2f/%.2f/%.2f",
+		s_PartPerfSnapshot.Bucket[PART_RENDER_WEAPON].Ms,
+		s_PartPerfSnapshot.Bucket[PART_RENDER_ARMOR].Ms,
+		s_PartPerfSnapshot.Bucket[PART_RENDER_WING].Ms,
+		s_PartPerfSnapshot.Bucket[PART_RENDER_HELPER].Ms,
+		s_PartPerfSnapshot.Bucket[PART_RENDER_OTHER].Ms);
+	g_pRenderText->RenderText(3, PerfY, PerfText);
+
+	const PART_RENDER_PERF_BUCKET& WeaponPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_WEAPON];
+	const PART_RENDER_PERF_BUCKET& ArmorPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_ARMOR];
+	const PART_RENDER_PERF_BUCKET& WingPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_WING];
+	const PART_RENDER_PERF_BUCKET& HelperPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_HELPER];
+	const PART_RENDER_PERF_BUCKET& OtherPerf = s_PartPerfSnapshot.Bucket[PART_RENDER_OTHER];
+	const int PartGpuHits = WeaponPerf.GpuHits + ArmorPerf.GpuHits + WingPerf.GpuHits + HelperPerf.GpuHits + OtherPerf.GpuHits;
+	const int PartGpuFallbacks = WeaponPerf.GpuFallbacks + ArmorPerf.GpuFallbacks + WingPerf.GpuFallbacks + HelperPerf.GpuFallbacks + OtherPerf.GpuFallbacks;
+	const int PartMeshCalls = WeaponPerf.MeshCalls + ArmorPerf.MeshCalls + WingPerf.MeshCalls + HelperPerf.MeshCalls + OtherPerf.MeshCalls;
+	sprintf(PerfText, "PMESH %d GPU H/F %d/%d TRI %d",
+		PartMeshCalls, PartGpuHits, PartGpuFallbacks,
+		WeaponPerf.Triangles + ArmorPerf.Triangles + WingPerf.Triangles + HelperPerf.Triangles + OtherPerf.Triangles);
+	g_pRenderText->RenderText(3, PerfY + 12, PerfText);
+
+	int RejectTotals[PART_GPU_REJECT_MAX] = { 0 };
+	for (int i = 0; i < PART_RENDER_CATEGORY_MAX; ++i)
+	{
+		for (int j = 0; j < PART_GPU_REJECT_MAX; ++j)
+			RejectTotals[j] += s_PartPerfSnapshot.Bucket[i].Reject[j];
+	}
+	sprintf(PerfText, "PF OFF/TYPE/SCL/FLAG/MESH/SHD: %d/%d/%d/%d/%d/%d",
+		RejectTotals[PART_GPU_REJECT_OFF],
+		RejectTotals[PART_GPU_REJECT_TYPE],
+		RejectTotals[PART_GPU_REJECT_SCALE],
+		RejectTotals[PART_GPU_REJECT_FLAG],
+		RejectTotals[PART_GPU_REJECT_MESH],
+		RejectTotals[PART_GPU_REJECT_SHADER]);
+	g_pRenderText->RenderText(3, PerfY + 24, PerfText);
+
 #ifdef ENABLE_EDIT
 	char Text[256];
 	if (EditFlag == EDIT_MAPPING)
