@@ -14,9 +14,143 @@
 #include "DSPlaySound.h"
 #include "WSClient.h"
 #include "NewUISystem.h"
+#include "CShaderGL.h"
 
 
 OBJECT Sprites[MAX_SPRITES];
+struct GpuSpriteBillboard
+{
+	vec3_t Center;
+	vec2_t Size;
+	vec4_t Color;
+	float Rotation;
+};
+
+static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
+
+static bool ShouldRenderSpriteInPass(const OBJECT* o, BYTE byRenderOneMore)
+{
+	if (o == NULL || !o->Live)
+		return false;
+
+	if (byRenderOneMore == 1)
+	{
+		return o->Position[2] <= 350.0f;
+	}
+	else if (byRenderOneMore == 2)
+	{
+		return o->Position[2] > 300.0f;
+	}
+
+	return true;
+}
+
+static bool CanGpuBatchTransientSprite(const OBJECT* o)
+{
+	if (o == NULL || o->Type == BITMAP_FORMATION_MARK)
+		return false;
+
+	if (o->SubType != 0)
+		return false;
+
+	return o->Type == BITMAP_LIGHT || o->Type == BITMAP_SHINY + 6 || o->Type == BITMAP_PIN_LIGHT;
+}
+
+static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
+{
+#ifdef SHADER_VERSION_TEST
+	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
+		return false;
+
+	BITMAP_t* pBitmap = Bitmaps.GetTexture(texture);
+	int count = 0;
+	for (int i = 0; i < MAX_SPRITES; ++i)
+	{
+		OBJECT* o = &Sprites[i];
+		if (!ShouldRenderSpriteInPass(o, byRenderOneMore) || !CanGpuBatchTransientSprite(o) || o->Type != texture)
+			continue;
+
+		if (o->Visible)
+		{
+			o->AnimationFrame += 0.1f;
+			if (o->AnimationFrame > 1.0f)
+				o->AnimationFrame = 1.0f;
+		}
+		else
+		{
+			o->AnimationFrame -= 0.1f;
+			if (o->AnimationFrame < 0.2f)
+				o->AnimationFrame = 0.2f;
+		}
+
+		const float scale = o->AnimationFrame * o->Scale;
+		GpuSpriteBillboard& billboard = g_GpuSpriteBillboards[count++];
+		VectorCopy(o->Position, billboard.Center);
+		TEXCOORD(billboard.Size, pBitmap->Width * scale, pBitmap->Height * scale);
+		VectorCopy(o->Light, billboard.Color);
+		billboard.Color[3] = (pBitmap->Components == 3) ? 1.0f : o->Light[0];
+		billboard.Rotation = o->Angle[2];
+	}
+
+	if (count <= 0)
+		return true;
+
+	EnableAlphaBlend();
+	ZzzGpuAssistResetState();
+	const GLuint program = gShaderGL->GetShaderParticleId();
+	glUseProgram(program);
+	glUniform1i(glGetUniformLocation(program, "texture1"), 0);
+	BindTexture(texture);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Center[0]);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Size[0]);
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Color[0]);
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Rotation);
+	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+
+	for (int i = 0; i < MAX_SPRITES; ++i)
+	{
+		OBJECT* o = &Sprites[i];
+		if (ShouldRenderSpriteInPass(o, byRenderOneMore) && CanGpuBatchTransientSprite(o) && o->Type == texture &&
+			(byRenderOneMore == 0 || byRenderOneMore == 2))
+		{
+			o->Live = false;
+		}
+	}
+	return true;
+#else
+	UNREFERENCED_PARAMETER(texture);
+	UNREFERENCED_PARAMETER(byRenderOneMore);
+	return false;
+#endif // SHADER_VERSION_TEST
+}
+
+static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
+{
+#ifdef SHADER_VERSION_TEST
+	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
+		return false;
+
+	int textureList[3] = { BITMAP_LIGHT, BITMAP_SHINY + 6, BITMAP_PIN_LIGHT };
+	for (int textureIndex = 0; textureIndex < 3; ++textureIndex)
+	{
+		RenderGpuSpriteTexture(textureList[textureIndex], byRenderOneMore);
+	}
+	return true;
+#else
+	UNREFERENCED_PARAMETER(byRenderOneMore);
+	return false;
+#endif // SHADER_VERSION_TEST
+}
 
 static const int SPRITE_HERO_WING_RESERVE = 256;
 static const float HERO_WING_PRIORITY_RADIUS = 220.f;
@@ -239,24 +373,20 @@ void RenderSprites(BYTE byRenderOneMore)
 	{
 		return;
 	}
+	const bool gpuTransientSpritesRendered = RenderGpuTransientSprites(byRenderOneMore);
+
 	for (int i = 0; i < MAX_SPRITES; i++)
 	{
 		OBJECT* o = &Sprites[i];
-		if (byRenderOneMore == 1)
+		if (!ShouldRenderSpriteInPass(o, byRenderOneMore))
 		{
-			if (o->Position[2] > 350.f)
-			{
-				continue;
-			}
-		}
-		else if (byRenderOneMore == 2)
-		{
-			if (o->Position[2] <= 300.f)
-			{
+			if (byRenderOneMore == 2 && o->Live)
 				o->Live = false;
-				continue;
-			}
+			continue;
 		}
+
+		if (gpuTransientSpritesRendered && CanGpuBatchTransientSprite(o))
+			continue;
 
 		if (o->Live)
 		{
