@@ -13085,7 +13085,8 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		}
 		BodyLight(o, b);
 
-		bool useGpuAssistMesh = (Select <= 1 && HideSkin == false);
+		const bool allowHiddenGpuAssist = (GlobalTransform && Type == MODEL_POTION + 414);
+		bool useGpuAssistMesh = (Select <= 1 && (HideSkin == false || allowHiddenGpuAssist));
 		if (!GlobalTransform && !o->EnsureBoneTransform(b->NumBones))
 		{
 			b->ClearGpuAssist();
