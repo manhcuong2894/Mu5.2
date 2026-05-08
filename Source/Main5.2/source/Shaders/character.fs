@@ -12,7 +12,7 @@ void main()
 {
     if (uRenderMode == 10)
     {
-        FragColor = VertexColor;
+        FragColor = vec4(VertexColor.rgb * 0.75, VertexColor.a * 0.85);
         return;
     }
 
