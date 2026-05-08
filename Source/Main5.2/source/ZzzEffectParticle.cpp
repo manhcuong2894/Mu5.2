@@ -201,6 +201,52 @@ static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 	g_ParticleSpriteBatch.VertexCount += 4;
 	return true;
 }
+static bool ShouldRenderParticleInPass(const PARTICLE* o, BYTE byRenderOneMore)
+{
+	if (o == NULL || !o->Live)
+		return false;
+
+	if (byRenderOneMore == 1)
+	{
+		return o->Position[2] <= 350.0f;
+	}
+	else if (byRenderOneMore == 2)
+	{
+		return o->Position[2] > 300.0f;
+	}
+
+	return true;
+}
+
+static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
+{
+	int textureList[2] = { BITMAP_WATERFALL_2, BITMAP_FLARE };
+	for (int textureIndex = 0; textureIndex < 2; ++textureIndex)
+	{
+		const int texture = textureList[textureIndex];
+		BITMAP_t* pBitmap = Bitmaps.GetTexture(texture);
+		if (pBitmap->Components == 3)
+		{
+			EnableAlphaBlend();
+		}
+		else
+		{
+			EnableAlphaTest(false);
+		}
+
+		for (int i = 0; i < MAX_PARTICLES; ++i)
+		{
+			PARTICLE* o = &Particles[i];
+			if (!ShouldRenderParticleInPass(o, byRenderOneMore) || !CanBatchPlus15ParticleSprite(o) || o->TexType != texture)
+				continue;
+
+			const float Width = pBitmap->Width * o->Scale;
+			const float Height = pBitmap->Height * o->Scale;
+			AppendParticleSpriteBatch(o, Width, Height);
+		}
+		FlushParticleSpriteBatch();
+	}
+}
 void HandPosition(PARTICLE* o)
 {
 	OBJECT* Owner = o->Target;
@@ -9096,22 +9142,11 @@ void RenderParticles(BYTE byRenderOneMore)
 		PARTICLE* o = &Particles[i];
 		if (o->Live)
 		{
-			if (byRenderOneMore == 1)
-			{
-				if (o->Position[2] > 350.f)
-					continue;
-			}
-			else if (byRenderOneMore == 2)
-			{
-				if (o->Position[2] <= 300.f)
-					continue;
-			}
+			if (!ShouldRenderParticleInPass(o, byRenderOneMore))
+				continue;
 
-			if (g_ParticleSpriteBatch.VertexCount > 0 &&
-				(!CanBatchPlus15ParticleSprite(o) || g_ParticleSpriteBatch.Texture != o->TexType))
-			{
-				FlushParticleSpriteBatch();
-			}
+			if (CanBatchPlus15ParticleSprite(o))
+				continue;
 
 			BITMAP_t* pBitmap = Bitmaps.GetTexture(o->TexType);
 			float Width = pBitmap->Width * o->Scale;
@@ -9133,12 +9168,6 @@ void RenderParticles(BYTE byRenderOneMore)
 			{
 				DisableDepthTest();
 			}
-
-			if (AppendParticleSpriteBatch(o, Width, Height))
-			{
-				continue;
-			}
-			FlushParticleSpriteBatch();
 
 			int Frame;
 			switch (o->Type)
@@ -9474,5 +9503,5 @@ void RenderParticles(BYTE byRenderOneMore)
 			}
 		}
 	}
-	FlushParticleSpriteBatch();
+	RenderBatchedPlus15Particles(byRenderOneMore);
 }
