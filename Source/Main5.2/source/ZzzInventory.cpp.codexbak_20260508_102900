@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+ï»¿///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -1817,16 +1817,16 @@ int GuildListStartY;
 int SommonTable[] = { 2,7,14,8,9,41 };
 
 char ChaosEventName[][100] = {
-	"È÷µÅ© °íÇâ ¿©Çà±Ç",
-	"ÆæÆ¼¾ö4 ÄÄÇ»ÅÍ",
-	"µğÁöÅ»Ä«¸Ş¶ó",
-	"·ÎÁöÅØ ¹«¼± ¸¶¿ì½º+Å°º¸µå ¼¼Æ®",
-	"256M ·¥",
-	"6°³¿ ÀâÁö ±¸µ¶±Ç",
-	"¹®È­»óÇ°±Ç(¸¸¿ø)",
-	"¹Â ¸Ó±×ÄÅ",
-	"¹Â T¼ÅÃ÷",
-	"¹Â 10½Ã°£ ¹«·áÀÌ¿ë±Ç"
+	"ÃˆÃ·ÂµÃ…Â© Â°Ã­Ã‡Ã¢ Â¿Â©Ã‡Ã Â±Ã‡",
+	"Ã†Ã¦Ã†Â¼Â¾Ã¶4 Ã„Ã„Ã‡Â»Ã…Ã",
+	"ÂµÃ°ÃÃ¶Ã…Â»Ã„Â«Â¸ÃÂ¶Ã³",
+	"Â·ÃÃÃ¶Ã…Ã˜ Â¹Â«Â¼Â± Â¸Â¶Â¿Ã¬Â½Âº+Ã…Â°ÂºÂ¸ÂµÃ¥ Â¼Â¼Ã†Â®",
+	"256M Â·Â¥",
+	"6Â°Â³Â¿ Ã€Ã¢ÃÃ¶ Â±Â¸ÂµÂ¶Â±Ã‡",
+	"Â¹Â®ÃˆÂ­Â»Ã³Ã‡Â°Â±Ã‡(Â¸Â¸Â¿Ã¸)",
+	"Â¹Ã‚ Â¸Ã“Â±Ã—Ã„Ã…",
+	"Â¹Ã‚ TÂ¼Ã…ÃƒÃ·",
+	"Â¹Ã‚ 10Â½ÃƒÂ°Â£ Â¹Â«Â·Ã¡Ã€ÃŒÂ¿Ã«Â±Ã‡"
 };
 
 WORD calcMaxDurability(const ITEM* pItem, Script_Item* item_info, int Level)
@@ -1964,7 +1964,7 @@ void GetItemName(int iType, int iLevel, char* Text)
 		switch (iLevel)
 		{
 		case 0: sprintf(Text, "%s", GlobalText[100]); break; //Zen
-		case 1:	sprintf(Text, "%s", GlobalText[101]); break; //Trái tim
+		case 1:	sprintf(Text, "%s", GlobalText[101]); break; //TrÃ¡i tim
 		case 2:	sprintf(Text, "%s", ChaosEventName[p->Durability]); break;
 		}
 	}
@@ -1973,28 +1973,28 @@ void GetItemName(int iType, int iLevel, char* Text)
 		switch (iLevel)
 		{
 		case 0: sprintf(Text, "%s", p->Name); break;
-		case 1: sprintf(Text, "%s", GlobalText[105]); break; //Ngôi sao may m?n
-		case 2: sprintf(Text, "%s", GlobalText[106]); break; //Pháo hoa
-		case 3: sprintf(Text, "%s", GlobalText[107]); break; //Trái tim tình yêu
-		case 5: sprintf(Text, "%s", GlobalText[109]); break; //Huy chuong B?c
-		case 6: sprintf(Text, "%s", GlobalText[110]); break; //Huy chuong Vàng
-		case 7: sprintf(Text, "%s", GlobalText[111]); break; //H?p c?a Vua
+		case 1: sprintf(Text, "%s", GlobalText[105]); break; //NgÃ´i sao may máº¯n
+		case 2: sprintf(Text, "%s", GlobalText[106]); break; //PhÃ¡o hoa
+		case 3: sprintf(Text, "%s", GlobalText[107]); break; //TrÃ¡i tim tÃ¬nh yÃªu
+		case 5: sprintf(Text, "%s", GlobalText[109]); break; //Huy chÆ°Æ¡ng Báº¡c
+		case 6: sprintf(Text, "%s", GlobalText[110]); break; //Huy chÆ°Æ¡ng VÃ ng
+		case 7: sprintf(Text, "%s", GlobalText[111]); break; //Há»™p cá»§a Vua
 			break;
 		case 8:
 		case 9:
 		case 10:
 		case 11:
 		case 12:
-			sprintf(Text, "%s +%d", GlobalText[115], iLevel - 7);  //H?p Kundun
+			sprintf(Text, "%s +%d", GlobalText[115], iLevel - 7);  //Há»™p Kundun
 			break;
 		case 13:
-			sprintf(Text, GlobalText[117]); break; //Trái tim Chúa t?
+			sprintf(Text, GlobalText[117]); break; //TrÃ¡i tim ChÃºa tá»ƒ
 		case 14:
-			sprintf(Text, GlobalText[1650]); break; //Bình tang Mana
+			sprintf(Text, GlobalText[1650]); break; //BÃ¬nh tÄƒng Mana
 			break;
 
 		case 15:
-			sprintf(Text, GlobalText[1651]); break; //Bình tang HP
+			sprintf(Text, GlobalText[1651]); break; //BÃ¬nh tÄƒng HP
 			break;
 		}
 	}
@@ -2014,15 +2014,15 @@ void GetItemName(int iType, int iLevel, char* Text)
 		switch (iLevel)
 		{
 		case 0: sprintf(Text, "%s", p->Name); break;
-		case 1: sprintf(Text, "%s", GlobalText[1235]); break; //Huy hi?u Hoàng T?c
+		case 1: sprintf(Text, "%s", GlobalText[1235]); break; //Huy hiá»‡u HoÃ ng Tá»™c
 		}
 	}
 	else if (iType == ITEM_HELPER + 31)
 	{
 		switch (iLevel)
 		{
-		case 0: sprintf(Text, "%s %s", GlobalText[1187], p->Name); break; //Chi?n Mã
-		case 1: sprintf(Text, "%s %s", GlobalText[1214], p->Name); break; //Qu? Tinh
+		case 0: sprintf(Text, "%s %s", GlobalText[1187], p->Name); break; //Chiáº¿n MÃ£
+		case 1: sprintf(Text, "%s %s", GlobalText[1214], p->Name); break; //Quáº¡ Tinh
 		}
 	}
 	else if (iType == ITEM_POTION + 21)
@@ -4045,7 +4045,7 @@ bool IsStoreBan(ITEM* pItem)
 sItemAct Set_ItemActOption(int _nIndex, int _nOption)
 {
 	sItemAct	sItem;
-	// eITEM_PERSONALSHOP = °³ÀÎ»óÁ¡, eITEM_STORE = Ã¢°í, eITEM_TRADE = °Å·¡, eITEM_DROP = ¹ö¸®±â, eITEM_SELL = ÆÇ¸Å, eITEM_REPAIR = ¼ö¸®
+	// eITEM_PERSONALSHOP = Â°Â³Ã€ÃÂ»Ã³ÃÂ¡, eITEM_STORE = ÃƒÂ¢Â°Ã­, eITEM_TRADE = Â°Ã…Â·Â¡, eITEM_DROP = Â¹Ã¶Â¸Â®Â±Ã¢, eITEM_SELL = Ã†Ã‡Â¸Ã…, eITEM_REPAIR = Â¼Ã¶Â¸Â®
 	int	nItemOption[][eITEM_END] = { 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0, 0 };
 
 
@@ -5353,24 +5353,20 @@ bool IsStrifeMap(int nMapIndex)
 }
 
 unsigned int MarkColor[16];
-static GLuint g_GuildMarkTextureCache[MAX_MARKS][2] = { 0 };
-static unsigned int g_GuildMarkSignatureCache[MAX_MARKS][2] = { 0 };
-static bool g_GuildMarkTextureReady[MAX_MARKS][2] = { false };
 
-static unsigned int GetGuildMarkSignature(const BYTE* MarkBuffer, int PixelCount, bool blend)
+void CreateGuildMark(int nMarkIndex, bool blend)
 {
-	unsigned int hash = blend ? 2166136261u : 16777619u;
-	for (int i = 0; i < PixelCount; ++i)
+	BITMAP_t* b = &Bitmaps[BITMAP_GUILD];
+	int Width, Height;
+	Width = (int)b->Width;
+	Height = (int)b->Height;
+	BYTE* Buffer = b->Buffer.data();
+	int alpha = 128;
+	if (blend)
 	{
-		hash ^= (unsigned int)MarkBuffer[i];
-		hash *= 16777619u;
+		alpha = 0;
 	}
-	return hash;
-}
 
-static void BuildGuildMarkColors(bool blend)
-{
-	int alpha = blend ? 0 : 128;
 	for (int i = 0; i < 16; i++)
 	{
 		switch (i)
@@ -5425,65 +5421,23 @@ static void BuildGuildMarkColors(bool blend)
 			break;
 		}
 	}
-}
-
-void CreateGuildMark(int nMarkIndex, bool blend)
-{
-	if (nMarkIndex < 0 || nMarkIndex >= MAX_MARKS)
-	{
-		return;
-	}
-
-	BITMAP_t* b = &Bitmaps[BITMAP_GUILD];
-	int Width, Height;
-	Width = (int)b->Width;
-	Height = (int)b->Height;
-	BYTE* Buffer = b->Buffer.data();
-	if (Buffer == NULL || Width <= 0 || Height <= 0)
-	{
-		return;
-	}
-
-	const int blendIndex = blend ? 1 : 0;
-	const int pixelCount = Width * Height;
 	BYTE* MarkBuffer = GuildMark[nMarkIndex].Mark;
-	const unsigned int signature = GetGuildMarkSignature(MarkBuffer, pixelCount, blend);
 
-	if (g_GuildMarkTextureReady[nMarkIndex][blendIndex]
-		&& g_GuildMarkSignatureCache[nMarkIndex][blendIndex] == signature)
+	for (int i = 0; i < Height; i++)
 	{
-		b->TextureNumber = g_GuildMarkTextureCache[nMarkIndex][blendIndex];
-		glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
-		return;
+		for (int j = 0; j < Width; j++)
+		{
+			*((unsigned int*)(Buffer)) = MarkColor[MarkBuffer[0]];
+			Buffer += 4;
+			MarkBuffer++;
+		}
 	}
 
-	BuildGuildMarkColors(blend);
-	BYTE* WriteBuffer = Buffer;
-	for (int i = 0; i < pixelCount; ++i)
-	{
-		*((unsigned int*)(WriteBuffer)) = MarkColor[MarkBuffer[i]];
-		WriteBuffer += 4;
-	}
-
-	GLuint& textureNumber = g_GuildMarkTextureCache[nMarkIndex][blendIndex];
-	if (textureNumber == 0)
-	{
-		glGenTextures(1, &textureNumber);
-	}
-
-	b->TextureNumber = textureNumber;
 	glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexImage2D(GL_TEXTURE_2D, 0, b->Components, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 
-	g_GuildMarkSignatureCache[nMarkIndex][blendIndex] = signature;
-	g_GuildMarkTextureReady[nMarkIndex][blendIndex] = true;
+	glTexImage2D(GL_TEXTURE_2D, 0, b->Components, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 }
+
 void CreateCastleMark(int Type, BYTE* buffer, bool blend)
 {
 	if (buffer == NULL) return;
@@ -5520,37 +5474,37 @@ void CreateCastleMark(int Type, BYTE* buffer, bool blend)
 			break;
 		case 4:
 			MarkColor[i] = (255 << 24) + (0 << 16) + (0 << 8) + (255);
-			break;//»¡
+			break;//Â»Â¡
 		case 5:
 			MarkColor[i] = (255 << 24) + (0 << 16) + (128 << 8) + (255);
 			break;//
 		case 6:
 			MarkColor[i] = (255 << 24) + (0 << 16) + (255 << 8) + (255);
-			break;//³ë
+			break;//Â³Ã«
 		case 7:
 			MarkColor[i] = (255 << 24) + (0 << 16) + (255 << 8) + (128);
 			break;//
 		case 8:
 			MarkColor[i] = (255 << 24) + (0 << 16) + (255 << 8) + (0);
-			break;//ÃÊ
+			break;//ÃƒÃŠ
 		case 9:
 			MarkColor[i] = (255 << 24) + (128 << 16) + (255 << 8) + (0);
 			break;//
 		case 10:
 			MarkColor[i] = (255 << 24) + (255 << 16) + (255 << 8) + (0);
-			break;//Ã»
+			break;//ÃƒÂ»
 		case 11:
 			MarkColor[i] = (255 << 24) + (255 << 16) + (128 << 8) + (0);
 			break;//
 		case 12:
 			MarkColor[i] = (255 << 24) + (255 << 16) + (0 << 8) + (0);
-			break;//ÆÄ
+			break;//Ã†Ã„
 		case 13:
 			MarkColor[i] = (255 << 24) + (255 << 16) + (0 << 8) + (128);
 			break;//
 		case 14:
 			MarkColor[i] = (255 << 24) + (255 << 16) + (0 << 8) + (255);
-			break;//º¸
+			break;//ÂºÂ¸
 		case 15:
 			MarkColor[i] = (255 << 24) + (128 << 16) + (0 << 8) + (255);
 			break;//

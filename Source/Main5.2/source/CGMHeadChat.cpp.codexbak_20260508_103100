@@ -15,82 +15,6 @@
 
 #include "CGMFontLayer.h"
 
-struct HeadChatExtentCache {
-  bool Valid;
-  bool UseGmFont;
-  bool UseBoldFont;
-  unsigned int Hash;
-  char Text[256];
-  SIZE Size;
-  BOOL Result;
-};
-
-static HeadChatExtentCache g_HeadChatExtentCache[512];
-
-static unsigned int GetHeadChatTextHash(const char *text, bool useGmFont,
-                                        bool useBoldFont) {
-  unsigned int hash = 2166136261u;
-  const unsigned char *cursor = (const unsigned char *)text;
-  while (*cursor) {
-    hash ^= (unsigned int)(*cursor++);
-    hash *= 16777619u;
-  }
-  hash ^= useGmFont ? 0x9e3779b9u : 0u;
-  hash ^= useBoldFont ? 0x85ebca6bu : 0u;
-  return hash;
-}
-
-static BOOL GetCachedHeadChatTextExtent(const char *text, bool useGmFont,
-                                        bool useBoldFont, SIZE *size) {
-  if (size == NULL) {
-    return FALSE;
-  }
-
-  size->cx = 0;
-  size->cy = 0;
-
-  if (text == NULL || text[0] == '\0') {
-    return FALSE;
-  }
-
-  const unsigned int hash =
-      GetHeadChatTextHash(text, useGmFont, useBoldFont);
-  HeadChatExtentCache *cache =
-      &g_HeadChatExtentCache[hash % (sizeof(g_HeadChatExtentCache) /
-                                     sizeof(g_HeadChatExtentCache[0]))];
-
-  if (cache->Valid && cache->Hash == hash &&
-      cache->UseGmFont == useGmFont && cache->UseBoldFont == useBoldFont &&
-      strcmp(cache->Text, text) == 0) {
-    *size = cache->Size;
-    return cache->Result;
-  }
-
-  BOOL result = FALSE;
-  if (useGmFont) {
-    result = GMFontLayer->_GetTextExtentPoint32(text, lstrlen(text), size);
-  } else {
-    if (useBoldFont) {
-      g_pRenderText->SetFont(g_hFontBold);
-    }
-    result = g_pMultiLanguage->_GetTextExtentPoint32(
-        g_pRenderText->GetFontDC(), text, lstrlen(text), size);
-    if (useBoldFont) {
-      g_pRenderText->SetFont(g_hFont);
-    }
-  }
-
-  cache->Valid = true;
-  cache->UseGmFont = useGmFont;
-  cache->UseBoldFont = useBoldFont;
-  cache->Hash = hash;
-  strncpy(cache->Text, text, sizeof(cache->Text) - 1);
-  cache->Text[sizeof(cache->Text) - 1] = '\0';
-  cache->Size = *size;
-  cache->Result = result;
-  return result;
-}
-
 CGMHeadChat::CGMHeadChat() : Chat(MAX_CHAT) {}
 
 CGMHeadChat::~CGMHeadChat() {}
@@ -378,21 +302,23 @@ void CGMHeadChat::SetBooleanPosition(CHAT *c) {
     if (g_isCharacterBuff((&pCharacter->Object), eBuff_GMEffect) ||
         (pCharacter->CtlCode == CTLCODE_20OPERATOR) ||
         (pCharacter->CtlCode == CTLCODE_08OPERATOR)) {
-      bResult[0] =
-          GetCachedHeadChatTextExtent(c->ID, false, true, &Size[0]);
+      g_pRenderText->SetFont(g_hFontBold);
+      bResult[0] = g_pMultiLanguage->_GetTextExtentPoint32(
+          g_pRenderText->GetFontDC(), c->ID, lstrlen(c->ID), &Size[0]);
+      g_pRenderText->SetFont(g_hFont);
     } else {
-      bResult[0] =
-          GetCachedHeadChatTextExtent(c->ID, false, false, &Size[0]);
+      bResult[0] = g_pMultiLanguage->_GetTextExtentPoint32(
+          g_pRenderText->GetFontDC(), c->ID, lstrlen(c->ID), &Size[0]);
     }
 
-    bResult[1] =
-        GetCachedHeadChatTextExtent(c->Text[0], false, false, &Size[1]);
-    bResult[2] =
-        GetCachedHeadChatTextExtent(c->Text[1], false, false, &Size[2]);
-    bResult[3] =
-        GetCachedHeadChatTextExtent(c->Union, false, false, &Size[3]);
-    bResult[4] =
-        GetCachedHeadChatTextExtent(c->Guild, false, false, &Size[4]);
+    bResult[1] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Text[0], lstrlen(c->Text[0]), &Size[1]);
+    bResult[2] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Text[1], lstrlen(c->Text[1]), &Size[2]);
+    bResult[3] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Union, lstrlen(c->Union), &Size[3]);
+    bResult[4] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Guild, lstrlen(c->Guild), &Size[4]);
 
     Size[0].cx += 3;
 
@@ -410,15 +336,19 @@ void CGMHeadChat::SetBooleanPosition(CHAT *c) {
 
     if (lstrlen(c->szShopTitle) > 0) {
       SIZE sizeT[2];
+      g_pRenderText->SetFont(g_hFontBold);
 
-      if (GetCachedHeadChatTextExtent(c->szShopTitle, false, true,
-                                      &sizeT[0]) &&
-          GetCachedHeadChatTextExtent(GlobalText[1104], false, true,
-                                      &sizeT[1])) {
+      if (g_pMultiLanguage->_GetTextExtentPoint32(
+              g_pRenderText->GetFontDC(), c->szShopTitle,
+              lstrlen(c->szShopTitle), &sizeT[0]) &&
+          g_pMultiLanguage->_GetTextExtentPoint32(
+              g_pRenderText->GetFontDC(), GlobalText[1104],
+              lstrlen(GlobalText[1104]), &sizeT[1])) {
         if (c->Width < sizeT[0].cx + sizeT[1].cx)
           c->Width = sizeT[0].cx + sizeT[1].cx;
         c->Height += max(sizeT[0].cy, sizeT[1].cy);
       }
+      g_pRenderText->SetFont(g_hFont);
     }
   }
 #else
@@ -429,33 +359,35 @@ void CGMHeadChat::SetBooleanPosition(CHAT *c) {
   if (g_isCharacterBuff((&pCharacter->Object), eBuff_GMEffect) ||
       (pCharacter->CtlCode == CTLCODE_20OPERATOR) ||
       (pCharacter->CtlCode == CTLCODE_08OPERATOR)) {
-    bResult[0] =
-        GetCachedHeadChatTextExtent(c->ID, false, true, &Size[0]);
+    g_pRenderText->SetFont(g_hFontBold);
+    bResult[0] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->ID, lstrlen(c->ID), &Size[0]);
+    g_pRenderText->SetFont(g_hFont);
   } else {
-    bResult[0] =
-        GetCachedHeadChatTextExtent(c->ID, false, false, &Size[0]);
+    bResult[0] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->ID, lstrlen(c->ID), &Size[0]);
   }
 
   if (gmProtect->m_RenderCharacterName &&
       (pCharacter->GetKind() == KIND_PLAYER ||
        pCharacter->GetKind() == KIND_MONSTER)) {
-    bResult[1] =
-        GetCachedHeadChatTextExtent(c->Text[0], true, false, &Size[1]);
-    bResult[2] =
-        GetCachedHeadChatTextExtent(c->Text[1], true, false, &Size[2]);
-    bResult[3] =
-        GetCachedHeadChatTextExtent(c->Union, true, false, &Size[3]);
-    bResult[4] =
-        GetCachedHeadChatTextExtent(c->Guild, true, false, &Size[4]);
+    bResult[1] = GMFontLayer->_GetTextExtentPoint32(
+        c->Text[0], lstrlen(c->Text[0]), &Size[1]);
+    bResult[2] = GMFontLayer->_GetTextExtentPoint32(
+        c->Text[1], lstrlen(c->Text[1]), &Size[2]);
+    bResult[3] = GMFontLayer->_GetTextExtentPoint32(c->Union, lstrlen(c->Union),
+                                                    &Size[3]);
+    bResult[4] = GMFontLayer->_GetTextExtentPoint32(c->Guild, lstrlen(c->Guild),
+                                                    &Size[4]);
   } else {
-    bResult[1] =
-        GetCachedHeadChatTextExtent(c->Text[0], false, false, &Size[1]);
-    bResult[2] =
-        GetCachedHeadChatTextExtent(c->Text[1], false, false, &Size[2]);
-    bResult[3] =
-        GetCachedHeadChatTextExtent(c->Union, false, false, &Size[3]);
-    bResult[4] =
-        GetCachedHeadChatTextExtent(c->Guild, false, false, &Size[4]);
+    bResult[1] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Text[0], lstrlen(c->Text[0]), &Size[1]);
+    bResult[2] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Text[1], lstrlen(c->Text[1]), &Size[2]);
+    bResult[3] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Union, lstrlen(c->Union), &Size[3]);
+    bResult[4] = g_pMultiLanguage->_GetTextExtentPoint32(
+        g_pRenderText->GetFontDC(), c->Guild, lstrlen(c->Guild), &Size[4]);
   }
 
   Size[0].cx += 3;
@@ -474,14 +406,19 @@ void CGMHeadChat::SetBooleanPosition(CHAT *c) {
 
   if (lstrlen(c->szShopTitle) > 0) {
     SIZE sizeT[2];
+    g_pRenderText->SetFont(g_hFontBold);
 
-    if (GetCachedHeadChatTextExtent(c->szShopTitle, false, true, &sizeT[0]) &&
-        GetCachedHeadChatTextExtent(GlobalText[1104], false, true,
-                                    &sizeT[1])) {
+    if (g_pMultiLanguage->_GetTextExtentPoint32(
+            g_pRenderText->GetFontDC(), c->szShopTitle, lstrlen(c->szShopTitle),
+            &sizeT[0]) &&
+        g_pMultiLanguage->_GetTextExtentPoint32(
+            g_pRenderText->GetFontDC(), GlobalText[1104],
+            lstrlen(GlobalText[1104]), &sizeT[1])) {
       if (c->Width < sizeT[0].cx + sizeT[1].cx)
         c->Width = sizeT[0].cx + sizeT[1].cx;
       c->Height += max(sizeT[0].cy, sizeT[1].cy);
     }
+    g_pRenderText->SetFont(g_hFont);
   }
 #endif // PLAYER_INFO_SYSTEM
 }
@@ -787,7 +724,7 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
     SIZE nameSize = { 0 };
     if (pCharacter->GetKind() == KIND_PLAYER &&
         MODEL_PLAYER == pCharacter->Object.Type) {
-      GetCachedHeadChatTextExtent(c->ID, true, false, &nameSize);
+      GMFontLayer->_GetTextExtentPoint32(c->ID, lstrlen(c->ID), &nameSize);
     }
 
     // 1. Calculate Name Row width to center it as a single block
