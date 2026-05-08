@@ -9090,7 +9090,14 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 	}
 
 	if (byRender == CHARACTER_ANIMATION)
-		Calc_ObjectAnimation(o, Translate, Select);
+	{
+		const bool reuseCrowdPose = IsCrowdPlayerObject(c, o)
+			&& !ShouldUpdateCrowdPoseThisFrame(o, 17u);
+		if (!reuseCrowdPose)
+		{
+			Calc_ObjectAnimation(o, Translate, Select);
+		}
+	}
 
 	if (g_pOption->GetRenderEffect() == true)
 	{
