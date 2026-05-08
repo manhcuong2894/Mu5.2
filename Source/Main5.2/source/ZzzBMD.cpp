@@ -68,6 +68,24 @@ float ParentMatrix[3][4];
 static vec3_t LightVector = { 0.f, -0.1f, -0.8f };
 static vec3_t LightVector2 = { 0.f, -0.5f, -0.8f };
 static unsigned int g_uiGpuAssistTransformSerialCounter = 1;
+static GLuint g_uiGpuAssistActiveProgram = 0;
+static GLuint g_uiGpuAssistActiveVao = 0;
+
+static void FlushGpuAssistState()
+{
+#ifdef SHADER_VERSION_TEST
+	if (g_uiGpuAssistActiveVao != 0)
+	{
+		glBindVertexArray(0);
+		g_uiGpuAssistActiveVao = 0;
+	}
+	if (g_uiGpuAssistActiveProgram != 0)
+	{
+		glUseProgram(0);
+		g_uiGpuAssistActiveProgram = 0;
+	}
+#endif // SHADER_VERSION_TEST
+}
 
 PART_RENDER_PERF_STATS g_PartRenderPerfStats;
 static int g_iActivePartPerfCategory = -1;
@@ -1402,6 +1420,7 @@ void BMD::BeginRender(float Alpha)
 
 void BMD::EndRender()
 {
+	FlushGpuAssistState();
 	glPopMatrix();
 }
 
@@ -1930,6 +1949,8 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						if (flagReject >= 0 && flagReject < PART_GPU_FLAG_MAX)
 							g_PartRenderPerfStats.Bucket[partPerfCategory].FlagReject[flagReject]++;
 					}
+
+					FlushGpuAssistState();
 
 					if (m_bGpuAssistTransformReady && !m_bGpuAssistCpuDataReady)
 					{
@@ -3918,7 +3939,11 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 	const float bodyLight1 = (shaderLighting || renderMode != 0) ? BodyLight[1] : currentColor[1];
 	const float bodyLight2 = (shaderLighting || renderMode != 0) ? BodyLight[2] : currentColor[2];
 
-	gShaderGL->RenderShader(CShaderGL::SHADER_CHARACTER);
+	if (g_uiGpuAssistActiveProgram != program)
+	{
+		glUseProgram(program);
+		g_uiGpuAssistActiveProgram = program;
+	}
 	glUniform1i(sUniforms.Texture1, 0);
 	glUniform1f(sUniforms.Alpha, alpha);
 	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
@@ -3938,10 +3963,12 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, float alpha, float te
 		sUploadedNumBones = NumBones;
 	}
 
-	glBindVertexArray(m->VAO);
+	if (g_uiGpuAssistActiveVao != m->VAO)
+	{
+		glBindVertexArray(m->VAO);
+		g_uiGpuAssistActiveVao = m->VAO;
+	}
 	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
-	glBindVertexArray(0);
-	glUseProgram(0);
 #endif // SHADER_VERSION_TEST
 }
 
