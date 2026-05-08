@@ -25,10 +25,6 @@ vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
 EFFECT_RENDER_PERF_STATS g_EffectRenderPerfStats;
 
-static const int EFFECT_PERF_TYPE_MAX = 4096;
-static int g_EffectSpriteCpuTypeCount[EFFECT_PERF_TYPE_MAX];
-static int g_EffectParticleCreateTypeCount[EFFECT_PERF_TYPE_MAX];
-static int g_EffectParticleCpuTypeCount[EFFECT_PERF_TYPE_MAX];
 
 void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset)
 {
@@ -39,34 +35,16 @@ void ZzzPerfSnapshotEffectStats(EFFECT_RENDER_PERF_STATS* OutStats, bool Reset)
 	if (Reset)
 	{
 		memset(&g_EffectRenderPerfStats, 0, sizeof(EFFECT_RENDER_PERF_STATS));
-		memset(g_EffectSpriteCpuTypeCount, 0, sizeof(g_EffectSpriteCpuTypeCount));
-		memset(g_EffectParticleCreateTypeCount, 0, sizeof(g_EffectParticleCreateTypeCount));
-		memset(g_EffectParticleCpuTypeCount, 0, sizeof(g_EffectParticleCpuTypeCount));
 	}
 }
 
 void ZzzPerfAddTopType(int Type, int TypeList[4], int CountList[4])
 {
-	if (Type < 0 || Type >= EFFECT_PERF_TYPE_MAX)
-		return;
-
-	int* sourceCounts = NULL;
-	if (TypeList == g_EffectRenderPerfStats.SpriteCpuType)
-		sourceCounts = g_EffectSpriteCpuTypeCount;
-	else if (TypeList == g_EffectRenderPerfStats.ParticleCreateType)
-		sourceCounts = g_EffectParticleCreateTypeCount;
-	else if (TypeList == g_EffectRenderPerfStats.ParticleCpuType)
-		sourceCounts = g_EffectParticleCpuTypeCount;
-
-	if (sourceCounts == NULL)
-		return;
-
-	const int count = ++sourceCounts[Type];
 	for (int i = 0; i < 4; ++i)
 	{
 		if (TypeList[i] == Type)
 		{
-			CountList[i] = count;
+			CountList[i]++;
 			return;
 		}
 	}
@@ -78,11 +56,8 @@ void ZzzPerfAddTopType(int Type, int TypeList[4], int CountList[4])
 			slot = i;
 	}
 
-	if (count > CountList[slot])
-	{
-		TypeList[slot] = Type;
-		CountList[slot] = count;
-	}
+	TypeList[slot] = Type;
+	CountList[slot] = 1;
 }
 
 static const int PARTICLE_HERO_WING_RESERVE = 512;
