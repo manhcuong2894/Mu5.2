@@ -378,7 +378,8 @@ static bool ShouldRenderHighCostEquipmentFx(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 {
-	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15)
+	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15
+		&& !IsCrowdPlayerObject(c, o))
 	{
 		return true;
 	}
@@ -7630,7 +7631,7 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 
 	const bool isPlus15Item = (Level >= 15);
 	const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
-	const int adaptiveFxRenderLevelCap = isPlus15Item ? -1 : GetCrowdAdaptiveEquipmentFxCap(c, pObject, Type);
+	const int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, pObject, Type);
 
 	if (adaptiveFxRenderLevelCap >= 0)
 	{
@@ -7641,12 +7642,12 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	pModel->ClearGpuAssist();
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 
-	if (!isPlus15Item && adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 2)
+	if (adaptiveFxRenderLevelCap >= 0 && adaptiveFxRenderLevelCap <= 2)
 	{
 		return;
 	}
 
-	if (!isPlus15Item && !ShouldRenderCrowdBrightEquipmentFx(c, pObject, Type))
+	if (!ShouldRenderCrowdBrightEquipmentFx(c, pObject, Type))
 	{
 		return;
 	}
