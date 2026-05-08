@@ -21,4 +21,4 @@ git diff
 Nếu Codex sửa code lung tung
 Quay lại trạng thái commit trước:
 
-git reset --hard
+git reset --hard b5dc50e
