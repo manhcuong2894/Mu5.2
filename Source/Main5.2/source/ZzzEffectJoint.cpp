@@ -16,6 +16,8 @@
 #include "CSPetSystem.h"
 #include "GMBattleCastle.h"
 #include "NewUISystem.h"
+#include "CGMCharacter.h"
+#include "ZzzScene.h"
 
 static const int JOINT_HERO_WING_RESERVE = 160;
 static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
@@ -23,30 +25,55 @@ static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
 static int g_iJointAllocCursor = 0;
 static int g_iPriorityJointAllocCursor = 0;
 
-static bool IsNearHeroJointPosition(const vec3_t position)
+static bool IsValidJointVec3(const vec3_t position)
 {
-	if (Hero == NULL)
+	return position != NULL && (UINT_PTR)position >= 0x10000;
+}
+
+static OBJECT* GetLiveHeroJointObject()
+{
+	if (SceneFlag != MAIN_SCENE || Hero == NULL || !CGMCharacter::IsInitialized())
+		return NULL;
+
+	const int heroIndex = gmCharacters->GetCharacterIndex(Hero);
+	if (heroIndex < 0 || heroIndex >= MAX_CHARACTERS_CLIENT)
+		return NULL;
+
+	CHARACTER* hero = gmCharacters->GetCharacter(heroIndex);
+	if (hero != Hero)
+		return NULL;
+
+	OBJECT* heroObject = &hero->Object;
+	if (!heroObject->Live || heroObject->Type != MODEL_PLAYER)
+		return NULL;
+
+	return heroObject;
+}
+
+static bool IsNearHeroJointPosition(const vec3_t position, const OBJECT* heroObject)
+{
+	if (!IsValidJointVec3(position) || heroObject == NULL)
 		return false;
 
-	const float dx = position[0] - Hero->Object.Position[0];
-	const float dy = position[1] - Hero->Object.Position[1];
-	const float dz = position[2] - Hero->Object.Position[2];
+	const float dx = position[0] - heroObject->Position[0];
+	const float dy = position[1] - heroObject->Position[1];
+	const float dz = position[2] - heroObject->Position[2];
 	return (dx * dx + dy * dy + dz * dz) <= (JOINT_HERO_WING_PRIORITY_RADIUS * JOINT_HERO_WING_PRIORITY_RADIUS);
 }
 
-static bool IsHeroOrWingJointTarget(OBJECT* target)
+static bool IsHeroOrWingJointTarget(OBJECT* target, const OBJECT* heroObject)
 {
-	if (target == NULL)
+	if (target == NULL || heroObject == NULL)
 		return false;
 
-	if (Hero != NULL && target == &Hero->Object)
+	if (target == heroObject)
 		return true;
 
-	if (Hero != NULL && target->Owner == &Hero->Object)
+	if (target->Owner == heroObject)
 		return true;
 
 	return target->Type >= MODEL_WING && target->Type < MODEL_HELPER
-		&& IsNearHeroJointPosition(target->Position);
+		&& IsNearHeroJointPosition(target->Position, heroObject);
 }
 
 static bool IsWingGlowJointType(int Type, int SubType)
@@ -67,8 +94,12 @@ static bool IsWingGlowJointType(int Type, int SubType)
 
 static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, const vec3_t TargetPosition, OBJECT* Target)
 {
-	return IsHeroOrWingJointTarget(Target)
-		|| (IsWingGlowJointType(Type, SubType) && (IsNearHeroJointPosition(Position) || IsNearHeroJointPosition(TargetPosition)));
+	const OBJECT* heroObject = GetLiveHeroJointObject();
+	if (heroObject == NULL)
+		return false;
+
+	return IsHeroOrWingJointTarget(Target, heroObject)
+		|| (IsWingGlowJointType(Type, SubType) && (IsNearHeroJointPosition(Position, heroObject) || IsNearHeroJointPosition(TargetPosition, heroObject)));
 }
 
 
@@ -178,6 +209,11 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
 	g_EffectRenderPerfStats.JointCreate++;
+	if (!IsValidJointVec3(Position) || !IsValidJointVec3(TargetPosition) || !IsValidJointVec3(Angle))
+	{
+		return;
+	}
+
 	if (ShouldThrottleRemoteJoint(Type, SubType, Target))
 	{
 		g_EffectRenderPerfStats.JointThrottled++;

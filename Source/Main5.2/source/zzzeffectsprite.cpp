@@ -15,6 +15,8 @@
 #include "WSClient.h"
 #include "NewUISystem.h"
 #include "CShaderGL.h"
+#include "CGMCharacter.h"
+#include "ZzzScene.h"
 
 
 OBJECT Sprites[MAX_SPRITES];
@@ -252,30 +254,55 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 static const int SPRITE_HERO_WING_RESERVE = 256;
 static const float HERO_WING_PRIORITY_RADIUS = 220.f;
 
-static bool IsNearHeroSpritePosition(const vec3_t position)
+static bool IsValidSpriteVec3(const vec3_t position)
 {
-	if (Hero == NULL)
+	return position != NULL && (UINT_PTR)position >= 0x10000;
+}
+
+static OBJECT* GetLiveHeroSpriteObject()
+{
+	if (SceneFlag != MAIN_SCENE || Hero == NULL || !CGMCharacter::IsInitialized())
+		return NULL;
+
+	const int heroIndex = gmCharacters->GetCharacterIndex(Hero);
+	if (heroIndex < 0 || heroIndex >= MAX_CHARACTERS_CLIENT)
+		return NULL;
+
+	CHARACTER* hero = gmCharacters->GetCharacter(heroIndex);
+	if (hero != Hero)
+		return NULL;
+
+	OBJECT* heroObject = &hero->Object;
+	if (!heroObject->Live || heroObject->Type != MODEL_PLAYER)
+		return NULL;
+
+	return heroObject;
+}
+
+static bool IsNearHeroSpritePosition(const vec3_t position, const OBJECT* heroObject)
+{
+	if (!IsValidSpriteVec3(position) || heroObject == NULL)
 		return false;
 
-	const float dx = position[0] - Hero->Object.Position[0];
-	const float dy = position[1] - Hero->Object.Position[1];
-	const float dz = position[2] - Hero->Object.Position[2];
+	const float dx = position[0] - heroObject->Position[0];
+	const float dy = position[1] - heroObject->Position[1];
+	const float dz = position[2] - heroObject->Position[2];
 	return (dx * dx + dy * dy + dz * dz) <= (HERO_WING_PRIORITY_RADIUS * HERO_WING_PRIORITY_RADIUS);
 }
 
-static bool IsHeroOrWingSpriteOwner(OBJECT* owner)
+static bool IsHeroOrWingSpriteOwner(OBJECT* owner, const OBJECT* heroObject)
 {
-	if (owner == NULL)
+	if (owner == NULL || heroObject == NULL)
 		return false;
 
-	if (Hero != NULL && owner == &Hero->Object)
+	if (owner == heroObject)
 		return true;
 
-	if (Hero != NULL && owner->Owner == &Hero->Object)
+	if (owner->Owner == heroObject)
 		return true;
 
 	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER
-		&& IsNearHeroSpritePosition(owner->Position);
+		&& IsNearHeroSpritePosition(owner->Position, heroObject);
 }
 
 static bool IsWingGlowSpriteType(int Type, int SubType)
@@ -298,8 +325,12 @@ static bool IsWingGlowSpriteType(int Type, int SubType)
 
 static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, OBJECT* Owner)
 {
-	return IsHeroOrWingSpriteOwner(Owner)
-		|| (IsWingGlowSpriteType(Type, SubType) && IsNearHeroSpritePosition(Position));
+	const OBJECT* heroObject = GetLiveHeroSpriteObject();
+	if (heroObject == NULL)
+		return false;
+
+	return IsHeroOrWingSpriteOwner(Owner, heroObject)
+		|| (IsWingGlowSpriteType(Type, SubType) && IsNearHeroSpritePosition(Position, heroObject));
 }
 
 extern int g_iCrowdVisiblePlayerCount;
@@ -368,6 +399,9 @@ static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
 int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
 {
 	g_EffectRenderPerfStats.SpriteCreate++;
+	if (!IsValidSpriteVec3(Position) || !IsValidSpriteVec3(Light))
+		return false;
+
 	if (ShouldThrottleRemoteSprite(Type, SubType, Owner))
 	{
 		g_EffectRenderPerfStats.SpriteThrottled++;
