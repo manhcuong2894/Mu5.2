@@ -947,6 +947,98 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 #endif // SHADER_VERSION_TEST
 }
 
+static int GetGpuAssistCachedMeshRejectReason(const BMD* Model, Mesh_t* Mesh, int renderFlag, int resolvedRenderFlag, int* renderModeOut)
+{
+#ifdef SHADER_VERSION_TEST
+	if (renderModeOut != NULL)
+		*renderModeOut = 0;
+
+	if (Model == NULL)
+		return PART_GPU_REJECT_OFF;
+
+	if (!Model->m_bGpuAssistRequested || !gShaderGL->IsGpuAssistEnabled())
+		return PART_GPU_REJECT_OFF;
+
+	if (!Model->m_bGpuAssistTransformReady || Model->m_pGpuAssistBoneMatrices == NULL)
+		return PART_GPU_REJECT_OFF;
+
+	if ((!Model->m_bGpuAssistBodyPath && !Model->m_bGpuAssistAttachmentPath))
+		return PART_GPU_REJECT_TYPE;
+
+	if (Model->m_fGpuAssistScale != 0.0f)
+		return PART_GPU_REJECT_SCALE;
+
+	if (Mesh == NULL)
+		return GetGpuAssistMeshRejectReason(Model, Mesh, renderFlag, resolvedRenderFlag, false, false);
+
+	if (Mesh->GpuAssistCacheRenderFlag == renderFlag
+		&& Mesh->GpuAssistCacheResolvedRenderFlag == resolvedRenderFlag
+		&& Mesh->GpuAssistCacheVao == Mesh->VAO
+		&& Mesh->GpuAssistCacheVertexCount == Mesh->GpuVertexCount)
+	{
+		if (renderModeOut != NULL)
+			*renderModeOut = Mesh->GpuAssistCacheRenderMode;
+		return Mesh->GpuAssistCacheRejectReason;
+	}
+
+	int rejectReason = PART_GPU_REJECT_NONE;
+	int renderMode = 0;
+
+	if (Mesh->VAO == 0 || Mesh->GpuVertexCount <= 0)
+	{
+		rejectReason = PART_GPU_REJECT_MESH;
+	}
+	else
+	{
+		renderMode = (resolvedRenderFlag == RENDER_BRIGHT && (renderFlag & RENDER_BRIGHT)) ? 10 : GetGpuAssistRenderMode(renderFlag);
+		const bool isChromeMode = (renderMode > 0 && renderMode != 10);
+		const bool isBrightOnlyMode = (renderMode == 10);
+
+		if (resolvedRenderFlag != RENDER_TEXTURE && !isChromeMode && !isBrightOnlyMode)
+		{
+			rejectReason = PART_GPU_REJECT_FLAG;
+		}
+		else
+		{
+			const int gpuSafeStateFlags = RENDER_TEXTURE | RENDER_BRIGHT | RENDER_DARK | RENDER_NODEPTH |
+				RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
+				RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
+				RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
+				RENDER_METAL | RENDER_WAVE;
+			if ((renderFlag & ~gpuSafeStateFlags)
+				|| ((renderFlag & RENDER_WAVE) && resolvedRenderFlag != RENDER_TEXTURE)
+				|| (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP | RENDER_SHADOWMAP)))
+			{
+				rejectReason = PART_GPU_REJECT_FLAG;
+			}
+			else if (!gShaderGL->CheckedShader(CShaderGL::SHADER_CHARACTER))
+			{
+				rejectReason = PART_GPU_REJECT_SHADER;
+			}
+		}
+	}
+
+	Mesh->GpuAssistCacheRenderFlag = renderFlag;
+	Mesh->GpuAssistCacheResolvedRenderFlag = resolvedRenderFlag;
+	Mesh->GpuAssistCacheVao = Mesh->VAO;
+	Mesh->GpuAssistCacheVertexCount = Mesh->GpuVertexCount;
+	Mesh->GpuAssistCacheRejectReason = rejectReason;
+	Mesh->GpuAssistCacheRenderMode = renderMode;
+
+	if (renderModeOut != NULL)
+		*renderModeOut = renderMode;
+
+	return rejectReason;
+#else
+	UNREFERENCED_PARAMETER(Model);
+	UNREFERENCED_PARAMETER(Mesh);
+	UNREFERENCED_PARAMETER(renderFlag);
+	UNREFERENCED_PARAMETER(resolvedRenderFlag);
+	UNREFERENCED_PARAMETER(renderModeOut);
+	return PART_GPU_REJECT_OFF;
+#endif // SHADER_VERSION_TEST
+}
+
 bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enableWave, bool enableLight) const
 {
 	return GetGpuAssistMeshRejectReason(this, NULL, renderFlag, resolvedRenderFlag, enableWave, enableLight) == PART_GPU_REJECT_NONE;
@@ -2186,10 +2278,10 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 
 #ifdef SHADER_VERSION_TEST
 					const int partPerfCategory = ZzzPerfGetActivePartCategory();
-					const int partGpuReject = GetGpuAssistMeshRejectReason(this, m, RenderFlag, renderFlags, EnableWave, EnableLight);
+					int gpuRenderMode = 0;
+					const int partGpuReject = GetGpuAssistCachedMeshRejectReason(this, m, RenderFlag, renderFlags, &gpuRenderMode);
 					if (partGpuReject == PART_GPU_REJECT_NONE)
 					{
-						const int gpuRenderMode = (renderFlags == RENDER_BRIGHT && (RenderFlag & RENDER_BRIGHT)) ? 10 : GetGpuAssistRenderMode(RenderFlag);
 						const bool gpuChromeOffset = (gpuRenderMode == 4 || gpuRenderMode == 8);
 						ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, true, PART_GPU_REJECT_NONE);
 						RenderMeshGpuAssist(m, EnableLight, (RenderFlag & RENDER_WAVE) != 0, Alpha,

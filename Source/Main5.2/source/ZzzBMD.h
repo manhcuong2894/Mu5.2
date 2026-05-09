@@ -237,6 +237,12 @@ typedef struct _Mesh_t
 	GLuint VBO_VertexNodes, VBO_NormalNodes;
 	GLuint VBO_SourceVertexIndices;
 	int GpuVertexCount;
+	int GpuAssistCacheRenderFlag;
+	int GpuAssistCacheResolvedRenderFlag;
+	GLuint GpuAssistCacheVao;
+	int GpuAssistCacheVertexCount;
+	int GpuAssistCacheRejectReason;
+	int GpuAssistCacheRenderMode;
 
 	_Mesh_t()
 	{
@@ -270,6 +276,12 @@ typedef struct _Mesh_t
 		VBO_NormalNodes = 0;
 		VBO_SourceVertexIndices = 0;
 		GpuVertexCount = 0;
+		GpuAssistCacheRenderFlag = -1;
+		GpuAssistCacheResolvedRenderFlag = -1;
+		GpuAssistCacheVao = 0;
+		GpuAssistCacheVertexCount = 0;
+		GpuAssistCacheRejectReason = PART_GPU_REJECT_OFF;
+		GpuAssistCacheRenderMode = 0;
 	}
 
 } Mesh_t;
