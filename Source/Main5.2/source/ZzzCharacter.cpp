@@ -671,7 +671,12 @@ static void RenderCrowdManagedBodyPart(CHARACTER* c, OBJECT* o, int Type, PART_t
 	int ItemLevel, int Option1, int ExtOption, bool GlobalTransform, bool HideSkin, bool Translate, int Select, int RenderType = RENDER_TEXTURE)
 {
 	const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
-	const int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, o, Type);
+	int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, o, Type);
+
+	if (IsCrowdPlayerObject(c, o) && g_iCrowdVisiblePlayerCount >= 45)
+	{
+		adaptiveFxRenderLevelCap = 0;
+	}
 
 	if (adaptiveFxRenderLevelCap >= 0)
 	{
