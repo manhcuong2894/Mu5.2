@@ -272,13 +272,18 @@ static bool IsGpuAssistEligibleLinkedArmorFxModel(int modelType)
 	return modelType >= MODEL_15GRADE_ARMOR_OBJ_ARMLEFT && modelType <= MODEL_15GRADE_ARMOR_OBJ_PANTRIGHT;
 }
 
+static bool IsGpuAssistEligibleNpcBodyPartModel(int modelType)
+{
+	return modelType >= MODEL_MERCHANT_FEMALE_HEAD && modelType < MODEL_NPC_SEVINA;
+}
+
 int ZzzPerfClassifyPartType(int Type)
 {
 	if (IsGpuAssistEligibleLinkedWeaponFxModel(Type))
 		return PART_RENDER_WEAPON;
 	if (Type >= MODEL_SWORD && Type < MODEL_HELM)
 		return PART_RENDER_WEAPON;
-	if (IsGpuAssistEligibleLinkedArmorFxModel(Type))
+	if (IsGpuAssistEligibleLinkedArmorFxModel(Type) || IsGpuAssistEligibleNpcBodyPartModel(Type))
 		return PART_RENDER_ARMOR;
 	if ((Type >= MODEL_HELM && Type < MODEL_WING) || (Type >= MODEL_HELM2 && Type < MODEL_EVENT))
 		return PART_RENDER_ARMOR;
@@ -468,7 +473,7 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	if (modelType >= MODEL_SWORD && modelType < MODEL_HELM)
 		return true;
 
-	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType))
+	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType) || IsGpuAssistEligibleNpcBodyPartModel(modelType))
 		return true;
 
 	if (modelType >= MODEL_HELM && modelType < MODEL_WING)
@@ -730,11 +735,12 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (!gShaderGL->IsGpuAssistEnabled())
 		return;
 
-	if (!IsGpuAssistEligibleObject(pObject))
-		return;
-
 	const bool isAttachmentModel = (!isBodyModel && IsGpuAssistEligibleAttachmentModel(modelType));
 	if (!isBodyModel && !isAttachmentModel)
+		return;
+
+	if (!IsGpuAssistEligibleObject(pObject)
+		&& !(isAttachmentModel && pObject != NULL && pObject->Kind == KIND_NPC))
 		return;
 
 	if (NumBones <= 0 || NumBones > MAX_BONES || NumMeshs <= 0)
