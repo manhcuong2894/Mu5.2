@@ -661,50 +661,9 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 
 static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
 {
-	if (!IsCrowdPlayerObject(c, o) || SceneFlag != MAIN_SCENE)
-	{
-		return false;
-	}
-
-	if (!ShouldUseCrowdSimplifiedRender(o))
-	{
-		return false;
-	}
-
-	const float dist2 = GetDistance2ToHero(o);
-
-	if (bodyPartIndex == BODYPART_GLOVES)
-	{
-		return true;
-	}
-
-	if (bodyPartIndex == BODYPART_BOOTS)
-	{
-		return true;
-	}
-
-	if (bodyPartIndex == BODYPART_PANTS)
-	{
-		if (g_iCrowdVisiblePlayerCount >= 80)
-		{
-			return dist2 > (105.0f * 105.0f);
-		}
-
-		if (g_iCrowdVisiblePlayerCount >= 70)
-		{
-			return dist2 > (150.0f * 150.0f);
-		}
-
-		return dist2 > (210.0f * 210.0f);
-	}
-
-	if (bodyPartIndex == BODYPART_HELM
-		&& g_iCrowdVisiblePlayerCount >= 80
-		&& c->BodyPart[BODYPART_HEAD].Type != -1)
-	{
-		return true;
-	}
-
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(o);
+	UNREFERENCED_PARAMETER(bodyPartIndex);
 	return false;
 }
 
