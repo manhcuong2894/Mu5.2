@@ -22,4 +22,4 @@ git diff
 Nếu Codex sửa code lung tung
 Quay lại trạng thái commit trước:
 
-git reset --hard 082dcd4
+git reset --hard 80db19c
