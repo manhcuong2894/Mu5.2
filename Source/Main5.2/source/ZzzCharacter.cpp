@@ -115,8 +115,6 @@ int g_iLimitAttackTime = 15;
 unsigned int g_uiCrowdAnimationFrameId = 0;
 int g_iRemotePlayerSpriteEffectBudget = -1;
 int g_iRemotePlayerSpriteEffectUsed = 0;
-int g_iRemotePlayerParticleEffectBudget = -1;
-int g_iRemotePlayerParticleEffectUsed = 0;
 int g_iRemotePlayerJointEffectBudget = -1;
 int g_iRemotePlayerJointEffectUsed = 0;
 static BYTE g_byCrowdEquipmentFxZone[MAX_CHARACTERS_CLIENT] = { 0 };
@@ -11693,35 +11691,29 @@ void RenderCharactersClient()
 
 	++g_uiCrowdAnimationFrameId;
 	g_iRemotePlayerSpriteEffectUsed = 0;
-	g_iRemotePlayerParticleEffectUsed = 0;
 	g_iRemotePlayerJointEffectUsed = 0;
 	g_iRemotePlayerSpriteEffectBudget = -1;
-	g_iRemotePlayerParticleEffectBudget = -1;
 	g_iRemotePlayerJointEffectBudget = -1;
 
 	if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 160;
-		g_iRemotePlayerParticleEffectBudget = 120;
-		g_iRemotePlayerJointEffectBudget = 80;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 120;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 220;
-		g_iRemotePlayerParticleEffectBudget = 160;
-		g_iRemotePlayerJointEffectBudget = 110;
+		g_iRemotePlayerSpriteEffectBudget = 320;
+		g_iRemotePlayerJointEffectBudget = 160;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 45)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 300;
-		g_iRemotePlayerParticleEffectBudget = 220;
-		g_iRemotePlayerJointEffectBudget = 150;
+		g_iRemotePlayerSpriteEffectBudget = 480;
+		g_iRemotePlayerJointEffectBudget = 240;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 30)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 480;
-		g_iRemotePlayerParticleEffectBudget = 360;
-		g_iRemotePlayerJointEffectBudget = 240;
+		g_iRemotePlayerSpriteEffectBudget = 720;
+		g_iRemotePlayerJointEffectBudget = 360;
 	}
 
 	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)

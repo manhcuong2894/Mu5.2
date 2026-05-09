@@ -9195,7 +9195,7 @@ void RenderPartPerfWindow()
 		OtherPerf.TimeType[2], OtherPerf.TimeTypeMs[2], OtherPerf.TimeTypeCalls[2]);
 	g_pRenderText->RenderText(18, PerfY + 104, PerfText);
 
-	sprintf(PerfText, "EFX CRT S/P/J: %d/%d/%d OK %d/%d/%d THR %d/%d/%d",
+	sprintf(PerfText, "EFX CRT S/P/J: %d/%d/%d OK %d/%d/%d THR %d/%d",
 		s_EffectPerfSnapshot.SpriteCreate,
 		s_EffectPerfSnapshot.ParticleCreate,
 		s_EffectPerfSnapshot.JointCreate,
@@ -9203,7 +9203,6 @@ void RenderPartPerfWindow()
 		s_EffectPerfSnapshot.ParticleCreated,
 		s_EffectPerfSnapshot.JointCreated,
 		s_EffectPerfSnapshot.SpriteThrottled,
-		s_EffectPerfSnapshot.ParticleThrottled,
 		s_EffectPerfSnapshot.JointThrottled);
 	g_pRenderText->RenderText(18, PerfY + 117, PerfText);
 
