@@ -175,7 +175,21 @@ static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 	float farEnterDist = 380.0f;
 	float farExitDist = 440.0f;
 
-	if (g_iCrowdVisiblePlayerCount >= 60)
+	if (g_iCrowdVisiblePlayerCount >= 80)
+	{
+		fullEnterDist = 120.0f;
+		fullExitDist = 150.0f;
+		farEnterDist = 220.0f;
+		farExitDist = 260.0f;
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		fullEnterDist = 145.0f;
+		fullExitDist = 180.0f;
+		farEnterDist = 260.0f;
+		farExitDist = 310.0f;
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
 		fullEnterDist = 180.0f;
 		fullExitDist = 220.0f;
@@ -392,9 +406,21 @@ static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldUpdateCrowdPlus15TransientFxThisFrame(const CHARACTER* c, const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	return true;
+	if (!IsCrowdPlayerObject(c, o) || g_iCrowdVisiblePlayerCount < 24)
+	{
+		return true;
+	}
+
+	switch (GetCrowdEquipmentFxZone(c, o))
+	{
+	case CROWD_EQUIPMENT_FX_FULL:
+		return ShouldUpdateCrowdEquipmentFxThisFrame(o, 211u);
+	case CROWD_EQUIPMENT_FX_MID:
+		return ShouldUpdateCrowdEquipmentFxThisFrame(o, 307u);
+	case CROWD_EQUIPMENT_FX_FAR:
+	default:
+		return false;
+	}
 }
 
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
@@ -424,7 +450,11 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 
 	if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		if (dist2 > (520.0f * 520.0f))
+		if (g_iCrowdVisiblePlayerCount >= 80 && dist2 > (220.0f * 220.0f))
+		{
+			step = 12;
+		}
+		else if (dist2 > (520.0f * 520.0f))
 		{
 			step = 9;
 		}
@@ -584,15 +614,76 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 
 bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 {
-	UNREFERENCED_PARAMETER(o);
-	return false;
+	if (o == NULL || Hero == NULL || o == &Hero->Object)
+	{
+		return false;
+	}
+
+	if (SceneFlag != MAIN_SCENE || o->Kind != KIND_PLAYER || o->Type != MODEL_PLAYER)
+	{
+		return false;
+	}
+
+	if (g_iCrowdVisiblePlayerCount < 70)
+	{
+		return false;
+	}
+
+	const float dist2 = GetDistance2ToHero(o);
+	if (g_iCrowdVisiblePlayerCount >= 80)
+	{
+		return dist2 > (180.0f * 180.0f);
+	}
+
+	return dist2 > (260.0f * 260.0f);
 }
 
 bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 {
-	UNREFERENCED_PARAMETER(c);
-	UNREFERENCED_PARAMETER(o);
-	UNREFERENCED_PARAMETER(Type);
+	if (!IsCrowdPlayerObject(c, o) || SceneFlag != MAIN_SCENE)
+	{
+		return false;
+	}
+
+	if (g_iCrowdVisiblePlayerCount < 45)
+	{
+		return false;
+	}
+
+	const bool isWingOrHelper = IsCrowdWingOrHelperType(Type);
+	const bool isMainEquipment = (Type >= MODEL_SWORD && Type < MODEL_HELM);
+	const float dist2 = GetDistance2ToHero(o);
+
+	if (g_iCrowdVisiblePlayerCount >= 80)
+	{
+		if (isWingOrHelper && dist2 > (120.0f * 120.0f))
+		{
+			return true;
+		}
+
+		return !isMainEquipment && dist2 > (240.0f * 240.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		if (isWingOrHelper && dist2 > (180.0f * 180.0f))
+		{
+			return true;
+		}
+
+		return !isMainEquipment && dist2 > (320.0f * 320.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 60)
+	{
+		return isWingOrHelper && dist2 > (240.0f * 240.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 45)
+	{
+		return isWingOrHelper && dist2 > (340.0f * 340.0f);
+	}
+
 	return false;
 }
 
@@ -7104,6 +7195,11 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 	vec3_t Angle, p, Position;
 
 	OBJECT* pObject = &c->Object;
+	if (ShouldCullCrowdLinkedObject(c, pObject, Type))
+	{
+		return;
+	}
+
 	BMD* pModel = gmClientModels->GetModel(Type);
 
 	if (pModel == NULL
@@ -11695,25 +11791,30 @@ void RenderCharactersClient()
 	g_iRemotePlayerSpriteEffectBudget = -1;
 	g_iRemotePlayerJointEffectBudget = -1;
 
-	if (g_iCrowdVisiblePlayerCount >= 70)
+	if (g_iCrowdVisiblePlayerCount >= 80)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 260;
-		g_iRemotePlayerJointEffectBudget = 120;
+		g_iRemotePlayerSpriteEffectBudget = 140;
+		g_iRemotePlayerJointEffectBudget = 60;
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		g_iRemotePlayerSpriteEffectBudget = 190;
+		g_iRemotePlayerJointEffectBudget = 90;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 320;
-		g_iRemotePlayerJointEffectBudget = 160;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 130;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 45)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 480;
-		g_iRemotePlayerJointEffectBudget = 240;
+		g_iRemotePlayerSpriteEffectBudget = 380;
+		g_iRemotePlayerJointEffectBudget = 190;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 30)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 720;
-		g_iRemotePlayerJointEffectBudget = 360;
+		g_iRemotePlayerSpriteEffectBudget = 560;
+		g_iRemotePlayerJointEffectBudget = 280;
 	}
 
 	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)

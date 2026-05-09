@@ -164,6 +164,64 @@ static int GetCrowdHeadChatPositionStep(const OBJECT *object) {
   return 1;
 }
 
+static bool ShouldSkipCrowdHeadChatRender(const CHAT *chat,
+                                          CHARACTER *owner) {
+  if (!IsCrowdHeadChatOwner(chat, owner) || Hero == NULL) {
+    return false;
+  }
+
+  const float dist2 = GetHeadChatDistance2ToHero(&owner->Object);
+  const unsigned int bucket =
+      (unsigned int)(((UINT_PTR)&owner->Object >> 4) & 3u);
+
+  if (g_iCrowdVisiblePlayerCount >= 80) {
+    if (dist2 > (260.0f * 260.0f)) {
+      return true;
+    }
+    if (dist2 > (140.0f * 140.0f)) {
+      return bucket != 0u;
+    }
+  } else if (g_iCrowdVisiblePlayerCount >= 70) {
+    if (dist2 > (340.0f * 340.0f)) {
+      return true;
+    }
+    if (dist2 > (190.0f * 190.0f)) {
+      return bucket > 1u;
+    }
+  } else if (g_iCrowdVisiblePlayerCount >= 55) {
+    if (dist2 > (420.0f * 420.0f)) {
+      return true;
+    }
+    if (dist2 > (260.0f * 260.0f)) {
+      return bucket == 3u;
+    }
+  }
+
+  return false;
+}
+
+static bool ShouldCompactCrowdHeadChatDetails(CHARACTER *owner) {
+  if (owner == NULL || owner == Hero || Hero == NULL ||
+      SceneFlag != MAIN_SCENE || g_iCrowdVisiblePlayerCount < 45 ||
+      owner->GetKind() != KIND_PLAYER || owner->Object.Type != MODEL_PLAYER) {
+    return false;
+  }
+
+  const float dist2 = GetHeadChatDistance2ToHero(&owner->Object);
+
+  if (g_iCrowdVisiblePlayerCount >= 80) {
+    return dist2 > (100.0f * 100.0f);
+  }
+  if (g_iCrowdVisiblePlayerCount >= 70) {
+    return dist2 > (150.0f * 150.0f);
+  }
+  if (g_iCrowdVisiblePlayerCount >= 55) {
+    return dist2 > (220.0f * 220.0f);
+  }
+
+  return dist2 > (300.0f * 300.0f);
+}
+
 static bool HasHeadChatVectorChanged(const vec3_t a, const vec3_t b,
                                      float epsilon) {
   return fabsf(a[0] - b[0]) > epsilon || fabsf(a[1] - b[1]) > epsilon ||
@@ -708,6 +766,10 @@ void CGMHeadChat::RenderBooleans() {
     if (ci->IDLifeTime > 0 || ci->LifeTime[0] > 0) {
       CHARACTER *pCharacter = ci->Owner;
 
+      if (ShouldSkipCrowdHeadChatRender(ci, pCharacter)) {
+        continue;
+      }
+
       if (gmProtect->m_RenderCharacterName == 0 ||
           (gmProtect->m_RenderCharacterName &&
            !(pCharacter->GetKind() == KIND_PLAYER ||
@@ -889,6 +951,7 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
       (pCharacter->GetKind() == KIND_PLAYER ||
        pCharacter->GetKind() == KIND_MONSTER)) {
     bool bGmMode = false;
+    const bool compactCrowdName = ShouldCompactCrowdHeadChatDetails(pCharacter);
 
     iLineHeight = GMFontLayer->getmetrics();
 
@@ -932,7 +995,8 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
     // 1. Calculate Name Row width to center it as a single block
     int gensW = 0;
     int logoW = 0;
-    if (pCharacter->GetKind() == KIND_PLAYER && MODEL_PLAYER == pCharacter->Object.Type) {
+    if (!compactCrowdName &&
+        pCharacter->GetKind() == KIND_PLAYER && MODEL_PLAYER == pCharacter->Object.Type) {
       if (pCharacter->m_byGensInfluence != GENS_TYPE_NONE) {
         gensW = 24;
       }
@@ -980,13 +1044,13 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
 
     // --- Render Guild Row ---
     RenderPos.y -= (iLineHeight + 5); 
-    if (c->Guild && c->Guild[0]) {
+    if (!compactCrowdName && c->Guild && c->Guild[0]) {
       g_pRenderText->SetTextColor(pCharacter->GetRelationShipTextColor());
       GMFontLayer->RenderText(RenderPos.x, RenderPos.y, c->Guild, 0, iLineHeight, RT3_WRITE_CENTER);
     }
 
     // --- Render Union Row ---
-    if (c->Union && c->Union[0]) {
+    if (!compactCrowdName && c->Union && c->Union[0]) {
       RenderPos.y -= iLineHeight;
       g_pRenderText->SetTextColor(pCharacter->GetRelationShipTextColor());
       GMFontLayer->RenderText(RenderPos.x, RenderPos.y, c->Union, 0, iLineHeight, RT3_WRITE_CENTER);
