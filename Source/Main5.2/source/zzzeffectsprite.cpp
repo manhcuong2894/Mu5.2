@@ -90,13 +90,10 @@ static bool CanGpuBatchTransientSprite(const OBJECT* o)
 	if (o == NULL || o->Type == BITMAP_FORMATION_MARK)
 		return false;
 
-	if (!IsGpuBatchablePlayerSpriteOwner(o->Owner))
-		return false;
-
 	if (o->SubType < 0 || o->SubType > 3)
 		return false;
 
-	return IsGpuBatchableTransientSpriteType(o->Type);
+	return true;
 }
 
 static void EnableGpuSpriteBlendState(int subType)
@@ -216,31 +213,11 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
 		return false;
 
-	const int textureList[] =
+	for (int i = 0; i < MAX_SPRITES; ++i)
 	{
-		BITMAP_LIGHT,
-		BITMAP_LIGHT + 1,
-		BITMAP_LIGHT + 2,
-		BITMAP_SHINY,
-		BITMAP_SHINY + 1,
-		BITMAP_SHINY + 2,
-		BITMAP_SHINY + 3,
-		BITMAP_SHINY + 6,
-		BITMAP_SPARK,
-		BITMAP_SPARK + 1,
-		BITMAP_FLARE,
-		BITMAP_FLARE + 1,
-		BITMAP_LIGHTNING,
-		BITMAP_LIGHTNING + 1,
-		BITMAP_PIN_LIGHT,
-		BITMAP_MAGIC,
-	};
-	for (int textureIndex = 0; textureIndex < (int)(sizeof(textureList) / sizeof(textureList[0])); ++textureIndex)
-	{
-		for (int subType = 0; subType <= 3; ++subType)
-		{
-			RenderGpuSpriteTexture(textureList[textureIndex], subType, byRenderOneMore);
-		}
+		OBJECT* o = &Sprites[i];
+		if (ShouldRenderSpriteInPass(o, byRenderOneMore) && CanGpuBatchTransientSprite(o))
+			RenderGpuSpriteTexture(o->Type, o->SubType, byRenderOneMore);
 	}
 	return true;
 #else
