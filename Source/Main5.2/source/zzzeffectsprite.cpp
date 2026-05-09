@@ -93,13 +93,32 @@ static bool CanGpuBatchTransientSprite(const OBJECT* o)
 	if (!IsGpuBatchablePlayerSpriteOwner(o->Owner))
 		return false;
 
-	if (o->SubType != 0)
+	if (o->SubType < 0 || o->SubType > 3)
 		return false;
 
 	return IsGpuBatchableTransientSpriteType(o->Type);
 }
 
-static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
+static void EnableGpuSpriteBlendState(int subType)
+{
+	switch (subType)
+	{
+	case 1:
+		EnableAlphaBlendMinus();
+		break;
+	case 2:
+		EnableAlphaTest();
+		break;
+	case 3:
+		EnableAlphaBlend2();
+		break;
+	default:
+		EnableAlphaBlend();
+		break;
+	}
+}
+
+static bool RenderGpuSpriteTexture(int texture, int subType, BYTE byRenderOneMore)
 {
 #ifdef SHADER_VERSION_TEST
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
@@ -110,8 +129,11 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	for (int i = 0; i < MAX_SPRITES; ++i)
 	{
 		OBJECT* o = &Sprites[i];
-		if (!ShouldRenderSpriteInPass(o, byRenderOneMore) || !CanGpuBatchTransientSprite(o) || o->Type != texture)
+		if (!ShouldRenderSpriteInPass(o, byRenderOneMore) || !CanGpuBatchTransientSprite(o) ||
+			o->Type != texture || o->SubType != subType)
+		{
 			continue;
+		}
 
 		if (o->Visible)
 		{
@@ -145,7 +167,7 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	g_EffectRenderPerfStats.SpriteGpuPass++;
 	g_EffectRenderPerfStats.SpriteGpuRender += count;
 
-	EnableAlphaBlend();
+	EnableGpuSpriteBlendState(subType);
 	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
 	glUseProgram(program);
@@ -173,8 +195,8 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	for (int i = 0; i < MAX_SPRITES; ++i)
 	{
 		OBJECT* o = &Sprites[i];
-		if (ShouldRenderSpriteInPass(o, byRenderOneMore) && CanGpuBatchTransientSprite(o) && o->Type == texture &&
-			(byRenderOneMore == 0 || byRenderOneMore == 2))
+		if (ShouldRenderSpriteInPass(o, byRenderOneMore) && CanGpuBatchTransientSprite(o) &&
+			o->Type == texture && o->SubType == subType && (byRenderOneMore == 0 || byRenderOneMore == 2))
 		{
 			o->Live = false;
 		}
@@ -182,6 +204,7 @@ static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
 	return true;
 #else
 	UNREFERENCED_PARAMETER(texture);
+	UNREFERENCED_PARAMETER(subType);
 	UNREFERENCED_PARAMETER(byRenderOneMore);
 	return false;
 #endif // SHADER_VERSION_TEST
@@ -214,7 +237,10 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	};
 	for (int textureIndex = 0; textureIndex < (int)(sizeof(textureList) / sizeof(textureList[0])); ++textureIndex)
 	{
-		RenderGpuSpriteTexture(textureList[textureIndex], byRenderOneMore);
+		for (int subType = 0; subType <= 3; ++subType)
+		{
+			RenderGpuSpriteTexture(textureList[textureIndex], subType, byRenderOneMore);
+		}
 	}
 	return true;
 #else
