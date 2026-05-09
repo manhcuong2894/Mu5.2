@@ -2,6 +2,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include <cstddef>
 #include <vector>
 #include "ZzzOpenglUtil.h"
 #include "ZzzInfomation.h"
@@ -70,6 +71,13 @@ static vec3_t LightVector2 = { 0.f, -0.5f, -0.8f };
 static unsigned int g_uiGpuAssistTransformSerialCounter = 1;
 static GLuint g_uiGpuAssistActiveProgram = 0;
 static GLuint g_uiGpuAssistActiveVao = 0;
+static GLuint g_uiLegacyMeshStreamVao = 0;
+static GLuint g_uiLegacyMeshVertexVbo = 0;
+static GLuint g_uiLegacyMeshColorVbo = 0;
+static GLuint g_uiLegacyMeshTexCoordVbo = 0;
+static size_t g_uiLegacyMeshVertexBytes = 0;
+static size_t g_uiLegacyMeshColorBytes = 0;
+static size_t g_uiLegacyMeshTexCoordBytes = 0;
 
 static void FlushGpuAssistState()
 {
@@ -92,6 +100,94 @@ static void FlushGpuAssistState()
 void ZzzGpuAssistResetState()
 {
 	FlushGpuAssistState();
+}
+
+static bool IsLegacyMeshStreamAvailable()
+{
+#ifdef SHADER_VERSION_TEST
+	return (GLEW_VERSION_3_0 || GLEW_ARB_vertex_array_object) != GL_FALSE;
+#else
+	return false;
+#endif // SHADER_VERSION_TEST
+}
+
+static void UploadLegacyMeshStreamBuffer(GLuint* Buffer, size_t* CapacityBytes, size_t RequiredBytes, const void* Data)
+{
+	if (Buffer == NULL || CapacityBytes == NULL || RequiredBytes == 0 || Data == NULL)
+		return;
+
+	if (*Buffer == 0)
+		glGenBuffers(1, Buffer);
+
+	glBindBuffer(GL_ARRAY_BUFFER, *Buffer);
+	if (*CapacityBytes < RequiredBytes)
+	{
+		glBufferData(GL_ARRAY_BUFFER, RequiredBytes, Data, GL_STREAM_DRAW);
+		*CapacityBytes = RequiredBytes;
+	}
+	else
+	{
+		glBufferSubData(GL_ARRAY_BUFFER, 0, RequiredBytes, Data);
+	}
+}
+
+static bool RenderLegacyMeshStream(int DrawVertexCount, const vec3_t* Vertices, const vec4_t* Colors, const vec2_t* TexCoords, bool EnableColor, bool EnableTexCoord)
+{
+#ifdef SHADER_VERSION_TEST
+	if (DrawVertexCount <= 0 || Vertices == NULL || !IsLegacyMeshStreamAvailable())
+		return false;
+
+	if (EnableColor && Colors == NULL)
+		return false;
+	if (EnableTexCoord && TexCoords == NULL)
+		return false;
+
+	FlushGpuAssistState();
+
+	if (g_uiLegacyMeshStreamVao == 0)
+		glGenVertexArrays(1, &g_uiLegacyMeshStreamVao);
+
+	glBindVertexArray(g_uiLegacyMeshStreamVao);
+
+	UploadLegacyMeshStreamBuffer(&g_uiLegacyMeshVertexVbo, &g_uiLegacyMeshVertexBytes,
+		DrawVertexCount * sizeof(vec3_t), Vertices);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, 0);
+
+	if (EnableColor)
+	{
+		UploadLegacyMeshStreamBuffer(&g_uiLegacyMeshColorVbo, &g_uiLegacyMeshColorBytes,
+			DrawVertexCount * sizeof(vec4_t), Colors);
+		glEnableClientState(GL_COLOR_ARRAY);
+		glColorPointer(4, GL_FLOAT, 0, 0);
+	}
+
+	if (EnableTexCoord)
+	{
+		UploadLegacyMeshStreamBuffer(&g_uiLegacyMeshTexCoordVbo, &g_uiLegacyMeshTexCoordBytes,
+			DrawVertexCount * sizeof(vec2_t), TexCoords);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoordPointer(2, GL_FLOAT, 0, 0);
+	}
+
+	glDrawArrays(GL_TRIANGLES, 0, DrawVertexCount);
+
+	if (EnableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	if (EnableColor) glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	return true;
+#else
+	UNREFERENCED_PARAMETER(DrawVertexCount);
+	UNREFERENCED_PARAMETER(Vertices);
+	UNREFERENCED_PARAMETER(Colors);
+	UNREFERENCED_PARAMETER(TexCoords);
+	UNREFERENCED_PARAMETER(EnableColor);
+	UNREFERENCED_PARAMETER(EnableTexCoord);
+	return false;
+#endif // SHADER_VERSION_TEST
 }
 
 PART_RENDER_PERF_STATS g_PartRenderPerfStats;
@@ -2293,18 +2389,21 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 						const int drawVertexCount = (target_vertex_index + 1 < legacyDrawCount)
 							? target_vertex_index + 1 : legacyDrawCount;
 
-						glEnableClientState(GL_VERTEX_ARRAY);
-						if (enableColor) glEnableClientState(GL_COLOR_ARRAY);
-						if (enableTexCoord) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+						if (!RenderLegacyMeshStream(drawVertexCount, vertices, colors, textCoords, enableColor, enableTexCoord))
+						{
+							glEnableClientState(GL_VERTEX_ARRAY);
+							if (enableColor) glEnableClientState(GL_COLOR_ARRAY);
+							if (enableTexCoord) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
-						glVertexPointer(3, GL_FLOAT, 0, vertices);
-						if (enableColor) glColorPointer(4, GL_FLOAT, 0, colors);
-						if (enableTexCoord) glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
-						glDrawArrays(GL_TRIANGLES, 0, drawVertexCount);
+							glVertexPointer(3, GL_FLOAT, 0, vertices);
+							if (enableColor) glColorPointer(4, GL_FLOAT, 0, colors);
+							if (enableTexCoord) glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
+							glDrawArrays(GL_TRIANGLES, 0, drawVertexCount);
 
-						if (enableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-						if (enableColor) glDisableClientState(GL_COLOR_ARRAY);
-						glDisableClientState(GL_VERTEX_ARRAY);
+							if (enableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+							if (enableColor) glDisableClientState(GL_COLOR_ARRAY);
+							glDisableClientState(GL_VERTEX_ARRAY);
+						}
 					}
 				}
 			}
