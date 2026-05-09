@@ -294,6 +294,11 @@ static int GetCrowdEquipmentFxZone(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT* o, int Type)
 {
+	if (IsCrowdWingOrHelperType(Type))
+	{
+		return true;
+	}
+
 	switch (GetCrowdEquipmentFxZone(c, o))
 	{
 	case CROWD_EQUIPMENT_FX_FULL:
@@ -308,12 +313,17 @@ static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT*
 
 static int GetCrowdAdaptiveEquipmentFxCap(const CHARACTER* c, const OBJECT* o, int Type)
 {
+	if (IsCrowdWingOrHelperType(Type))
+	{
+		return -1;
+	}
+
 	switch (GetCrowdEquipmentFxZone(c, o))
 	{
 	case CROWD_EQUIPMENT_FX_FAR:
-		return IsCrowdWingOrHelperType(Type) ? 1 : 2;
+		return 2;
 	case CROWD_EQUIPMENT_FX_MID:
-		return IsCrowdWingOrHelperType(Type) ? 2 : 3;
+		return 3;
 	case CROWD_EQUIPMENT_FX_FULL:
 	default:
 		return -1;
@@ -650,38 +660,22 @@ bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 		return false;
 	}
 
-	const bool isWingOrHelper = IsCrowdWingOrHelperType(Type);
+	if (IsCrowdWingOrHelperType(Type))
+	{
+		return false;
+	}
+
 	const bool isMainEquipment = (Type >= MODEL_SWORD && Type < MODEL_HELM);
 	const float dist2 = GetDistance2ToHero(o);
 
 	if (g_iCrowdVisiblePlayerCount >= 80)
 	{
-		if (isWingOrHelper && dist2 > (120.0f * 120.0f))
-		{
-			return true;
-		}
-
 		return !isMainEquipment && dist2 > (240.0f * 240.0f);
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		if (isWingOrHelper && dist2 > (180.0f * 180.0f))
-		{
-			return true;
-		}
-
 		return !isMainEquipment && dist2 > (320.0f * 320.0f);
-	}
-
-	if (g_iCrowdVisiblePlayerCount >= 60)
-	{
-		return isWingOrHelper && dist2 > (240.0f * 240.0f);
-	}
-
-	if (g_iCrowdVisiblePlayerCount >= 45)
-	{
-		return isWingOrHelper && dist2 > (340.0f * 340.0f);
 	}
 
 	return false;
@@ -11793,28 +11787,28 @@ void RenderCharactersClient()
 
 	if (g_iCrowdVisiblePlayerCount >= 80)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 140;
-		g_iRemotePlayerJointEffectBudget = 60;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 120;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 190;
-		g_iRemotePlayerJointEffectBudget = 90;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 120;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 260;
-		g_iRemotePlayerJointEffectBudget = 130;
+		g_iRemotePlayerSpriteEffectBudget = 320;
+		g_iRemotePlayerJointEffectBudget = 160;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 45)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 380;
-		g_iRemotePlayerJointEffectBudget = 190;
+		g_iRemotePlayerSpriteEffectBudget = 480;
+		g_iRemotePlayerJointEffectBudget = 240;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 30)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 560;
-		g_iRemotePlayerJointEffectBudget = 280;
+		g_iRemotePlayerSpriteEffectBudget = 720;
+		g_iRemotePlayerJointEffectBudget = 360;
 	}
 
 	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)
