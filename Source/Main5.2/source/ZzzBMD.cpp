@@ -1973,7 +1973,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					bool EnableLight = LightEnable;
 					vec3_t gpuFallbackBodyLight;
 					VectorCopy(BodyLight, gpuFallbackBodyLight);
-					bool gpuFallbackBodyLightReady = false;
+					bool gpuFallbackBodyLightReady = true;
 
 					if (i == StreamMesh)
 					{
@@ -4211,10 +4211,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 
 	const bool shaderLighting = (enableLight && renderMode == 0);
 	GLfloat currentColor[4] = { fallbackBodyLight[0], fallbackBodyLight[1], fallbackBodyLight[2], alpha };
-	if (!shaderLighting && renderMode == 0 && !fallbackBodyLightReady)
-	{
-		glGetFloatv(GL_CURRENT_COLOR, currentColor);
-	}
+	UNREFERENCED_PARAMETER(fallbackBodyLightReady);
 
 	const float bodyLight0 = (shaderLighting || renderMode != 0) ? BodyLight[0] : currentColor[0];
 	const float bodyLight1 = (shaderLighting || renderMode != 0) ? BodyLight[1] : currentColor[1];
