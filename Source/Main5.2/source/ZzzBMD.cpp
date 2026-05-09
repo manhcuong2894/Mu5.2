@@ -262,10 +262,24 @@ static int GetGpuAssistOffRejectReason(const BMD* Model)
 #endif // SHADER_VERSION_TEST
 }
 
+static bool IsGpuAssistEligibleLinkedWeaponFxModel(int modelType)
+{
+	return modelType >= MODEL_SWORD_32_LEFT && modelType <= MODEL_SWORD_35_WING;
+}
+
+static bool IsGpuAssistEligibleLinkedArmorFxModel(int modelType)
+{
+	return modelType >= MODEL_15GRADE_ARMOR_OBJ_ARMLEFT && modelType <= MODEL_15GRADE_ARMOR_OBJ_PANTRIGHT;
+}
+
 int ZzzPerfClassifyPartType(int Type)
 {
+	if (IsGpuAssistEligibleLinkedWeaponFxModel(Type))
+		return PART_RENDER_WEAPON;
 	if (Type >= MODEL_SWORD && Type < MODEL_HELM)
 		return PART_RENDER_WEAPON;
+	if (IsGpuAssistEligibleLinkedArmorFxModel(Type))
+		return PART_RENDER_ARMOR;
 	if ((Type >= MODEL_HELM && Type < MODEL_WING) || (Type >= MODEL_HELM2 && Type < MODEL_EVENT))
 		return PART_RENDER_ARMOR;
 	if (Type >= MODEL_WING && Type < MODEL_HELPER)
@@ -448,7 +462,13 @@ static bool IsGpuAssistEligibleObject(const OBJECT* pObject)
 
 static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 {
+	if (IsGpuAssistEligibleLinkedWeaponFxModel(modelType))
+		return true;
+
 	if (modelType >= MODEL_SWORD && modelType < MODEL_HELM)
+		return true;
+
+	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType))
 		return true;
 
 	if (modelType >= MODEL_HELM && modelType < MODEL_WING)
