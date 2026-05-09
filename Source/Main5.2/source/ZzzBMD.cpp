@@ -924,7 +924,7 @@ bool BMD::CanUseGpuAssistMesh(int renderFlag, int resolvedRenderFlag, bool enabl
 void BMD::Transform(float(*BoneMatrix)[3][4], vec3_t BoundingBoxMin, vec3_t BoundingBoxMax, OBB_t* OBB, bool Translate, float _Scale)
 {
 #ifdef SHADER_VERSION_TEST
-	if (m_bGpuAssistRequested && BoneMatrix != NULL && _Scale == 0.0f)
+	if (m_bGpuAssistRequested && BoneMatrix != NULL && BoneScale == 1.f && _Scale == 0.0f)
 	{
 		m_pGpuAssistBoneMatrices = BoneMatrix;
 		m_bGpuAssistTransformReady = true;
