@@ -648,6 +648,50 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 	return dist2 > (260.0f * 260.0f);
 }
 
+static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
+{
+	if (!IsCrowdPlayerObject(c, o) || SceneFlag != MAIN_SCENE)
+	{
+		return false;
+	}
+
+	if (!ShouldUseCrowdSimplifiedRender(o))
+	{
+		return false;
+	}
+
+	if (bodyPartIndex == BODYPART_GLOVES || bodyPartIndex == BODYPART_BOOTS)
+	{
+		return true;
+	}
+
+	if (bodyPartIndex == BODYPART_HELM
+		&& g_iCrowdVisiblePlayerCount >= 80
+		&& c->BodyPart[BODYPART_HEAD].Type != -1)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static void RenderCrowdManagedBodyPart(CHARACTER* c, OBJECT* o, int Type, PART_t* p, vec3_t Light, float Alpha,
+	int ItemLevel, int Option1, int ExtOption, bool GlobalTransform, bool HideSkin, bool Translate, int Select, int RenderType = RENDER_TEXTURE)
+{
+	const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
+	const int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, o, Type);
+
+	if (adaptiveFxRenderLevelCap >= 0)
+	{
+		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
+	}
+
+	RenderPartObject(&c->Object, Type, p, Light, Alpha, ItemLevel, Option1, ExtOption,
+		GlobalTransform, HideSkin, Translate, Select, RenderType);
+
+	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
+}
+
 bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 {
 	if (!IsCrowdPlayerObject(c, o) || SceneFlag != MAIN_SCENE)
@@ -10144,6 +10188,11 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				PART_t* p = &c->BodyPart[i];
 				if (p->Type != -1)
 				{
+					if (ShouldSkipCrowdBodyPartLod(c, o, i))
+					{
+						continue;
+					}
+
 					int Type = p->Type;
 
 					if (c->GetBaseClass() == Summoner)
@@ -10191,9 +10240,9 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 					if (c->MonsterIndex >= 529 && c->MonsterIndex <= 539)
 					{
 						if (World == WD_65DOPPLEGANGER1)
-							RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select, RENDER_DOPPELGANGER | RENDER_TEXTURE);
+							RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select, RENDER_DOPPELGANGER | RENDER_TEXTURE);
 						else
-							RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select, RENDER_DOPPELGANGER | RENDER_BRIGHT | RENDER_TEXTURE);
+							RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select, RENDER_DOPPELGANGER | RENDER_BRIGHT | RENDER_TEXTURE);
 					}
 					else
 					{
@@ -10206,7 +10255,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 #ifdef PBG_MOD_RAGEFIGHTERSOUND
 							if (o->m_sTargetIndex < 0 || c->JumpTime>0)
 							{
-								RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select);
+								RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select);
 							}
 							else
 #endif //PBG_MOD_RAGEFIGHTERSOUND
@@ -10227,14 +10276,14 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 									BodyModel->Skin = c->GetSkinModelIndex();
 								}
 
-								RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, 0, 0, 0, false, false, Translate, Select);
+								RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, 0, 0, 0, false, false, Translate, Select);
 							}
 							else
 							{
 								if (GMItemMng->IsLuckyItem((Type - MODEL_ITEM)))
-									RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, MAX_MODELS, false, false, Translate, Select);
+									RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, MAX_MODELS, false, false, Translate, Select);
 								else
-									RenderPartObject(&c->Object, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select);
+									RenderCrowdManagedBodyPart(c, o, Type, p, c->Light, o->Alpha, p->Level << 3, p->Option1, p->ExtOption, false, false, Translate, Select);
 							}
 						}
 					}

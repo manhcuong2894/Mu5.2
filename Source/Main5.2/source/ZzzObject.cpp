@@ -11867,7 +11867,7 @@ void RenderPartObjectEffect(OBJECT* o, int Type, vec3_t Light, float Alpha, int 
 	{
 		renderLevel = g_iEquipmentFxRenderLevelCap;
 	}
-	if (isPlus15Item && renderLevel < 4)
+	if (isPlus15Item && renderLevel < 4 && g_iEquipmentFxRenderLevelCap < 0)
 	{
 		renderLevel = 4;
 	}
