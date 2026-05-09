@@ -31,6 +31,11 @@ struct GpuSpriteBillboard
 
 static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
 
+static bool IsValidSpriteObjectPointer(const OBJECT* object)
+{
+	return object != NULL && (UINT_PTR)object >= 0x10000;
+}
+
 static bool ShouldRenderSpriteInPass(const OBJECT* o, BYTE byRenderOneMore)
 {
 	if (o == NULL || !o->Live)
@@ -50,13 +55,13 @@ static bool ShouldRenderSpriteInPass(const OBJECT* o, BYTE byRenderOneMore)
 
 static bool IsGpuBatchablePlayerSpriteOwner(const OBJECT* owner)
 {
-	if (owner == NULL)
+	if (!IsValidSpriteObjectPointer(owner))
 		return false;
 
 	if (owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER)
 		return true;
 
-	return owner->Owner != NULL
+	return IsValidSpriteObjectPointer(owner->Owner)
 		&& owner->Owner->Kind == KIND_PLAYER
 		&& owner->Owner->Type == MODEL_PLAYER;
 }
@@ -292,7 +297,7 @@ static bool IsNearHeroSpritePosition(const vec3_t position, const OBJECT* heroOb
 
 static bool IsHeroOrWingSpriteOwner(OBJECT* owner, const OBJECT* heroObject)
 {
-	if (owner == NULL || heroObject == NULL)
+	if (!IsValidSpriteObjectPointer(owner) || heroObject == NULL)
 		return false;
 
 	if (owner == heroObject)
@@ -340,7 +345,7 @@ extern int g_iRemotePlayerSpriteEffectUsed;
 
 static bool IsRemotePlayerEffectOwner(OBJECT* owner)
 {
-	if (owner == NULL || Hero == NULL)
+	if (!IsValidSpriteObjectPointer(owner) || Hero == NULL)
 		return false;
 
 	if (owner == &Hero->Object || owner->Owner == &Hero->Object)
@@ -349,7 +354,7 @@ static bool IsRemotePlayerEffectOwner(OBJECT* owner)
 	if (owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER)
 		return true;
 
-	return owner->Owner != NULL
+	return IsValidSpriteObjectPointer(owner->Owner)
 		&& owner->Owner != &Hero->Object
 		&& owner->Owner->Kind == KIND_PLAYER
 		&& owner->Owner->Type == MODEL_PLAYER;
