@@ -121,6 +121,88 @@ static bool IsPriorityWingParticle(int Type, int SubType, const vec3_t Position,
 }
 
 
+extern int g_iRemotePlayerParticleEffectBudget;
+extern int g_iRemotePlayerParticleEffectUsed;
+
+static bool IsRemotePlayerParticleOwner(OBJECT* owner)
+{
+	if (owner == NULL || Hero == NULL)
+		return false;
+
+	if (owner == &Hero->Object || owner->Owner == &Hero->Object)
+		return false;
+
+	if (owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER)
+		return true;
+
+	return owner->Owner != NULL
+		&& owner->Owner != &Hero->Object
+		&& owner->Owner->Kind == KIND_PLAYER
+		&& owner->Owner->Type == MODEL_PLAYER;
+}
+
+static bool IsThrottleableRemoteParticle(int Type)
+{
+	switch (Type)
+	{
+	case BITMAP_LIGHT:
+	case BITMAP_LIGHT + 1:
+	case BITMAP_LIGHT + 2:
+	case BITMAP_LIGHT + 3:
+	case BITMAP_SHINY:
+	case BITMAP_SHINY + 1:
+	case BITMAP_SHINY + 2:
+	case BITMAP_SHINY + 3:
+	case BITMAP_SHINY + 6:
+	case BITMAP_SPARK:
+	case BITMAP_SPARK + 1:
+	case BITMAP_SPARK + 2:
+	case BITMAP_FLARE:
+	case BITMAP_FLARE + 1:
+	case BITMAP_FLARE_BLUE:
+	case BITMAP_BLUE_BLUR:
+	case BITMAP_TRUE_BLUE:
+	case BITMAP_FIRE:
+	case BITMAP_FIRE + 2:
+	case BITMAP_FIRE + 3:
+	case BITMAP_FIRE_HIK1:
+	case BITMAP_FIRE_HIK2_MONO:
+	case BITMAP_FIRE_HIK3:
+	case BITMAP_FIRE_CURSEDLICH:
+	case BITMAP_SMOKE:
+	case BITMAP_SMOKE + 1:
+	case BITMAP_SMOKE + 3:
+	case BITMAP_SMOKE + 4:
+	case BITMAP_LIGHTNING:
+	case BITMAP_LIGHTNING + 1:
+	case BITMAP_LIGHTNING_MEGA1:
+	case BITMAP_LIGHTNING_MEGA2:
+	case BITMAP_LIGHTNING_MEGA3:
+	case BITMAP_MAGIC:
+	case BITMAP_MAGIC + 1:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool ShouldThrottleRemoteParticle(int Type, int SubType, const vec3_t Position, OBJECT* Owner)
+{
+	if (!IsRemotePlayerParticleOwner(Owner) || !IsThrottleableRemoteParticle(Type))
+		return false;
+
+	if (IsPriorityWingParticle(Type, SubType, Position, Owner))
+		return false;
+
+	if (g_iRemotePlayerParticleEffectBudget < 0)
+		return false;
+
+	if (g_iRemotePlayerParticleEffectUsed >= g_iRemotePlayerParticleEffectBudget)
+		return true;
+
+	++g_iRemotePlayerParticleEffectUsed;
+	return false;
+}
 struct GpuParticleBillboard
 {
 	vec3_t Center;
@@ -480,6 +562,11 @@ int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int Su
 {
 	g_EffectRenderPerfStats.ParticleCreate++;
 	ZzzPerfAddTopType(Type, g_EffectRenderPerfStats.ParticleCreateType, g_EffectRenderPerfStats.ParticleCreateTypeCount);
+	if (ShouldThrottleRemoteParticle(Type, SubType, Position, Owner))
+	{
+		g_EffectRenderPerfStats.ParticleThrottled++;
+		return false;
+	}
 
 	const bool priorityEffect = IsPriorityWingParticle(Type, SubType, Position, Owner);
 	const int searchLimit = priorityEffect ? MAX_PARTICLES : (MAX_PARTICLES - PARTICLE_HERO_WING_RESERVE);

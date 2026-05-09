@@ -23,6 +23,7 @@ typedef struct
 	int SpriteCpuTypeCount[4];
 	int ParticleCreate;
 	int ParticleCreated;
+	int ParticleThrottled;
 	int ParticleLive;
 	int ParticleCpuRender;
 	int ParticleGpuRender;
