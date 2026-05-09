@@ -673,11 +673,6 @@ static void RenderCrowdManagedBodyPart(CHARACTER* c, OBJECT* o, int Type, PART_t
 	const int previousFxRenderLevelCap = g_iEquipmentFxRenderLevelCap;
 	int adaptiveFxRenderLevelCap = GetCrowdAdaptiveEquipmentFxCap(c, o, Type);
 
-	if (IsCrowdPlayerObject(c, o) && g_iCrowdVisiblePlayerCount >= 45)
-	{
-		adaptiveFxRenderLevelCap = 0;
-	}
-
 	if (adaptiveFxRenderLevelCap >= 0)
 	{
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;

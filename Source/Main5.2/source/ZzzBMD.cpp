@@ -82,13 +82,18 @@ static size_t g_uiLegacyMeshTexCoordBytes = 0;
 static void FlushGpuAssistState()
 {
 #ifdef SHADER_VERSION_TEST
+	if (g_uiGpuAssistActiveVao == 0 && g_uiGpuAssistActiveProgram == 0)
+	{
+		return;
+	}
+
 	if (g_uiGpuAssistActiveVao != 0)
 	{
 		glBindVertexArray(0);
 		g_uiGpuAssistActiveVao = 0;
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	if (g_uiGpuAssistActiveProgram != 0)
 	{
 		glUseProgram(0);
