@@ -48,7 +48,41 @@ static bool ShouldRenderSpriteInPass(const OBJECT* o, BYTE byRenderOneMore)
 
 static bool IsGpuBatchablePlayerSpriteOwner(const OBJECT* owner)
 {
-	return owner != NULL && owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER;
+	if (owner == NULL)
+		return false;
+
+	if (owner->Kind == KIND_PLAYER && owner->Type == MODEL_PLAYER)
+		return true;
+
+	return owner->Owner != NULL
+		&& owner->Owner->Kind == KIND_PLAYER
+		&& owner->Owner->Type == MODEL_PLAYER;
+}
+
+static bool IsGpuBatchableTransientSpriteType(int Type)
+{
+	switch (Type)
+	{
+	case BITMAP_LIGHT:
+	case BITMAP_LIGHT + 1:
+	case BITMAP_LIGHT + 2:
+	case BITMAP_SHINY:
+	case BITMAP_SHINY + 1:
+	case BITMAP_SHINY + 2:
+	case BITMAP_SHINY + 3:
+	case BITMAP_SHINY + 6:
+	case BITMAP_SPARK:
+	case BITMAP_SPARK + 1:
+	case BITMAP_FLARE:
+	case BITMAP_FLARE + 1:
+	case BITMAP_LIGHTNING:
+	case BITMAP_LIGHTNING + 1:
+	case BITMAP_PIN_LIGHT:
+	case BITMAP_MAGIC:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static bool CanGpuBatchTransientSprite(const OBJECT* o)
@@ -62,7 +96,7 @@ static bool CanGpuBatchTransientSprite(const OBJECT* o)
 	if (o->SubType != 0)
 		return false;
 
-	return o->Type == BITMAP_LIGHT || o->Type == BITMAP_SHINY + 6 || o->Type == BITMAP_PIN_LIGHT || o->Type == BITMAP_MAGIC;
+	return IsGpuBatchableTransientSpriteType(o->Type);
 }
 
 static bool RenderGpuSpriteTexture(int texture, BYTE byRenderOneMore)
@@ -159,8 +193,26 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
 		return false;
 
-	int textureList[4] = { BITMAP_LIGHT, BITMAP_SHINY + 6, BITMAP_PIN_LIGHT, BITMAP_MAGIC };
-	for (int textureIndex = 0; textureIndex < 4; ++textureIndex)
+	const int textureList[] =
+	{
+		BITMAP_LIGHT,
+		BITMAP_LIGHT + 1,
+		BITMAP_LIGHT + 2,
+		BITMAP_SHINY,
+		BITMAP_SHINY + 1,
+		BITMAP_SHINY + 2,
+		BITMAP_SHINY + 3,
+		BITMAP_SHINY + 6,
+		BITMAP_SPARK,
+		BITMAP_SPARK + 1,
+		BITMAP_FLARE,
+		BITMAP_FLARE + 1,
+		BITMAP_LIGHTNING,
+		BITMAP_LIGHTNING + 1,
+		BITMAP_PIN_LIGHT,
+		BITMAP_MAGIC,
+	};
+	for (int textureIndex = 0; textureIndex < (int)(sizeof(textureList) / sizeof(textureList[0])); ++textureIndex)
 	{
 		RenderGpuSpriteTexture(textureList[textureIndex], byRenderOneMore);
 	}
