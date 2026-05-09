@@ -117,6 +117,7 @@ int g_iRemotePlayerSpriteEffectBudget = -1;
 int g_iRemotePlayerSpriteEffectUsed = 0;
 int g_iRemotePlayerJointEffectBudget = -1;
 int g_iRemotePlayerJointEffectUsed = 0;
+int g_iCrowdBodyPartLodSkipped = 0;
 static BYTE g_byCrowdEquipmentFxZone[MAX_CHARACTERS_CLIENT] = { 0 };
 extern float  ParentMatrix[3][4];
 extern int CurrentSkill;
@@ -634,7 +635,7 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 		return false;
 	}
 
-	if (g_iCrowdVisiblePlayerCount < 70)
+	if (g_iCrowdVisiblePlayerCount < 30)
 	{
 		return false;
 	}
@@ -642,10 +643,20 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 	const float dist2 = GetDistance2ToHero(o);
 	if (g_iCrowdVisiblePlayerCount >= 80)
 	{
-		return dist2 > (180.0f * 180.0f);
+		return dist2 > (90.0f * 90.0f);
 	}
 
-	return dist2 > (260.0f * 260.0f);
+	if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		return dist2 > (130.0f * 130.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 60)
+	{
+		return dist2 > (170.0f * 170.0f);
+	}
+
+	return dist2 > (240.0f * 240.0f);
 }
 
 static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
@@ -660,9 +671,31 @@ static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int 
 		return false;
 	}
 
-	if (bodyPartIndex == BODYPART_GLOVES || bodyPartIndex == BODYPART_BOOTS)
+	const float dist2 = GetDistance2ToHero(o);
+
+	if (bodyPartIndex == BODYPART_GLOVES)
 	{
 		return true;
+	}
+
+	if (bodyPartIndex == BODYPART_BOOTS)
+	{
+		return true;
+	}
+
+	if (bodyPartIndex == BODYPART_PANTS)
+	{
+		if (g_iCrowdVisiblePlayerCount >= 80)
+		{
+			return dist2 > (105.0f * 105.0f);
+		}
+
+		if (g_iCrowdVisiblePlayerCount >= 70)
+		{
+			return dist2 > (150.0f * 150.0f);
+		}
+
+		return dist2 > (210.0f * 210.0f);
 	}
 
 	if (bodyPartIndex == BODYPART_HELM
@@ -10190,6 +10223,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				{
 					if (ShouldSkipCrowdBodyPartLod(c, o, i))
 					{
+						++g_iCrowdBodyPartLodSkipped;
 						continue;
 					}
 
@@ -11831,6 +11865,7 @@ void RenderCharactersClient()
 	++g_uiCrowdAnimationFrameId;
 	g_iRemotePlayerSpriteEffectUsed = 0;
 	g_iRemotePlayerJointEffectUsed = 0;
+	g_iCrowdBodyPartLodSkipped = 0;
 	g_iRemotePlayerSpriteEffectBudget = -1;
 	g_iRemotePlayerJointEffectBudget = -1;
 

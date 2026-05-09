@@ -9058,6 +9058,8 @@ int TotalPacketSize = 0;
 int OldTime = timeGetTime();
 extern int MixItemValue;
 extern int MixItemValueOld;
+extern int g_iCrowdVisiblePlayerCount;
+extern int g_iCrowdBodyPartLodSkipped;
 
 void RenderPartPerfWindow()
 {
@@ -9093,9 +9095,11 @@ void RenderPartPerfWindow()
 	const int PartGpuHits = WeaponPerf.GpuHits + ArmorPerf.GpuHits + WingPerf.GpuHits + HelperPerf.GpuHits + OtherPerf.GpuHits;
 	const int PartGpuFallbacks = WeaponPerf.GpuFallbacks + ArmorPerf.GpuFallbacks + WingPerf.GpuFallbacks + HelperPerf.GpuFallbacks + OtherPerf.GpuFallbacks;
 	const int PartMeshCalls = WeaponPerf.MeshCalls + ArmorPerf.MeshCalls + WingPerf.MeshCalls + HelperPerf.MeshCalls + OtherPerf.MeshCalls;
-	sprintf(PerfText, "PMESH %d GPU H/F %d/%d TRI %d",
+	sprintf(PerfText, "PMESH %d GPU H/F %d/%d TRI %d CR %d LOD %d",
 		PartMeshCalls, PartGpuHits, PartGpuFallbacks,
-		WeaponPerf.Triangles + ArmorPerf.Triangles + WingPerf.Triangles + HelperPerf.Triangles + OtherPerf.Triangles);
+		WeaponPerf.Triangles + ArmorPerf.Triangles + WingPerf.Triangles + HelperPerf.Triangles + OtherPerf.Triangles,
+		g_iCrowdVisiblePlayerCount,
+		g_iCrowdBodyPartLodSkipped);
 	g_pRenderText->RenderText(18, PerfY + 13, PerfText);
 
 	int RejectTotals[PART_GPU_REJECT_MAX] = { 0 };
