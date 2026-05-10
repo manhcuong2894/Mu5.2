@@ -10256,7 +10256,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 						}
 						else
 						{
-							if (i > BODYPART_HEAD && o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && g_pOption->GetRenderEquipment() == false)
+							if (SceneFlag == MAIN_SCENE && i > BODYPART_HEAD && o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && g_pOption->GetRenderEquipment() == false)
 							{
 								int nobody = ((i - 1) * MODEL_BODY_NUM) + MODEL_BODY_HELM;
 
