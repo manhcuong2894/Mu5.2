@@ -409,12 +409,7 @@ static bool ShouldRenderFullSetEquipmentFx(const CHARACTER* c, const OBJECT* o)
 {
 	if (EquipmentLevelSet >= 15 && gmProtect->max_item_level_on >= 15)
 	{
-		if (!IsCrowdPlayerObject(c, o) || g_iCrowdVisiblePlayerCount < 45)
-		{
-			return true;
-		}
-
-		return ShouldRenderHighCostEquipmentFx(c, o);
+		return true;
 	}
 
 	return ShouldRenderHighCostEquipmentFx(c, o);
@@ -666,53 +661,9 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 
 static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
 {
-	if (!IsCrowdPlayerObject(c, o) || SceneFlag != MAIN_SCENE)
-	{
-		return false;
-	}
-
-	if (g_iCrowdVisiblePlayerCount < 45 || bodyPartIndex <= BODYPART_HEAD)
-	{
-		return false;
-	}
-
-	const float dist2 = GetDistance2ToHero(o);
-	if (g_iCrowdVisiblePlayerCount >= 80)
-	{
-		if (dist2 > (320.0f * 320.0f))
-		{
-			return bodyPartIndex == BODYPART_HELM
-				|| bodyPartIndex == BODYPART_GLOVES
-				|| bodyPartIndex == BODYPART_BOOTS
-				|| bodyPartIndex == BODYPART_PANTS;
-		}
-		if (dist2 > (210.0f * 210.0f))
-		{
-			return bodyPartIndex == BODYPART_GLOVES
-				|| bodyPartIndex == BODYPART_BOOTS;
-		}
-	}
-	else if (g_iCrowdVisiblePlayerCount >= 65)
-	{
-		if (dist2 > (380.0f * 380.0f))
-		{
-			return bodyPartIndex == BODYPART_HELM
-				|| bodyPartIndex == BODYPART_GLOVES
-				|| bodyPartIndex == BODYPART_BOOTS;
-		}
-		if (dist2 > (260.0f * 260.0f))
-		{
-			return bodyPartIndex == BODYPART_BOOTS;
-		}
-	}
-	else if (g_iCrowdVisiblePlayerCount >= 45)
-	{
-		if (dist2 > (420.0f * 420.0f))
-		{
-			return bodyPartIndex == BODYPART_BOOTS;
-		}
-	}
-
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(o);
+	UNREFERENCED_PARAMETER(bodyPartIndex);
 	return false;
 }
 
@@ -11879,28 +11830,28 @@ void RenderCharactersClient()
 
 	if (g_iCrowdVisiblePlayerCount >= 80)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 120;
-		g_iRemotePlayerJointEffectBudget = 60;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 120;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 150;
-		g_iRemotePlayerJointEffectBudget = 75;
+		g_iRemotePlayerSpriteEffectBudget = 260;
+		g_iRemotePlayerJointEffectBudget = 120;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 180;
-		g_iRemotePlayerJointEffectBudget = 90;
+		g_iRemotePlayerSpriteEffectBudget = 320;
+		g_iRemotePlayerJointEffectBudget = 160;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 45)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 260;
-		g_iRemotePlayerJointEffectBudget = 130;
+		g_iRemotePlayerSpriteEffectBudget = 480;
+		g_iRemotePlayerJointEffectBudget = 240;
 	}
 	else if (g_iCrowdVisiblePlayerCount >= 30)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 420;
-		g_iRemotePlayerJointEffectBudget = 210;
+		g_iRemotePlayerSpriteEffectBudget = 720;
+		g_iRemotePlayerJointEffectBudget = 360;
 	}
 
 	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)
