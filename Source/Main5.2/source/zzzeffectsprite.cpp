@@ -17,6 +17,7 @@
 #include "CShaderGL.h"
 #include "CGMCharacter.h"
 #include "ZzzScene.h"
+#include <cstddef>
 
 
 OBJECT Sprites[MAX_SPRITES];
@@ -30,6 +31,9 @@ struct GpuSpriteBillboard
 };
 
 static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
+static GLuint g_GpuSpriteVao = 0;
+static GLuint g_GpuSpriteVbo = 0;
+static size_t g_GpuSpriteVboBytes = 0;
 
 static bool IsValidSpriteObjectPointer(const OBJECT* object)
 {
@@ -86,6 +90,16 @@ static bool IsGpuBatchableTransientSpriteType(int Type)
 	case BITMAP_LIGHTNING + 1:
 	case BITMAP_PIN_LIGHT:
 	case BITMAP_MAGIC:
+	case BITMAP_FIRE_CURSEDLICH:
+	case BITMAP_LIGHT_MARKS:
+	case BITMAP_TARGET_POSITION_EFFECT1:
+	case BITMAP_TARGET_POSITION_EFFECT2:
+	case BITMAP_LIGHTMARKS:
+	case BITMAP_LIGHTMARKS_FOREIGN:
+	case BITMAP_TWLIGHT:
+	case BITMAP_2LINE_GHOST:
+	case BITMAP_LIGHT_RED:
+	case BITMAP_GRA:
 		return true;
 	default:
 		return false;
@@ -97,13 +111,46 @@ static bool CanGpuBatchTransientSprite(const OBJECT* o)
 	if (o == NULL || o->Type == BITMAP_FORMATION_MARK)
 		return false;
 
-	if (!IsGpuBatchablePlayerSpriteOwner(o->Owner))
-		return false;
-
 	if (o->SubType < 0 || o->SubType > 3)
 		return false;
 
 	return IsGpuBatchableTransientSpriteType(o->Type);
+}
+
+static void UploadGpuSpriteBatch(int count)
+{
+	const size_t requiredBytes = (size_t)count * sizeof(GpuSpriteBillboard);
+	if (g_GpuSpriteVao == 0)
+	{
+		glGenVertexArrays(1, &g_GpuSpriteVao);
+	}
+	if (g_GpuSpriteVbo == 0)
+	{
+		glGenBuffers(1, &g_GpuSpriteVbo);
+	}
+
+	glBindVertexArray(g_GpuSpriteVao);
+	glBindBuffer(GL_ARRAY_BUFFER, g_GpuSpriteVbo);
+	if (g_GpuSpriteVboBytes < requiredBytes)
+	{
+		glBufferData(GL_ARRAY_BUFFER, requiredBytes, g_GpuSpriteBillboards, GL_STREAM_DRAW);
+		g_GpuSpriteVboBytes = requiredBytes;
+	}
+	else
+	{
+		glBufferSubData(GL_ARRAY_BUFFER, 0, requiredBytes, g_GpuSpriteBillboards);
+	}
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Center));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Size));
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Color));
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Rotation));
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, TexRect));
 }
 
 static void EnableGpuSpriteBlendState(int subType)
@@ -181,22 +228,10 @@ static bool RenderGpuSpriteTexture(int texture, int subType, BYTE byRenderOneMor
 	glUniform1i(glGetUniformLocation(program, "texture1"), 0);
 	BindTexture(texture);
 
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Center[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Size[0]);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Color[0]);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Rotation);
-	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].TexRect[0]);
+	UploadGpuSpriteBatch(count);
 	glDrawArrays(GL_POINTS, 0, count);
-	glDisableVertexAttribArray(4);
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glUseProgram(0);
 
 	for (int i = 0; i < MAX_SPRITES; ++i)
@@ -223,31 +258,54 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
 		return false;
 
-	const int textureList[] =
+	struct SpriteBatchGroup
 	{
-		BITMAP_LIGHT,
-		BITMAP_LIGHT + 1,
-		BITMAP_LIGHT + 2,
-		BITMAP_SHINY,
-		BITMAP_SHINY + 1,
-		BITMAP_SHINY + 2,
-		BITMAP_SHINY + 3,
-		BITMAP_SHINY + 6,
-		BITMAP_SPARK,
-		BITMAP_SPARK + 1,
-		BITMAP_FLARE,
-		BITMAP_FLARE + 1,
-		BITMAP_LIGHTNING,
-		BITMAP_LIGHTNING + 1,
-		BITMAP_PIN_LIGHT,
-		BITMAP_MAGIC,
+		int Texture;
+		int SubType;
 	};
-	for (int textureIndex = 0; textureIndex < (int)(sizeof(textureList) / sizeof(textureList[0])); ++textureIndex)
+
+	SpriteBatchGroup groups[128];
+	int groupCount = 0;
+	bool groupOverflow = false;
+	for (int i = 0; i < MAX_SPRITES; ++i)
 	{
-		for (int subType = 0; subType <= 3; ++subType)
+		OBJECT* o = &Sprites[i];
+		if (!ShouldRenderSpriteInPass(o, byRenderOneMore) || !CanGpuBatchTransientSprite(o))
 		{
-			RenderGpuSpriteTexture(textureList[textureIndex], subType, byRenderOneMore);
+			continue;
 		}
+
+		bool found = false;
+		for (int groupIndex = 0; groupIndex < groupCount; ++groupIndex)
+		{
+			if (groups[groupIndex].Texture == o->Type && groups[groupIndex].SubType == o->SubType)
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found && groupCount < (int)(sizeof(groups) / sizeof(groups[0])))
+		{
+			groups[groupCount].Texture = o->Type;
+			groups[groupCount].SubType = o->SubType;
+			++groupCount;
+		}
+		else if (!found)
+		{
+			groupOverflow = true;
+			break;
+		}
+	}
+
+	if (groupOverflow)
+	{
+		return false;
+	}
+
+	for (int groupIndex = 0; groupIndex < groupCount; ++groupIndex)
+	{
+		RenderGpuSpriteTexture(groups[groupIndex].Texture, groups[groupIndex].SubType, byRenderOneMore);
 	}
 	return true;
 #else
