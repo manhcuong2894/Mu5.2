@@ -79,23 +79,27 @@ static GLuint g_uiLegacyMeshTexCoordVbo = 0;
 static size_t g_uiLegacyMeshVertexBytes = 0;
 static size_t g_uiLegacyMeshColorBytes = 0;
 static size_t g_uiLegacyMeshTexCoordBytes = 0;
-static bool g_bGpuAssistModelViewCacheValid = false;
-static int g_iGpuAssistModelViewCacheWorldTime = -1;
-static float g_fGpuAssistModelViewCache[16] = { 0.0f };
-
-static const float* GetGpuAssistModelViewMatrixCached()
+static void BuildGpuAssistModelViewMatrix(float matrix[16])
 {
 #ifdef SHADER_VERSION_TEST
-	const int frameTime = (int)WorldTime;
-	if (!g_bGpuAssistModelViewCacheValid || g_iGpuAssistModelViewCacheWorldTime != frameTime)
-	{
-		glGetFloatv(GL_MODELVIEW_MATRIX, g_fGpuAssistModelViewCache);
-		g_iGpuAssistModelViewCacheWorldTime = frameTime;
-		g_bGpuAssistModelViewCacheValid = true;
-	}
-	return g_fGpuAssistModelViewCache;
+	matrix[0] = CameraMatrix[0][0];
+	matrix[1] = CameraMatrix[1][0];
+	matrix[2] = CameraMatrix[2][0];
+	matrix[3] = 0.0f;
+	matrix[4] = CameraMatrix[0][1];
+	matrix[5] = CameraMatrix[1][1];
+	matrix[6] = CameraMatrix[2][1];
+	matrix[7] = 0.0f;
+	matrix[8] = CameraMatrix[0][2];
+	matrix[9] = CameraMatrix[1][2];
+	matrix[10] = CameraMatrix[2][2];
+	matrix[11] = 0.0f;
+	matrix[12] = CameraMatrix[0][3];
+	matrix[13] = CameraMatrix[1][3];
+	matrix[14] = CameraMatrix[2][3];
+	matrix[15] = 1.0f;
 #else
-	return NULL;
+	UNREFERENCED_PARAMETER(matrix);
 #endif // SHADER_VERSION_TEST
 }
 
@@ -125,7 +129,6 @@ static void FlushGpuAssistState()
 void ZzzGpuAssistResetState()
 {
 	FlushGpuAssistState();
-	g_bGpuAssistModelViewCacheValid = false;
 }
 
 static bool IsLegacyMeshStreamAvailable()
@@ -4431,7 +4434,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		|| sUploadedViewFrameTime != currentFrameTime
 		|| sCachedViewTransformSerial == 0)
 	{
-		memcpy(sCachedViewMatrix, GetGpuAssistModelViewMatrixCached(), sizeof(sCachedViewMatrix));
+		BuildGpuAssistModelViewMatrix(sCachedViewMatrix);
 		ComputeGpuAssistLightDirection(sCachedLightDir);
 		sCachedViewTransformSerial = m_uiGpuAssistTransformSerial;
 	}
