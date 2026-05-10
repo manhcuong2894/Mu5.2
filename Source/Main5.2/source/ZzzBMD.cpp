@@ -121,6 +121,7 @@ static void FlushGpuAssistState()
 	if (g_uiGpuAssistActiveProgram != 0)
 	{
 		glUseProgram(0);
+		ZzzPerfRecordShaderUse(0);
 		g_uiGpuAssistActiveProgram = 0;
 	}
 #endif // SHADER_VERSION_TEST
@@ -199,6 +200,7 @@ static bool RenderLegacyMeshStream(int DrawVertexCount, const vec3_t* Vertices, 
 		glTexCoordPointer(2, GL_FLOAT, 0, 0);
 	}
 
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLES, 0, DrawVertexCount);
 
 	if (EnableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -220,8 +222,10 @@ static bool RenderLegacyMeshStream(int DrawVertexCount, const vec3_t* Vertices, 
 }
 
 PART_RENDER_PERF_STATS g_PartRenderPerfStats;
+RENDER_STATE_PERF_STATS g_RenderStatePerfStats;
 static int g_iActivePartPerfCategory = -1;
 static int g_iActivePartPerfType = -1;
+static GLuint g_uiRenderPerfLastShaderProgram = (GLuint)-1;
 
 static double ZzzPerfCounterToMs(__int64 Ticks)
 {
@@ -429,6 +433,59 @@ __int64 ZzzPerfBeginPart(int Category, int Type)
 	return Counter.QuadPart;
 }
 
+__int64 ZzzPerfBeginCpuGroup()
+{
+	LARGE_INTEGER Counter;
+	QueryPerformanceCounter(&Counter);
+	return Counter.QuadPart;
+}
+
+void ZzzPerfEndCpuGroup(int Group, __int64 StartCounter)
+{
+	if (Group < 0 || Group >= RENDER_CPU_GROUP_MAX)
+		return;
+
+	LARGE_INTEGER Counter;
+	QueryPerformanceCounter(&Counter);
+	g_RenderStatePerfStats.CpuMs[Group] += ZzzPerfCounterToMs(Counter.QuadPart - StartCounter);
+	g_RenderStatePerfStats.CpuCalls[Group]++;
+}
+
+void ZzzPerfRecordDrawArrays()
+{
+	g_RenderStatePerfStats.DrawCalls++;
+	g_RenderStatePerfStats.DrawArrays++;
+}
+
+void ZzzPerfRecordDrawElements()
+{
+	g_RenderStatePerfStats.DrawCalls++;
+	g_RenderStatePerfStats.DrawElements++;
+}
+
+void ZzzPerfRecordDrawImmediate()
+{
+	g_RenderStatePerfStats.DrawCalls++;
+	g_RenderStatePerfStats.DrawImmediate++;
+}
+
+void ZzzPerfRecordTextureBind(bool ActualBind)
+{
+	g_RenderStatePerfStats.TextureBindRequests++;
+	if (ActualBind)
+		g_RenderStatePerfStats.TextureBinds++;
+}
+
+void ZzzPerfRecordShaderUse(GLuint Program)
+{
+	g_RenderStatePerfStats.ShaderUseCalls++;
+	if (g_uiRenderPerfLastShaderProgram != Program)
+	{
+		g_RenderStatePerfStats.ShaderSwitches++;
+		g_uiRenderPerfLastShaderProgram = Program;
+	}
+}
+
 void ZzzPerfEndPart(int Category, __int64 StartCounter)
 {
 	LARGE_INTEGER Counter;
@@ -474,6 +531,18 @@ int ZzzPerfGetActivePartCategory()
 int ZzzPerfGetActivePartType()
 {
 	return g_iActivePartPerfType;
+}
+
+void ZzzPerfSnapshotRenderStateStats(RENDER_STATE_PERF_STATS* OutStats, bool Reset)
+{
+	if (OutStats != NULL)
+		memcpy(OutStats, &g_RenderStatePerfStats, sizeof(RENDER_STATE_PERF_STATS));
+
+	if (Reset)
+	{
+		memset(&g_RenderStatePerfStats, 0, sizeof(g_RenderStatePerfStats));
+		g_uiRenderPerfLastShaderProgram = (GLuint)-1;
+	}
 }
 
 void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset)
@@ -1812,6 +1881,7 @@ void BMD::BindLightMaps()
 			SmoothBitmap(lmp->Width, lmp->Height, lmp->Buffer);
 
 			glBindTexture(GL_TEXTURE_2D, i + IndexLightMap);
+			ZzzPerfRecordTextureBind(true);
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -2621,6 +2691,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 							glVertexPointer(3, GL_FLOAT, 0, vertices);
 							if (enableColor) glColorPointer(4, GL_FLOAT, 0, colors);
 							if (enableTexCoord) glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
+							ZzzPerfRecordDrawArrays();
 							glDrawArrays(GL_TRIANGLES, 0, drawVertexCount);
 
 							if (enableTexCoord) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -3040,6 +3111,7 @@ void BMD::AddClothesShadowTriangles(void* pClothes, const int clothesCount, cons
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, vertices);
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLES, 0, target_vertex_index + 1);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
@@ -3085,6 +3157,7 @@ void BMD::AddMeshShadowTriangles(const int blendMesh, const int hiddenMesh, cons
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, vertices);
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLES, 0, target_vertex_index + 1);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
@@ -4454,6 +4527,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	if (g_uiGpuAssistActiveProgram != program)
 	{
 		glUseProgram(program);
+		ZzzPerfRecordShaderUse(program);
 		g_uiGpuAssistActiveProgram = program;
 		glUniform1i(sUniforms.Texture1, 0);
 		glUniformMatrix4fv(sUniforms.Proj, 1, GL_FALSE, glm::value_ptr(gShaderGL->GetProjectionMatrix()));
@@ -4542,6 +4616,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		g_uiGpuAssistActiveVao = m->VAO;
 	}
 
+	ZzzPerfRecordDrawElements();
 	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
 #endif // SHADER_VERSION_TEST
 }
@@ -4558,6 +4633,7 @@ void BMD::RenderVertexBuffer(int i, Mesh_t* m, int vertex_index, vec3_t* vertice
 
 	FlushGpuAssistState();
 	glBindVertexArray(m->VAO);
+	ZzzPerfRecordDrawElements();
 	glDrawElements(GL_TRIANGLES, vertex_index, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "CShaderGL.h"
+#include "ZzzBMD.h"
 
 #ifdef SHADER_VERSION_TEST
 #include "Utilities/Log/muConsoleDebug.h"
@@ -179,6 +180,7 @@ void CShaderGL::RenderShader(ShaderType type)
     if (shader != 0)
     {
         glUseProgram(shader);
+        ZzzPerfRecordShaderUse(shader);
     }
 }
 

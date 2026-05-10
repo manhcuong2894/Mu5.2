@@ -299,11 +299,17 @@ void BindTexture(int tex)
 #endif // SHADER_VERSION_TEST
 
 			glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+			ZzzPerfRecordTextureBind(true);
 		}
 		else
 		{
 			glBindTexture(GL_TEXTURE_2D, -1 * tex);
+			ZzzPerfRecordTextureBind(true);
 		}
+	}
+	else
+	{
+		ZzzPerfRecordTextureBind(false);
 	}
 }
 
@@ -320,9 +326,15 @@ void BindTextureStream(int tex)
 			glEnd();
 		BITMAP_t* b = &Bitmaps[tex];
 		glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+		ZzzPerfRecordTextureBind(true);
 
+		ZzzPerfRecordDrawImmediate();
 		glBegin(GL_TRIANGLES);
 		TextureStream = true;
+	}
+	else
+	{
+		ZzzPerfRecordTextureBind(false);
 	}
 }
 
@@ -912,6 +924,7 @@ void RenderBox(float Matrix[3][4])
 		VectorTransform(BoundingVertices[j], Matrix, TransformVertices[j]);
 	}
 
+	ZzzPerfRecordDrawImmediate();
 	glBegin(GL_QUADS);
 	//glBegin(GL_LINES);
 	glColor3f(0.2f, 0.2f, 0.2f);
@@ -990,6 +1003,7 @@ void RenderPlane3D(float Width, float Height, float Matrix[3][4])
 		VectorTransform(BoundingVertices[j], Matrix, TransformVertices[j]);
 	}
 
+	ZzzPerfRecordDrawImmediate();
 	glBegin(GL_QUADS);
 	glTexCoord2f(0.f, 1.f);
 	glVertex3fv(TransformVertices[0]);
@@ -1087,6 +1101,7 @@ void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_
 	glTexCoordPointer(2, GL_FLOAT, 0, c);
 	glColorPointer(4, GL_FLOAT, 0, colors);
 
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_QUADS, 0, 4);  // 4 vertices en total
 
 	glDisableClientState(GL_VERTEX_ARRAY);
@@ -1134,6 +1149,7 @@ void RenderSpriteUV(int Texture, vec3_t Position, float Width, float Height, flo
 	Vector(x - Width, y + Height, z, p[3]);
 
 	glBegin(GL_QUADS);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glColor4f(Light[i][0], Light[i][1], Light[i][2], Alpha);
@@ -1280,6 +1296,7 @@ void RenderColor(float x, float y, float Width, float Height, float Alpha, int F
 	p[3][0] = x + Width; p[3][1] = y;
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		if (Alpha > 0.f)
@@ -1316,6 +1333,7 @@ void RenderNoColor(float x, float y, float Width, float Height, float Alpha, int
 	p[3][0] = x + Width; p[3][1] = y;
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		if (Alpha > 0.f)
@@ -1395,6 +1413,7 @@ void RenderColorBitmap(int Texture, float x, float y, float Width, float Height,
 			static_cast<GLubyte>((color >> 24) & 0xff));   //Alpha
 
 	// Dibujar los vértices como un cuadrado utilizando un triángulo en abanico
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);  // 4 vértices en total
 
 	// Restaurar el color si fue cambiado
@@ -1450,6 +1469,7 @@ void RenderBitmap(int Texture, float x, float y, float Width, float Height, floa
 	}
 
 	// Dibujar los vértices como un cuadrado utilizando un triángulo en abanico
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);  // 4 vértices en total
 
 	// Restaurar el color si fue cambiado
@@ -1524,6 +1544,7 @@ void RenderNoBitmap(int Texture, float x, float y, float Width, float Height, fl
 	}
 
 	// Dibujar los vértices como un cuadrado utilizando un triángulo en abanico
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);  // 4 vértices en total
 
 	// Restaurar el color si fue cambiado
@@ -1570,6 +1591,7 @@ void RenderBitmapRotate(int Texture, float x, float y, float Width, float Height
 	TEXCOORD(c[1], u, v + vHeight);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1617,6 +1639,7 @@ void RenderBitRotate(int Texture, float x, float y, float Width, float Height, f
 	TEXCOORD(c[1], 0.f, 1.f);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1665,6 +1688,7 @@ void RenderPointRotate(int Texture, float ix, float iy, float iWidth, float iHei
 	TEXCOORD(c[1], 0.f, vHeight);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1722,6 +1746,7 @@ void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float H
 	TEXCOORD(c[1], u, v + vHeight);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1760,6 +1785,7 @@ void RenderNoBitmapLocalRotate(int Texture, float x, float y, float Width, float
 	TEXCOORD(c[1], u, v + vHeight);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1804,6 +1830,7 @@ void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float H
 	AngleMatrix(Angle, Matrix);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		VectorRotate(p[i], Matrix, p2[i]);
@@ -1844,6 +1871,7 @@ void RenderBitmapLocalRotate2(int Texture, float x, float y, float Width, float 
 	TEXCOORD(c[1], u, v + vHeight);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);
@@ -1884,6 +1912,7 @@ void RenderBitmapLocalProjection(int Texture, float x, float y, float w, float h
 
 	BindTexture(Texture);
 
+	ZzzPerfRecordDrawImmediate();
 	glBegin(GL_TRIANGLE_FAN);
 
 	for (int n = 0; n < 4; n++)
@@ -1923,6 +1952,7 @@ void RenderBitmapAlpha(int Texture, float sx, float sy, float Width, float Heigh
 			if (y == 0) { Alpha[0] = 0.f; Alpha[3] = 0.f; }
 			if (y == 3) { Alpha[1] = 0.f; Alpha[2] = 0.f; }
 
+			ZzzPerfRecordDrawImmediate();
 			glBegin(GL_TRIANGLE_FAN);
 			for (int i = 0; i < 4; i++)
 			{
@@ -1957,6 +1987,7 @@ void RenderBitmapUV(int Texture, float x, float y, float Width, float Height, fl
 	TEXCOORD(c[1], u, v + vHeight - vHeight * 0.25f);
 
 	glBegin(GL_TRIANGLE_FAN);
+	ZzzPerfRecordDrawImmediate();
 	for (int i = 0; i < 4; i++)
 	{
 		glTexCoord2f(c[i][0], c[i][1]);

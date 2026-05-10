@@ -54,6 +54,7 @@ static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* bi
 		glGenBuffers(1, &g_GpuSpriteBillboardVbo);
 
 	glUseProgram(program);
+	ZzzPerfRecordShaderUse(program);
 	const GLint textureUniform = GetGpuSpriteTextureUniform(program);
 	if (textureUniform != -1)
 		glUniform1i(textureUniform, 0);
@@ -71,6 +72,7 @@ static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* bi
 	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Color));
 	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Rotation));
 	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, TexRect));
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_POINTS, 0, count);
 	glDisableVertexAttribArray(4);
 	glDisableVertexAttribArray(3);
@@ -79,6 +81,7 @@ static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* bi
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glUseProgram(0);
+	ZzzPerfRecordShaderUse(0);
 }
 
 static bool IsValidSpriteObjectPointer(const OBJECT* object)
@@ -559,8 +562,10 @@ void RenderSprite(OBJECT* o, OBJECT* Owner)
 
 void RenderSprites(BYTE byRenderOneMore)
 {
+	const __int64 PerfStart = ZzzPerfBeginCpuGroup();
 	if (g_pOption->GetRenderEffect() == false)
 	{
+		ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 		return;
 	}
 	const bool gpuTransientSpritesRendered = RenderGpuTransientSprites(byRenderOneMore);
@@ -611,6 +616,7 @@ void RenderSprites(BYTE byRenderOneMore)
 			}
 		}
 	}
+	ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 }
 
 void CheckSprites()

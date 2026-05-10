@@ -2947,6 +2947,7 @@ void CUIRenderTextOriginal::UploadText(int sx, int sy, int Width, int Height, bo
 	if (Width > 0 && Height > 0 && sx + Width > 0 && sy + Height > 0)
 	{
 		glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+		ZzzPerfRecordTextureBind(true);
 		glTexImage2D(GL_TEXTURE_2D, 0, b->Components, (int)b->Width, (int)b->Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 
 		float TextureUWidth = (Width + 0.01f) / b->Width;
@@ -4019,6 +4020,7 @@ void CUITextInputBox::UploadText(int sx, int sy, int Width, int Height)
 	if (Width > 0 && Height > 0 && sx + Width > 0 && sy + Height > 0)
 	{
 		glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+		ZzzPerfRecordTextureBind(true);
 		glTexImage2D(GL_TEXTURE_2D, 0, b->Components, (int)b->Width, (int)b->Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 
 		float TextureUWidth = (Width + 0.01f) / b->Width;

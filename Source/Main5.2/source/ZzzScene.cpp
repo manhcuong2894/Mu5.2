@@ -2813,6 +2813,7 @@ bool RenderMainScene()
 
 	if (gwinhandle->CheckPerformance())
 	{
+		const __int64 InterfacePerfStart = ZzzPerfBeginCpuGroup();
 		if (CameraTopViewEnable == false)
 		{
 			RenderInterface(true);
@@ -2826,6 +2827,7 @@ bool RenderMainScene()
 		BeginBitmap();
 
 		RenderInfomation();
+		ZzzPerfEndCpuGroup(RENDER_CPU_INTERFACE, InterfacePerfStart);
 		RenderPartPerfWindow();
 
 #ifdef ENABLE_EDIT

@@ -104,10 +104,42 @@ typedef struct
 
 extern PART_RENDER_PERF_STATS g_PartRenderPerfStats;
 
+enum ERenderCpuPerfGroup
+{
+	RENDER_CPU_TEXT = 0,
+	RENDER_CPU_EFFECT,
+	RENDER_CPU_INTERFACE,
+	RENDER_CPU_GROUP_MAX
+};
+
+typedef struct
+{
+	int DrawCalls;
+	int DrawArrays;
+	int DrawElements;
+	int DrawImmediate;
+	int TextureBindRequests;
+	int TextureBinds;
+	int ShaderUseCalls;
+	int ShaderSwitches;
+	double CpuMs[RENDER_CPU_GROUP_MAX];
+	int CpuCalls[RENDER_CPU_GROUP_MAX];
+} RENDER_STATE_PERF_STATS;
+
+extern RENDER_STATE_PERF_STATS g_RenderStatePerfStats;
+
 int ZzzPerfClassifyPartType(int Type);
 __int64 ZzzPerfBeginPart(int Category, int Type);
 void ZzzPerfEndPart(int Category, __int64 StartCounter);
 void ZzzPerfRecordPartMesh(int Category, int Triangles, bool GpuHit, int RejectReason);
+__int64 ZzzPerfBeginCpuGroup();
+void ZzzPerfEndCpuGroup(int Group, __int64 StartCounter);
+void ZzzPerfRecordDrawArrays();
+void ZzzPerfRecordDrawElements();
+void ZzzPerfRecordDrawImmediate();
+void ZzzPerfRecordTextureBind(bool ActualBind);
+void ZzzPerfRecordShaderUse(GLuint Program);
+void ZzzPerfSnapshotRenderStateStats(RENDER_STATE_PERF_STATS* OutStats, bool Reset);
 int ZzzPerfGetActivePartCategory();
 int ZzzPerfGetActivePartType();
 void ZzzPerfSnapshotPartStats(PART_RENDER_PERF_STATS* OutStats, bool Reset);

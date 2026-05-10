@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "UIControls.h"
 #include "CGMFontLayer.h"
+#include "ZzzBMD.h"
 #include "MultiLanguage.h"
 #include "./Utilities/Log/muConsoleDebug.h"
 #include <stddef.h>
@@ -66,6 +67,7 @@ void CGMFontLayer::runtime_load_bitmap(GLuint* textures, GLsizei _width, GLsizei
 	}
 	glGenTextures(1, textures);
 	glBindTexture(GL_TEXTURE_2D, *textures);
+	ZzzPerfRecordTextureBind(true);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, _width, _height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -438,6 +440,7 @@ void CGMFontLayer::_TextOut(std::wstring wstrText, int& pen_x, int& pen_y)
 	pen_x = Next_x;
 
 	glBindTexture(GL_TEXTURE_2D, BitmapFontIndex);
+	ZzzPerfRecordTextureBind(true);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, LIMIT_WIDTH, LIMIT_HEIGHT, 0, GL_ALPHA, GL_UNSIGNED_BYTE, hFontBuffer.data());
 }
 
@@ -665,6 +668,7 @@ bool CGMFontLayer::RenderTextAtlasLayout(const std::vector<TextAtlasGlyph>& glyp
 			glBufferData(GL_ARRAY_BUFFER, g_GMFontTextVertices.size() * sizeof(GMFontTextVertex), &g_GMFontTextVertices[0], GL_STREAM_DRAW);
 			glVertexPointer(2, GL_FLOAT, sizeof(GMFontTextVertex), (void*)offsetof(GMFontTextVertex, Position));
 			glTexCoordPointer(2, GL_FLOAT, sizeof(GMFontTextVertex), (void*)offsetof(GMFontTextVertex, TexCoord));
+			ZzzPerfRecordDrawArrays();
 			glDrawArrays(GL_QUADS, 0, (GLsizei)g_GMFontTextVertices.size());
 			drewGlyphs = true;
 		}
@@ -683,6 +687,8 @@ void CGMFontLayer::RenderText(int iPos_x, int iPos_y, const unicode::t_char* psz
 
 	if (strlen(pszText) <= 0 && iHeight == 0)
 		return;
+
+	const __int64 PerfStart = ZzzPerfBeginCpuGroup();
 
 	SIZE RealTextSize;
 
@@ -809,6 +815,8 @@ void CGMFontLayer::RenderText(int iPos_x, int iPos_y, const unicode::t_char* psz
 		lpTextSize->cx = RealBoxPos.x;
 		lpTextSize->cy = RealBoxPos.y;
 	}
+
+	ZzzPerfEndCpuGroup(RENDER_CPU_TEXT, PerfStart);
 }
 
 void CGMFontLayer::RenderWave(int iPos_x, int iPos_y, const unicode::t_char* pszText, int iWidth, int iHeight, int iSort, OUT SIZE* lpTextSize)

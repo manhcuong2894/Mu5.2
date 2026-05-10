@@ -7537,6 +7537,7 @@ static void DrawJointTailBatch(vec2_t* textCoords, vec3_t* vertices, vec4_t* col
 	glVertexPointer(3, GL_FLOAT, 0, (void*)0);
 	glColorPointer(4, GL_FLOAT, 0, (void*)(UINT_PTR)vertexBytes);
 	glTexCoordPointer(2, GL_FLOAT, 0, (void*)(UINT_PTR)(vertexBytes + colorBytes));
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_QUADS, 0, vertexCount);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -7672,8 +7673,10 @@ static bool RenderJointTailsBatch(JOINT* o)
 }
 void RenderJoints(BYTE bRenderOneMore)
 {
+	const __int64 PerfStart = ZzzPerfBeginCpuGroup();
 	if (g_pOption->GetRenderEffect() == false)
 	{
+		ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 		return;
 	}
 
@@ -8024,6 +8027,7 @@ void RenderJoints(BYTE bRenderOneMore)
 						glPushMatrix();
 						glTranslatef(t_bias[0], t_bias[1], t_bias[2]);
 
+						ZzzPerfRecordDrawImmediate();
 						glBegin(GL_QUADS);
 						glTexCoord2f(Light1, 1.f);
 						glVertex3fv(o->Tails[j][2]);
@@ -8102,6 +8106,7 @@ void RenderJoints(BYTE bRenderOneMore)
 						glColorPointer(4, GL_FLOAT, 0, colors);
 						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
 
+						ZzzPerfRecordDrawArrays();
 						glDrawArrays(GL_QUADS, 0, vertex_index);
 
 						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -8159,6 +8164,7 @@ void RenderJoints(BYTE bRenderOneMore)
 						glColorPointer(4, GL_FLOAT, 0, colors);
 						glTexCoordPointer(2, GL_FLOAT, 0, textCoords);
 
+						ZzzPerfRecordDrawArrays();
 						glDrawArrays(GL_QUADS, 0, vertex_index);
 
 						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -8194,6 +8200,7 @@ void RenderJoints(BYTE bRenderOneMore)
 			}
 		}
 	}
+	ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 }
 
 void GetMagicScrew(int iParam, vec3_t vResult, float fSpeedRate)

@@ -9066,12 +9066,14 @@ void RenderPartPerfWindow()
 	static DWORD s_dwPartPerfLastTime = 0;
 	static PART_RENDER_PERF_STATS s_PartPerfSnapshot;
 	static EFFECT_RENDER_PERF_STATS s_EffectPerfSnapshot;
+	static RENDER_STATE_PERF_STATS s_RenderStatePerfSnapshot;
 	const DWORD dwPartPerfNow = timeGetTime();
 	if (dwPartPerfNow - s_dwPartPerfLastTime >= 500)
 	{
 		s_dwPartPerfLastTime = dwPartPerfNow;
 		ZzzPerfSnapshotPartStats(&s_PartPerfSnapshot, true);
 		ZzzPerfSnapshotEffectStats(&s_EffectPerfSnapshot, true);
+		ZzzPerfSnapshotRenderStateStats(&s_RenderStatePerfSnapshot, true);
 	}
 
 	char PerfText[256];
@@ -9079,6 +9081,28 @@ void RenderPartPerfWindow()
 	g_pRenderText->SetFont(g_hFont);
 	g_pRenderText->SetTextColor(255, 220, 80, 255);
 	g_pRenderText->SetBgColor(0, 0, 0, 180);
+	sprintf(PerfText, "DRAW %d A/E/I %d/%d/%d BIND %d/%d SHD %d/%d",
+		s_RenderStatePerfSnapshot.DrawCalls,
+		s_RenderStatePerfSnapshot.DrawArrays,
+		s_RenderStatePerfSnapshot.DrawElements,
+		s_RenderStatePerfSnapshot.DrawImmediate,
+		s_RenderStatePerfSnapshot.TextureBinds,
+		s_RenderStatePerfSnapshot.TextureBindRequests,
+		s_RenderStatePerfSnapshot.ShaderSwitches,
+		s_RenderStatePerfSnapshot.ShaderUseCalls);
+	g_pRenderText->RenderText(18, PerfY, PerfText);
+
+	sprintf(PerfText, "CPU TXT/EFX/UI %.2f/%d %.2f/%d %.2f/%d",
+		s_RenderStatePerfSnapshot.CpuMs[RENDER_CPU_TEXT],
+		s_RenderStatePerfSnapshot.CpuCalls[RENDER_CPU_TEXT],
+		s_RenderStatePerfSnapshot.CpuMs[RENDER_CPU_EFFECT],
+		s_RenderStatePerfSnapshot.CpuCalls[RENDER_CPU_EFFECT],
+		s_RenderStatePerfSnapshot.CpuMs[RENDER_CPU_INTERFACE],
+		s_RenderStatePerfSnapshot.CpuCalls[RENDER_CPU_INTERFACE]);
+	g_pRenderText->RenderText(18, PerfY + 13, PerfText);
+
+	PerfY += 26;
+
 	sprintf(PerfText, "PART ms WP/AR/WG/HP/OT: %.2f/%.2f/%.2f/%.2f/%.2f",
 		s_PartPerfSnapshot.Bucket[PART_RENDER_WEAPON].Ms,
 		s_PartPerfSnapshot.Bucket[PART_RENDER_ARMOR].Ms,

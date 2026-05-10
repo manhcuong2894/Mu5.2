@@ -176,6 +176,7 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 		glGenBuffers(1, &g_GpuParticleBillboardVbo);
 
 	glUseProgram(program);
+	ZzzPerfRecordShaderUse(program);
 	const GLint textureUniform = GetGpuParticleTextureUniform(program);
 	if (textureUniform != -1)
 		glUniform1i(textureUniform, 0);
@@ -193,6 +194,7 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Color));
 	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Rotation));
 	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, TexRect));
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_POINTS, 0, count);
 	glDisableVertexAttribArray(4);
 	glDisableVertexAttribArray(3);
@@ -201,6 +203,7 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glUseProgram(0);
+	ZzzPerfRecordShaderUse(0);
 }
 struct ParticleSpriteBatch
 {
@@ -226,6 +229,7 @@ static void FlushParticleSpriteBatch()
 	glVertexPointer(3, GL_FLOAT, 0, g_ParticleSpriteBatch.Vertices);
 	glColorPointer(4, GL_FLOAT, 0, g_ParticleSpriteBatch.Colors);
 	glTexCoordPointer(2, GL_FLOAT, 0, g_ParticleSpriteBatch.TexCoords);
+	ZzzPerfRecordDrawArrays();
 	glDrawArrays(GL_QUADS, 0, g_ParticleSpriteBatch.VertexCount);
 
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -9393,8 +9397,10 @@ void MoveParticles()
 
 void RenderParticles(BYTE byRenderOneMore)
 {
+	const __int64 PerfStart = ZzzPerfBeginCpuGroup();
 	if (g_pOption->GetRenderEffect() == false)
 	{
+		ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 		return;
 	}
 	for (int i = 0; i < MAX_PARTICLES; i++)
@@ -9768,4 +9774,5 @@ void RenderParticles(BYTE byRenderOneMore)
 		}
 	}
 	RenderBatchedPlus15Particles(byRenderOneMore);
+	ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 }

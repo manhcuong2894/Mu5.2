@@ -5454,6 +5454,7 @@ void CreateGuildMark(int nMarkIndex, bool blend)
 	{
 		b->TextureNumber = g_GuildMarkTextureCache[nMarkIndex][blendIndex];
 		glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+		ZzzPerfRecordTextureBind(true);
 		return;
 	}
 
@@ -5473,6 +5474,7 @@ void CreateGuildMark(int nMarkIndex, bool blend)
 
 	b->TextureNumber = textureNumber;
 	glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+	ZzzPerfRecordTextureBind(true);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -5593,6 +5595,7 @@ void CreateCastleMark(int Type, BYTE* buffer, bool blend)
 		}
 	}
 	glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+	ZzzPerfRecordTextureBind(true);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, 3, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 }
@@ -5650,6 +5653,7 @@ void RenderGuildColor(float x, float y, int SizeX, int SizeY, int Index)
 	}
 
 	glBindTexture(GL_TEXTURE_2D, b->TextureNumber);
+	ZzzPerfRecordTextureBind(true);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, b->Components, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, b->Buffer.data());
 	RenderBitmap(BITMAP_GUILD, x, y, (float)SizeX, (float)SizeY);
