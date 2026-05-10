@@ -66,6 +66,11 @@ static const float PARTICLE_HERO_WING_PRIORITY_RADIUS = 220.f;
 static int g_iParticleAllocCursor = 0;
 static int g_iPriorityParticleAllocCursor = 0;
 
+static bool IsValidParticleObjectPointer(const OBJECT* object)
+{
+	return object != NULL && (UINT_PTR)object >= 0x10000;
+}
+
 static bool IsNearHeroParticlePosition(const vec3_t position)
 {
 	if (Hero == NULL)
@@ -77,9 +82,25 @@ static bool IsNearHeroParticlePosition(const vec3_t position)
 	return (dx * dx + dy * dy + dz * dz) <= (PARTICLE_HERO_WING_PRIORITY_RADIUS * PARTICLE_HERO_WING_PRIORITY_RADIUS);
 }
 
+static bool IsWingParticleObject(const OBJECT* object)
+{
+	return IsValidParticleObjectPointer(object)
+		&& object->Type >= MODEL_WING
+		&& object->Type < MODEL_HELPER;
+}
+
+static bool IsWingParticleEffectOwner(const OBJECT* owner)
+{
+	if (IsWingParticleObject(owner))
+		return true;
+
+	return IsValidParticleObjectPointer(owner)
+		&& IsWingParticleObject(owner->Owner);
+}
+
 static bool IsHeroOrWingParticleOwner(OBJECT* owner)
 {
-	if (owner == NULL)
+	if (!IsValidParticleObjectPointer(owner))
 		return false;
 
 	if (Hero != NULL && owner == &Hero->Object)
@@ -88,8 +109,7 @@ static bool IsHeroOrWingParticleOwner(OBJECT* owner)
 	if (Hero != NULL && owner->Owner == &Hero->Object)
 		return true;
 
-	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER
-		&& IsNearHeroParticlePosition(owner->Position);
+	return IsWingParticleEffectOwner(owner);
 }
 
 static bool IsWingGlowParticleType(int Type, int SubType)

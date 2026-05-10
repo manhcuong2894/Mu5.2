@@ -25,6 +25,11 @@ static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
 static int g_iJointAllocCursor = 0;
 static int g_iPriorityJointAllocCursor = 0;
 
+static bool IsValidJointObjectPointer(const OBJECT* object)
+{
+	return object != NULL && (UINT_PTR)object >= 0x10000;
+}
+
 static bool IsValidJointVec3(const vec3_t position)
 {
 	return position != NULL && (UINT_PTR)position >= 0x10000;
@@ -61,9 +66,25 @@ static bool IsNearHeroJointPosition(const vec3_t position, const OBJECT* heroObj
 	return (dx * dx + dy * dy + dz * dz) <= (JOINT_HERO_WING_PRIORITY_RADIUS * JOINT_HERO_WING_PRIORITY_RADIUS);
 }
 
+static bool IsWingJointObject(const OBJECT* object)
+{
+	return IsValidJointObjectPointer(object)
+		&& object->Type >= MODEL_WING
+		&& object->Type < MODEL_HELPER;
+}
+
+static bool IsWingJointEffectTarget(const OBJECT* target)
+{
+	if (IsWingJointObject(target))
+		return true;
+
+	return IsValidJointObjectPointer(target)
+		&& IsWingJointObject(target->Owner);
+}
+
 static bool IsHeroOrWingJointTarget(OBJECT* target, const OBJECT* heroObject)
 {
-	if (target == NULL || heroObject == NULL)
+	if (!IsValidJointObjectPointer(target) || heroObject == NULL)
 		return false;
 
 	if (target == heroObject)
@@ -72,8 +93,7 @@ static bool IsHeroOrWingJointTarget(OBJECT* target, const OBJECT* heroObject)
 	if (target->Owner == heroObject)
 		return true;
 
-	return target->Type >= MODEL_WING && target->Type < MODEL_HELPER
-		&& IsNearHeroJointPosition(target->Position, heroObject);
+	return IsWingJointEffectTarget(target);
 }
 
 static bool IsWingGlowJointType(int Type, int SubType)
@@ -183,6 +203,9 @@ static bool IsThrottleableRemoteJoint(int Type)
 static bool ShouldThrottleRemoteJoint(int Type, int SubType, OBJECT* Target)
 {
 	UNREFERENCED_PARAMETER(SubType);
+
+	if (IsWingJointEffectTarget(Target))
+		return false;
 
 	if (!IsRemotePlayerJointTarget(Target) || !IsThrottleableRemoteJoint(Type))
 		return false;

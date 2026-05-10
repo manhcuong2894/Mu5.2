@@ -295,6 +295,22 @@ static bool IsNearHeroSpritePosition(const vec3_t position, const OBJECT* heroOb
 	return (dx * dx + dy * dy + dz * dz) <= (HERO_WING_PRIORITY_RADIUS * HERO_WING_PRIORITY_RADIUS);
 }
 
+static bool IsWingSpriteObject(const OBJECT* object)
+{
+	return IsValidSpriteObjectPointer(object)
+		&& object->Type >= MODEL_WING
+		&& object->Type < MODEL_HELPER;
+}
+
+static bool IsWingSpriteEffectOwner(const OBJECT* owner)
+{
+	if (IsWingSpriteObject(owner))
+		return true;
+
+	return IsValidSpriteObjectPointer(owner)
+		&& IsWingSpriteObject(owner->Owner);
+}
+
 static bool IsHeroOrWingSpriteOwner(OBJECT* owner, const OBJECT* heroObject)
 {
 	if (!IsValidSpriteObjectPointer(owner) || heroObject == NULL)
@@ -306,8 +322,7 @@ static bool IsHeroOrWingSpriteOwner(OBJECT* owner, const OBJECT* heroObject)
 	if (owner->Owner == heroObject)
 		return true;
 
-	return owner->Type >= MODEL_WING && owner->Type < MODEL_HELPER
-		&& IsNearHeroSpritePosition(owner->Position, heroObject);
+	return IsWingSpriteEffectOwner(owner);
 }
 
 static bool IsWingGlowSpriteType(int Type, int SubType)
@@ -387,6 +402,9 @@ static bool IsThrottleableRemoteSprite(int Type)
 static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
 {
 	UNREFERENCED_PARAMETER(SubType);
+
+	if (IsWingSpriteEffectOwner(Owner))
+		return false;
 
 	if (!IsRemotePlayerEffectOwner(Owner) || !IsThrottleableRemoteSprite(Type))
 		return false;
