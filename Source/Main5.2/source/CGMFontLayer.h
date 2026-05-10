@@ -72,6 +72,22 @@ public:
 	int getmetrics();
 	static CGMFontLayer* Instance();
 private:
+	struct TextAtlasGlyph
+	{
+		BYTE FontType;
+		int X;
+		int Y;
+		int Width;
+		int Height;
+		float U1;
+		float V1;
+		float U2;
+		float V2;
+	};
+
+	bool BuildTextAtlasLayout(const std::wstring& wstrText, SIZE* lpSize, std::vector<TextAtlasGlyph>* glyphs);
+	bool RenderTextAtlasLayout(const std::vector<TextAtlasGlyph>& glyphs, int pen_x, int pen_y, bool background);
+
 	BitmapFont NormalFont[MAX_LINE_FONT];
 	FT_UInt BitmapFontIndex;
 

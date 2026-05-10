@@ -3,8 +3,18 @@
 #include "CGMFontLayer.h"
 #include "MultiLanguage.h"
 #include "./Utilities/Log/muConsoleDebug.h"
+#include <stddef.h>
 
 extern void BindTexture(int tex);
+
+struct GMFontTextVertex
+{
+	float Position[2];
+	float TexCoord[2];
+};
+
+static GLuint g_GMFontTextVbo = 0;
+static std::vector<GMFontTextVertex> g_GMFontTextVertices;
 
 CGMFontLayer::CGMFontLayer()
 {
@@ -485,6 +495,187 @@ void CGMFontLayer::runtime_render_map(int pen_x, int pen_y, int RealTextX, int R
 	}
 }
 
+bool CGMFontLayer::BuildTextAtlasLayout(const std::wstring& wstrText, SIZE* lpSize, std::vector<TextAtlasGlyph>* glyphs)
+{
+	if (lpSize == NULL || glyphs == NULL)
+		return false;
+
+	const int LIMIT_WIDTH = 512;
+	const int LIMIT_HEIGHT = 32;
+	int penX = 0;
+
+	lpSize->cx = 0;
+	lpSize->cy = 0;
+	glyphs->clear();
+
+	if (wstrText.empty())
+		return true;
+
+	glyphs->reserve(wstrText.size());
+
+	for (std::wstring::const_iterator wstr = wstrText.begin(); wstr != wstrText.end(); ++wstr)
+	{
+		_FT_Bitmap* pBitmap = (*wstr == 32) ? GetULongChar('|') : GetULongChar(*wstr);
+		if (!pBitmap)
+			pBitmap = GetULongChar(1);
+		if (!pBitmap)
+			continue;
+
+		const int metrics = ((NormalFont[pBitmap->FontType].metrics_height - pBitmap->bitmap_top) + pBitmap->RenderSizeY);
+		if (lpSize->cy < metrics)
+			lpSize->cy = metrics;
+
+		if (*wstr != 32 && pBitmap->RenderSizeX > 0 && pBitmap->RenderSizeY > 0)
+		{
+			int dstX = penX + pBitmap->bitmap_left;
+			int dstY = NormalFont[pBitmap->FontType].metrics_height - pBitmap->bitmap_top;
+			int srcX = pBitmap->RenderPosX;
+			int srcY = pBitmap->RenderPosY;
+			int width = pBitmap->RenderSizeX;
+			int height = pBitmap->RenderSizeY;
+
+			if (dstX < 0)
+			{
+				srcX -= dstX;
+				width += dstX;
+				dstX = 0;
+			}
+			if (dstY < 0)
+			{
+				srcY -= dstY;
+				height += dstY;
+				dstY = 0;
+			}
+			if (dstX + width > LIMIT_WIDTH)
+				width = LIMIT_WIDTH - dstX;
+			if (dstY + height > LIMIT_HEIGHT)
+				height = LIMIT_HEIGHT - dstY;
+
+			if (width > 0 && height > 0 && pBitmap->FontType < MAX_LINE_FONT)
+			{
+				const BitmapFont& font = NormalFont[pBitmap->FontType];
+				if (font.BitmapIndex != (FT_UInt)-1 && font.output_width > 0 && font.output_hight > 0)
+				{
+					TextAtlasGlyph glyph;
+					glyph.FontType = (BYTE)pBitmap->FontType;
+					glyph.X = dstX;
+					glyph.Y = dstY;
+					glyph.Width = width;
+					glyph.Height = height;
+					glyph.U1 = (float)srcX / (float)font.output_width;
+					glyph.V1 = (float)srcY / (float)font.output_hight;
+					glyph.U2 = (float)(srcX + width) / (float)font.output_width;
+					glyph.V2 = (float)(srcY + height) / (float)font.output_hight;
+					glyphs->push_back(glyph);
+				}
+			}
+		}
+
+		penX += pBitmap->advance;
+	}
+
+	lpSize->cx = penX;
+	return true;
+}
+
+bool CGMFontLayer::RenderTextAtlasLayout(const std::vector<TextAtlasGlyph>& glyphs, int pen_x, int pen_y, bool background)
+{
+	if (glyphs.empty())
+		return true;
+
+	DWORD dwTextColor = g_pRenderText->GetTextColor();
+	if (dwTextColor == 0)
+		return true;
+
+	if (g_GMFontTextVbo == 0)
+		glGenBuffers(1, &g_GMFontTextVbo);
+	if (g_GMFontTextVbo == 0)
+		return false;
+
+	EnableAlphaTest();
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_LINE_SMOOTH);
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+	bool drewGlyphs = false;
+	const int passCount = background ? 3 : 1;
+	for (int pass = 0; pass < passCount; ++pass)
+	{
+		const bool shadowPass = background && pass == 0;
+		const int drawX = pen_x + (shadowPass ? 1 : 0);
+		const int drawY = pen_y + (shadowPass ? 1 : 0);
+
+		if (shadowPass)
+			glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
+		else
+			glColor4ub(GetRed(dwTextColor), GetGreen(dwTextColor), GetBlue(dwTextColor), GetAlpha(dwTextColor));
+
+		for (int fontIndex = 0; fontIndex < MAX_LINE_FONT; ++fontIndex)
+		{
+			if (NormalFont[fontIndex].BitmapIndex == (FT_UInt)-1)
+				continue;
+
+			g_GMFontTextVertices.clear();
+			for (std::vector<TextAtlasGlyph>::const_iterator it = glyphs.begin(); it != glyphs.end(); ++it)
+			{
+				if (it->FontType != fontIndex)
+					continue;
+
+				const float x = (float)(drawX + it->X);
+				const float y = (float)(WindowHeight - (drawY + it->Y));
+				const float width = (float)it->Width;
+				const float height = (float)it->Height;
+
+				GMFontTextVertex vertex;
+				vertex.Position[0] = x;
+				vertex.Position[1] = y;
+				vertex.TexCoord[0] = it->U1;
+				vertex.TexCoord[1] = it->V1;
+				g_GMFontTextVertices.push_back(vertex);
+
+				vertex.Position[0] = x;
+				vertex.Position[1] = y - height;
+				vertex.TexCoord[0] = it->U1;
+				vertex.TexCoord[1] = it->V2;
+				g_GMFontTextVertices.push_back(vertex);
+
+				vertex.Position[0] = x + width;
+				vertex.Position[1] = y - height;
+				vertex.TexCoord[0] = it->U2;
+				vertex.TexCoord[1] = it->V2;
+				g_GMFontTextVertices.push_back(vertex);
+
+				vertex.Position[0] = x + width;
+				vertex.Position[1] = y;
+				vertex.TexCoord[0] = it->U2;
+				vertex.TexCoord[1] = it->V1;
+				g_GMFontTextVertices.push_back(vertex);
+			}
+
+			if (g_GMFontTextVertices.empty())
+				continue;
+
+			BindTexture(-((int)NormalFont[fontIndex].BitmapIndex));
+			glBindBuffer(GL_ARRAY_BUFFER, g_GMFontTextVbo);
+			glBufferData(GL_ARRAY_BUFFER, g_GMFontTextVertices.size() * sizeof(GMFontTextVertex), &g_GMFontTextVertices[0], GL_STREAM_DRAW);
+			glVertexPointer(2, GL_FLOAT, sizeof(GMFontTextVertex), (void*)offsetof(GMFontTextVertex, Position));
+			glTexCoordPointer(2, GL_FLOAT, sizeof(GMFontTextVertex), (void*)offsetof(GMFontTextVertex, TexCoord));
+			glDrawArrays(GL_QUADS, 0, (GLsizei)g_GMFontTextVertices.size());
+			drewGlyphs = true;
+		}
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	return drewGlyphs;
+}
+
 void CGMFontLayer::RenderText(int iPos_x, int iPos_y, const unicode::t_char* pszText, int iWidth, int iHeight, int iSort, OUT SIZE* lpTextSize, bool background)
 {
 	if (pszText == NULL || (pszText[0] == '\0' && iHeight == 0))
@@ -504,7 +695,12 @@ void CGMFontLayer::RenderText(int iPos_x, int iPos_y, const unicode::t_char* psz
 		wstrText[i] = g_pMultiLanguage->ConvertFulltoHalfWidthChar(wstrText[i]);
 	}
 
-	_GetTextExtentPoint32(wstrText, &RealTextSize);
+	std::vector<TextAtlasGlyph> atlasGlyphs;
+	const bool atlasLayoutReady = BuildTextAtlasLayout(wstrText, &RealTextSize, &atlasGlyphs);
+	if (!atlasLayoutReady)
+	{
+		_GetTextExtentPoint32(wstrText, &RealTextSize);
+	}
 
 	POINT RealBoxPos = {iPos_x, iPos_y };
 	SIZE RealBoxSize = {iWidth, iHeight };
@@ -588,12 +784,23 @@ void CGMFontLayer::RenderText(int iPos_x, int iPos_y, const unicode::t_char* psz
 	int Next_y = 0;
 	int Next_x = 0;
 
-	_TextOut(wstrText, Next_x, Next_y);
+	if (atlasLayoutReady)
+	{
+		Next_x = RealTextSize.cx;
+		Next_y = RealTextSize.cy;
+	}
+	else
+	{
+		_TextOut(wstrText, Next_x, Next_y);
+	}
 
 	GLfloat fCurColor[4];
 	glGetFloatv(GL_CURRENT_COLOR, fCurColor);
 
-	runtime_render_map(RealBoxPos.x, RealBoxPos.y, Next_x, Next_y, Next_x, Next_y, background);
+	if (!atlasLayoutReady || !RenderTextAtlasLayout(atlasGlyphs, RealBoxPos.x, RealBoxPos.y, background))
+	{
+		runtime_render_map(RealBoxPos.x, RealBoxPos.y, Next_x, Next_y, Next_x, Next_y, background);
+	}
 
 	glColor4fv(fCurColor);
 
