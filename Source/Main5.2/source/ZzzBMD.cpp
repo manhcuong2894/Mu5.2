@@ -279,6 +279,14 @@ static int GetGpuAssistRenderMode(int RenderFlag)
 	return 0;
 }
 
+static bool DoesLightMapFlagRequireCpuPath(int renderFlag)
+{
+	if ((renderFlag & RENDER_LIGHTMAP) == 0)
+		return false;
+
+	return (renderFlag & (RENDER_BRIGHT | RENDER_DARK)) == 0;
+}
+
 static int GetGpuAssistOffRejectReason(const BMD* Model)
 {
 #ifdef SHADER_VERSION_TEST
@@ -515,7 +523,21 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	if (modelType >= MODEL_WING && modelType < MODEL_HELPER)
 		return true;
 
+	if (modelType >= MODEL_HELPER && modelType < MODEL_POTION)
+		return true;
+
 	if (modelType >= MODEL_HELM2 && modelType < MODEL_EVENT)
+		return true;
+
+	return false;
+}
+
+static bool IsGpuAssistHardExcludedAttachmentModel(int modelType)
+{
+	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType) || IsGpuAssistEligibleNpcBodyPartModel(modelType))
+		return true;
+
+	if (modelType >= MODEL_WING && modelType < MODEL_HELPER)
 		return true;
 
 	return false;
@@ -523,10 +545,7 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 
 static bool IsGpuAssistAutoSafeAttachmentModel(int modelType)
 {
-	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType) || IsGpuAssistEligibleNpcBodyPartModel(modelType))
-		return false;
-
-	if (modelType >= MODEL_WING && modelType < MODEL_HELPER)
+	if (IsGpuAssistHardExcludedAttachmentModel(modelType))
 		return false;
 
 	return IsGpuAssistEligibleAttachmentModel(modelType);
@@ -809,6 +828,9 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (!isBodyModel && !isAttachmentModel)
 		return;
 
+	if (isAttachmentModel && IsGpuAssistHardExcludedAttachmentModel(modelType))
+		return;
+
 	if (gShaderGL->GetGpuAssistMode() != CShaderGL::GPU_ASSIST_FORCE
 		&& isAttachmentModel
 		&& !IsGpuAssistAutoSafeAttachmentModel(modelType))
@@ -986,7 +1008,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 		RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
 		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
-		RENDER_METAL | RENDER_OIL | RENDER_COLOR | RENDER_WAVE;
+		RENDER_METAL | RENDER_OIL | RENDER_COLOR | RENDER_WAVE | RENDER_LIGHTMAP;
 	if (renderFlag & ~gpuSafeStateFlags)
 		return PART_GPU_REJECT_FLAG;
 
@@ -995,7 +1017,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 		return PART_GPU_REJECT_FLAG;
 	}
 
-	if (renderFlag & (RENDER_LIGHTMAP | RENDER_SHADOWMAP))
+	if ((renderFlag & RENDER_SHADOWMAP) || DoesLightMapFlagRequireCpuPath(renderFlag))
 	{
 		return PART_GPU_REJECT_FLAG;
 	}
@@ -1072,10 +1094,11 @@ static int GetGpuAssistCachedMeshRejectReason(const BMD* Model, Mesh_t* Mesh, in
 				RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 				RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
 				RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
-				RENDER_METAL | RENDER_OIL | RENDER_COLOR | RENDER_WAVE;
+				RENDER_METAL | RENDER_OIL | RENDER_COLOR | RENDER_WAVE | RENDER_LIGHTMAP;
 			if ((renderFlag & ~gpuSafeStateFlags)
 				|| ((renderFlag & RENDER_WAVE) && resolvedRenderFlag != RENDER_TEXTURE)
-				|| (renderFlag & (RENDER_LIGHTMAP | RENDER_SHADOWMAP)))
+				|| (renderFlag & RENDER_SHADOWMAP)
+				|| DoesLightMapFlagRequireCpuPath(renderFlag))
 			{
 				rejectReason = PART_GPU_REJECT_FLAG;
 			}
@@ -2345,6 +2368,15 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					}
 
 #ifdef SHADER_VERSION_TEST
+					if (m_bGpuAssistRequested && m_bGpuAssistTransformReady && m_pGpuAssistBoneMatrices != NULL
+						&& gShaderGL->IsGpuAssistEnabled() && (m->VAO == 0 || m->GpuVertexCount <= 0)
+						&& !(m->GpuAssistCacheRejectReason == PART_GPU_REJECT_MESH
+							&& m->GpuAssistCacheVao == m->VAO
+							&& m->GpuAssistCacheVertexCount == m->GpuVertexCount))
+					{
+						CreateVertexBuffer(i, *m);
+					}
+
 					const int partPerfCategory = ZzzPerfGetActivePartCategory();
 					int gpuRenderMode = 0;
 					const int partGpuReject = GetGpuAssistCachedMeshRejectReason(this, m, RenderFlag, renderFlags, &gpuRenderMode);
