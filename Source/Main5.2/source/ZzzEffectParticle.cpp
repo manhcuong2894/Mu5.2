@@ -156,6 +156,7 @@ static bool g_bGpuParticleBatchAvailable = false;
 static GLuint g_GpuParticleBillboardVbo = 0;
 static GLuint g_GpuParticleUniformProgram = 0;
 static GLint g_GpuParticleTextureUniform = -1;
+static GLuint g_GpuParticleActiveProgram = 0;
 
 static GLint GetGpuParticleTextureUniform(GLuint program)
 {
@@ -167,6 +168,30 @@ static GLint GetGpuParticleTextureUniform(GLuint program)
 	return g_GpuParticleTextureUniform;
 }
 
+static void BeginGpuParticleBatchProgram(GLuint program)
+{
+	if (program == 0 || g_GpuParticleActiveProgram == program)
+		return;
+
+	glUseProgram(program);
+	ZzzPerfRecordShaderUse(program);
+	g_GpuParticleActiveProgram = program;
+
+	const GLint textureUniform = GetGpuParticleTextureUniform(program);
+	if (textureUniform != -1)
+		glUniform1i(textureUniform, 0);
+}
+
+static void EndGpuParticleBatchProgram()
+{
+	if (g_GpuParticleActiveProgram == 0)
+		return;
+
+	glUseProgram(0);
+	ZzzPerfRecordShaderUse(0);
+	g_GpuParticleActiveProgram = 0;
+}
+
 static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard* billboards, int count)
 {
 	if (count <= 0 || billboards == NULL)
@@ -175,11 +200,7 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 	if (g_GpuParticleBillboardVbo == 0)
 		glGenBuffers(1, &g_GpuParticleBillboardVbo);
 
-	glUseProgram(program);
-	ZzzPerfRecordShaderUse(program);
-	const GLint textureUniform = GetGpuParticleTextureUniform(program);
-	if (textureUniform != -1)
-		glUniform1i(textureUniform, 0);
+	BeginGpuParticleBatchProgram(program);
 
 	glBindBuffer(GL_ARRAY_BUFFER, g_GpuParticleBillboardVbo);
 	glBufferData(GL_ARRAY_BUFFER, count * sizeof(GpuParticleBillboard), billboards, GL_STREAM_DRAW);
@@ -202,8 +223,6 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-	ZzzPerfRecordShaderUse(0);
 }
 struct ParticleSpriteBatch
 {
@@ -447,7 +466,6 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 		EnableAlphaTest(false);
 	}
 
-	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
 	BindTexture(texture);
 	DrawGpuParticleBillboards(program, g_GpuParticleBillboards, count);
@@ -464,6 +482,14 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 	g_bGpuParticleBatchAvailable = gShaderGL->IsGpuAssistEnabled() && gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE);
 #else
 	g_bGpuParticleBatchAvailable = false;
+#endif // SHADER_VERSION_TEST
+
+#ifdef SHADER_VERSION_TEST
+	if (g_bGpuParticleBatchAvailable)
+	{
+		ZzzGpuAssistResetState();
+		BeginGpuParticleBatchProgram(gShaderGL->GetShaderParticleId());
+	}
 #endif // SHADER_VERSION_TEST
 
 	int textureList[18] = { BITMAP_WATERFALL_2, BITMAP_FLARE, BITMAP_FIRE, BITMAP_FIRE + 2, BITMAP_FIRE + 3, BITMAP_LIGHT + 3, BITMAP_MAGIC + 1, BITMAP_FIRE_CURSEDLICH, BITMAP_FIRE_HIK2_MONO, BITMAP_SMOKE_BEGIN, BITMAP_SMOKELINE1, BITMAP_SMOKELINE2, BITMAP_SMOKELINE3, BITMAP_LIGHTNING_MEGA1, BITMAP_LIGHTNING_MEGA2, BITMAP_LIGHTNING_MEGA3, BITMAP_FIRE_HIK1, BITMAP_FIRE_HIK3 };
@@ -499,6 +525,9 @@ static void RenderBatchedPlus15Particles(BYTE byRenderOneMore)
 		}
 		FlushParticleSpriteBatch();
 	}
+#ifdef SHADER_VERSION_TEST
+	EndGpuParticleBatchProgram();
+#endif // SHADER_VERSION_TEST
 }
 void HandPosition(PARTICLE* o)
 {

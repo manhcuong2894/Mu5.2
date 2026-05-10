@@ -34,6 +34,7 @@ static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
 static GLuint g_GpuSpriteBillboardVbo = 0;
 static GLuint g_GpuSpriteUniformProgram = 0;
 static GLint g_GpuSpriteTextureUniform = -1;
+static GLuint g_GpuSpriteActiveProgram = 0;
 
 static GLint GetGpuSpriteTextureUniform(GLuint program)
 {
@@ -45,6 +46,30 @@ static GLint GetGpuSpriteTextureUniform(GLuint program)
 	return g_GpuSpriteTextureUniform;
 }
 
+static void BeginGpuSpriteBatchProgram(GLuint program)
+{
+	if (program == 0 || g_GpuSpriteActiveProgram == program)
+		return;
+
+	glUseProgram(program);
+	ZzzPerfRecordShaderUse(program);
+	g_GpuSpriteActiveProgram = program;
+
+	const GLint textureUniform = GetGpuSpriteTextureUniform(program);
+	if (textureUniform != -1)
+		glUniform1i(textureUniform, 0);
+}
+
+static void EndGpuSpriteBatchProgram()
+{
+	if (g_GpuSpriteActiveProgram == 0)
+		return;
+
+	glUseProgram(0);
+	ZzzPerfRecordShaderUse(0);
+	g_GpuSpriteActiveProgram = 0;
+}
+
 static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* billboards, int count)
 {
 	if (count <= 0 || billboards == NULL)
@@ -53,11 +78,7 @@ static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* bi
 	if (g_GpuSpriteBillboardVbo == 0)
 		glGenBuffers(1, &g_GpuSpriteBillboardVbo);
 
-	glUseProgram(program);
-	ZzzPerfRecordShaderUse(program);
-	const GLint textureUniform = GetGpuSpriteTextureUniform(program);
-	if (textureUniform != -1)
-		glUniform1i(textureUniform, 0);
+	BeginGpuSpriteBatchProgram(program);
 
 	glBindBuffer(GL_ARRAY_BUFFER, g_GpuSpriteBillboardVbo);
 	glBufferData(GL_ARRAY_BUFFER, count * sizeof(GpuSpriteBillboard), billboards, GL_STREAM_DRAW);
@@ -80,8 +101,6 @@ static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* bi
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-	ZzzPerfRecordShaderUse(0);
 }
 
 static bool IsValidSpriteObjectPointer(const OBJECT* object)
@@ -228,7 +247,6 @@ static bool RenderGpuSpriteTexture(int texture, int subType, BYTE byRenderOneMor
 	g_EffectRenderPerfStats.SpriteGpuRender += count;
 
 	EnableGpuSpriteBlendState(subType);
-	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
 	BindTexture(texture);
 	DrawGpuSpriteBillboards(program, g_GpuSpriteBillboards, count);
@@ -257,6 +275,9 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 	if (!gShaderGL->IsGpuAssistEnabled() || !gShaderGL->CheckedShader(CShaderGL::SHADER_PARTICLE))
 		return false;
 
+	ZzzGpuAssistResetState();
+	BeginGpuSpriteBatchProgram(gShaderGL->GetShaderParticleId());
+
 	const int textureList[] =
 	{
 		BITMAP_LIGHT,
@@ -283,6 +304,7 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 			RenderGpuSpriteTexture(textureList[textureIndex], subType, byRenderOneMore);
 		}
 	}
+	EndGpuSpriteBatchProgram();
 	return true;
 #else
 	UNREFERENCED_PARAMETER(byRenderOneMore);
