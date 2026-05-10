@@ -15,6 +15,15 @@ void main()
         FragColor = vec4(VertexColor.rgb * 0.55, VertexColor.a * 0.75);
         return;
     }
+    if (uRenderMode == 12)
+    {
+        if (VertexColor.a < 0.1)
+        {
+            discard;
+        }
+        FragColor = VertexColor;
+        return;
+    }
 
     vec4 textureColor = texture(texture1, TexCoord);
     float alpha = textureColor.a * VertexColor.a;
