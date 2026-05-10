@@ -224,21 +224,33 @@ static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
+enum EParticleSpriteBatchMode
+{
+	PARTICLE_SPRITE_BATCH_ALPHA_BLEND = 0,
+	PARTICLE_SPRITE_BATCH_ALPHA_TEST_FALSE,
+};
+
 struct ParticleSpriteBatch
 {
 	int Texture;
+	int BlendMode;
 	int VertexCount;
 	vec3_t Vertices[MAX_PARTICLES * 4];
 	vec4_t Colors[MAX_PARTICLES * 4];
 	vec2_t TexCoords[MAX_PARTICLES * 4];
 };
 
-static ParticleSpriteBatch g_ParticleSpriteBatch = { -1, 0 };
+static ParticleSpriteBatch g_ParticleSpriteBatch = { -1, PARTICLE_SPRITE_BATCH_ALPHA_BLEND, 0 };
 
 static void FlushParticleSpriteBatch()
 {
 	if (g_ParticleSpriteBatch.VertexCount <= 0)
 		return;
+
+	if (g_ParticleSpriteBatch.BlendMode == PARTICLE_SPRITE_BATCH_ALPHA_BLEND)
+		EnableAlphaBlend();
+	else
+		EnableAlphaTest(false);
 
 	BindTexture(g_ParticleSpriteBatch.Texture);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -342,12 +354,10 @@ static bool CanCpuBatchPlus15ParticleSprite(const PARTICLE* o)
 
 	return o->Type == BITMAP_FLARE && o->SubType == 0 && o->LifeTime != 60;
 }
-static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
+static bool AppendParticleSpriteBatchQuad(int Texture, const vec3_t Position, float Width, float Height, const vec3_t Light, float Rotation, float u, float v, float uWidth, float vHeight, int BlendMode)
 {
-	if (!CanBatchPlus15ParticleSprite(o))
-		return false;
-
-	if (g_ParticleSpriteBatch.Texture != -1 && g_ParticleSpriteBatch.Texture != o->TexType)
+	if (g_ParticleSpriteBatch.Texture != -1 &&
+		(g_ParticleSpriteBatch.Texture != Texture || g_ParticleSpriteBatch.BlendMode != BlendMode))
 	{
 		FlushParticleSpriteBatch();
 	}
@@ -357,10 +367,11 @@ static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 		FlushParticleSpriteBatch();
 	}
 
-	g_ParticleSpriteBatch.Texture = o->TexType;
+	g_ParticleSpriteBatch.Texture = Texture;
+	g_ParticleSpriteBatch.BlendMode = BlendMode;
 
 	vec3_t p2;
-	VectorTransform(o->Position, CameraMatrix, p2);
+	VectorTransform(Position, CameraMatrix, p2);
 	const float x = p2[0];
 	const float y = p2[1];
 	const float z = p2[2];
@@ -368,7 +379,7 @@ static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 	const float halfHeight = Height * 0.5f;
 
 	vec3_t p[4];
-	if (o->Rotation == 0.0f)
+	if (Rotation == 0.0f)
 	{
 		Vector(x - halfWidth, y - halfHeight, z, p[0]);
 		Vector(x + halfWidth, y - halfHeight, z, p[1]);
@@ -384,7 +395,7 @@ static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 		Vector(-halfWidth, halfHeight, z, local[3]);
 
 		vec3_t Angle;
-		Vector(0.0f, 0.0f, o->Rotation, Angle);
+		Vector(0.0f, 0.0f, Rotation, Angle);
 		float Matrix[3][4];
 		AngleMatrix(Angle, Matrix);
 
@@ -397,23 +408,36 @@ static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
 	}
 
 	vec2_t texCoords[4];
-	TEXCOORD(texCoords[3], 0.0f, 0.0f);
-	TEXCOORD(texCoords[2], 1.0f, 0.0f);
-	TEXCOORD(texCoords[1], 1.0f, 1.0f);
-	TEXCOORD(texCoords[0], 0.0f, 1.0f);
+	TEXCOORD(texCoords[3], u, v);
+	TEXCOORD(texCoords[2], u + uWidth, v);
+	TEXCOORD(texCoords[1], u + uWidth, v + vHeight);
+	TEXCOORD(texCoords[0], u, v + vHeight);
 
-	const bool rgbTexture = Bitmaps[o->TexType].Components == 3;
+	const bool rgbTexture = Bitmaps[Texture].Components == 3;
 	const int start = g_ParticleSpriteBatch.VertexCount;
 	for (int i = 0; i < 4; ++i)
 	{
 		VectorCopy(p[i], g_ParticleSpriteBatch.Vertices[start + i]);
 		TEXCOORD(g_ParticleSpriteBatch.TexCoords[start + i], texCoords[i][0], texCoords[i][1]);
-		VectorCopy(o->Light, g_ParticleSpriteBatch.Colors[start + i]);
-		g_ParticleSpriteBatch.Colors[start + i][3] = rgbTexture ? 1.0f : o->Light[0];
+		VectorCopy(Light, g_ParticleSpriteBatch.Colors[start + i]);
+		if (rgbTexture || Texture == BITMAP_BLOOD + 1 || Texture == BITMAP_FONT_HIT)
+			g_ParticleSpriteBatch.Colors[start + i][3] = 1.0f;
+		else
+			g_ParticleSpriteBatch.Colors[start + i][3] = Light[0];
 	}
 
 	g_ParticleSpriteBatch.VertexCount += 4;
 	return true;
+}
+
+static bool AppendParticleSpriteBatch(PARTICLE* o, float Width, float Height)
+{
+	if (!CanBatchPlus15ParticleSprite(o))
+		return false;
+
+	const int blendMode = (Bitmaps[o->TexType].Components == 3)
+		? PARTICLE_SPRITE_BATCH_ALPHA_BLEND : PARTICLE_SPRITE_BATCH_ALPHA_TEST_FALSE;
+	return AppendParticleSpriteBatchQuad(o->TexType, o->Position, Width, Height, o->Light, o->Rotation, 0.0f, 0.0f, 1.0f, 1.0f, blendMode);
 }
 static bool ShouldRenderParticleInPass(const PARTICLE* o, BYTE byRenderOneMore)
 {
@@ -430,6 +454,64 @@ static bool ShouldRenderParticleInPass(const PARTICLE* o, BYTE byRenderOneMore)
 	}
 
 	return true;
+}
+
+static bool CanBatchDefaultParticleSprite(const PARTICLE* o)
+{
+	if (o == NULL)
+		return false;
+
+	switch (o->Type)
+	{
+	case BITMAP_WATERFALL_1:
+	case BITMAP_BUBBLE:
+	case BITMAP_SPOT_WATER:
+	case BITMAP_SPARK + 2:
+	case BITMAP_EXPLOTION_MONO:
+	case BITMAP_EXPLOTION:
+	case BITMAP_EXPLOTION + 1:
+	case BITMAP_SUMMON_SAHAMUTT_EXPLOSION:
+	case BITMAP_CLUD64:
+	case BITMAP_TORCH_FIRE:
+	case BITMAP_GHOST_CLOUD1:
+	case BITMAP_GHOST_CLOUD2:
+	case BITMAP_LIGHT + 3:
+	case BITMAP_TWINTAIL_WATER:
+	case BITMAP_SMOKE:
+	case BITMAP_SMOKE + 1:
+	case BITMAP_SMOKE + 3:
+	case BITMAP_SMOKE + 4:
+	case BITMAP_ADV_SMOKE + 1:
+	case BITMAP_LIGHTNING:
+	case BITMAP_BLOOD + 1:
+	case BITMAP_CHROME_ENERGY2:
+	case BITMAP_FIRE_CURSEDLICH:
+	case BITMAP_FIRE_HIK2_MONO:
+	case BITMAP_LEAF_TOTEMGOLEM:
+	case BITMAP_FIRE:
+	case BITMAP_FIRE + 2:
+	case BITMAP_FIRE + 3:
+	case BITMAP_FIRECRACKER:
+	case BITMAP_FLARE:
+	case BITMAP_FLARE_BLUE:
+	case BITMAP_FLARE + 1:
+	case BITMAP_LIGHT + 2:
+	case BITMAP_MAGIC + 1:
+	case BITMAP_CLOUD:
+	case BITMAP_SPARK:
+	case BITMAP_FLAME:
+	case BITMAP_CURSEDTEMPLE_EFFECT_MASKER:
+	case BITMAP_SHINY + 6:
+	case BITMAP_SMOKELINE2:
+	case BITMAP_SBUMB:
+	case BITMAP_DAMAGE1:
+	case BITMAP_SWORD_EFFECT_MONO:
+	case BITMAP_DAMAGE2:
+	case BITMAP_TRUE_FIRE:
+		return false;
+	default:
+		return true;
+	}
 }
 
 static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
@@ -9450,6 +9532,8 @@ void RenderParticles(BYTE byRenderOneMore)
 			BITMAP_t* pBitmap = Bitmaps.GetTexture(o->TexType);
 			float Width = pBitmap->Width * o->Scale;
 			float Height = pBitmap->Height * o->Scale;
+			const int particleBatchMode = (pBitmap->Components == 3)
+				? PARTICLE_SPRITE_BATCH_ALPHA_BLEND : PARTICLE_SPRITE_BATCH_ALPHA_TEST_FALSE;
 			if (pBitmap->Components == 3)
 			{
 				EnableAlphaBlend();
@@ -9458,6 +9542,15 @@ void RenderParticles(BYTE byRenderOneMore)
 			{
 				EnableAlphaTest(false);
 			}
+
+			if (CanBatchDefaultParticleSprite(o) &&
+				AppendParticleSpriteBatchQuad(o->TexType, o->Position, Width, Height, o->Light, o->Rotation,
+					0.0f, 0.0f, 1.0f, 1.0f, particleBatchMode))
+			{
+				continue;
+			}
+
+			FlushParticleSpriteBatch();
 
 			if (o->Type == BITMAP_LIGHT && o->SubType == 6)
 			{
@@ -9802,6 +9895,7 @@ void RenderParticles(BYTE byRenderOneMore)
 			}
 		}
 	}
+	FlushParticleSpriteBatch();
 	RenderBatchedPlus15Particles(byRenderOneMore);
 	ZzzPerfEndCpuGroup(RENDER_CPU_EFFECT, PerfStart);
 }
