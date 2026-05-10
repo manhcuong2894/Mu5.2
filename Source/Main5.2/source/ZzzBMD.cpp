@@ -249,6 +249,8 @@ static int GetGpuAssistRenderMode(int RenderFlag)
 		return 1;
 	if (RenderFlag & RENDER_METAL)
 		return 9;
+	if (RenderFlag & RENDER_OIL)
+		return 11;
 	return 0;
 }
 
@@ -915,7 +917,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 		RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 		RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
 		RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
-		RENDER_METAL | RENDER_WAVE;
+		RENDER_METAL | RENDER_OIL | RENDER_WAVE;
 	if (renderFlag & ~gpuSafeStateFlags)
 		return PART_GPU_REJECT_FLAG;
 
@@ -924,8 +926,7 @@ static int GetGpuAssistMeshRejectReason(const BMD* Model, const Mesh_t* Mesh, in
 		return PART_GPU_REJECT_FLAG;
 	}
 
-	if (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP |
-		RENDER_SHADOWMAP))
+	if (renderFlag & (RENDER_COLOR | RENDER_LIGHTMAP | RENDER_SHADOWMAP))
 	{
 		return PART_GPU_REJECT_FLAG;
 	}
@@ -1002,10 +1003,10 @@ static int GetGpuAssistCachedMeshRejectReason(const BMD* Model, Mesh_t* Mesh, in
 				RENDER_EXTRA | RENDER_DOPPELGANGER | RENDER_BYSCRIPT |
 				RENDER_CHROME | RENDER_CHROME2 | RENDER_CHROME3 | RENDER_CHROME4 |
 				RENDER_CHROME5 | RENDER_CHROME6 | RENDER_CHROME7 | RENDER_CHROME8 |
-				RENDER_METAL | RENDER_WAVE;
+				RENDER_METAL | RENDER_OIL | RENDER_WAVE;
 			if ((renderFlag & ~gpuSafeStateFlags)
 				|| ((renderFlag & RENDER_WAVE) && resolvedRenderFlag != RENDER_TEXTURE)
-				|| (renderFlag & (RENDER_COLOR | RENDER_OIL | RENDER_LIGHTMAP | RENDER_SHADOWMAP)))
+				|| (renderFlag & (RENDER_COLOR | RENDER_LIGHTMAP | RENDER_SHADOWMAP)))
 			{
 				rejectReason = PART_GPU_REJECT_FLAG;
 			}
@@ -2280,11 +2281,11 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 					const int partGpuReject = GetGpuAssistCachedMeshRejectReason(this, m, RenderFlag, renderFlags, &gpuRenderMode);
 					if (partGpuReject == PART_GPU_REJECT_NONE)
 					{
-						const bool gpuChromeOffset = (gpuRenderMode == 4 || gpuRenderMode == 8);
+						const bool gpuUsesTexCoordOffset = (gpuRenderMode == 4 || gpuRenderMode == 8 || gpuRenderMode == 11);
 						ZzzPerfRecordPartMesh(partPerfCategory, m->NumTriangles, true, PART_GPU_REJECT_NONE);
 						RenderMeshGpuAssist(m, EnableLight, (RenderFlag & RENDER_WAVE) != 0, Alpha,
-							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordU : 0.0f,
-							(EnableWave || gpuChromeOffset) ? BlendMeshTexCoordV : 0.0f,
+							(EnableWave || gpuUsesTexCoordOffset) ? BlendMeshTexCoordU : 0.0f,
+							(EnableWave || gpuUsesTexCoordOffset) ? BlendMeshTexCoordV : 0.0f,
 							gpuRenderMode, gpuFallbackBodyLight, gpuFallbackBodyLightReady);
 						return;
 					}
@@ -4276,11 +4277,15 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	static CharacterUniformCache sUniforms = { 0 };
 	static unsigned int sUploadedTransformSerial = 0;
 	static int sUploadedNumBones = 0;
+	static unsigned int sCachedViewTransformSerial = 0;
+	static float sCachedViewMatrix[16] = { 0.0f };
+	static vec3_t sCachedLightDir = { 0.0f, 0.0f, 0.0f };
 	if (sUniforms.Program != program)
 	{
 		sUniforms.Program = program;
 		sUploadedTransformSerial = 0;
 		sUploadedNumBones = 0;
+		sCachedViewTransformSerial = 0;
 		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
 		sUniforms.Proj = glGetUniformLocation(program, "uProj");
 		sUniforms.View = glGetUniformLocation(program, "uView");
@@ -4316,14 +4321,16 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		g_uiGpuAssistActiveProgram = program;
 	}
 
-	float viewMatrix[16];
-	vec3_t lightDir;
-	glGetFloatv(GL_MODELVIEW_MATRIX, viewMatrix);
-	ComputeGpuAssistLightDirection(lightDir);
+	if (sCachedViewTransformSerial != m_uiGpuAssistTransformSerial || sCachedViewTransformSerial == 0)
+	{
+		glGetFloatv(GL_MODELVIEW_MATRIX, sCachedViewMatrix);
+		ComputeGpuAssistLightDirection(sCachedLightDir);
+		sCachedViewTransformSerial = m_uiGpuAssistTransformSerial;
+	}
 
 	glUniform1i(sUniforms.Texture1, 0);
 	glUniformMatrix4fv(sUniforms.Proj, 1, GL_FALSE, glm::value_ptr(gShaderGL->GetProjectionMatrix()));
-	glUniformMatrix4fv(sUniforms.View, 1, GL_FALSE, viewMatrix);
+	glUniformMatrix4fv(sUniforms.View, 1, GL_FALSE, sCachedViewMatrix);
 	glUniform1f(sUniforms.Alpha, alpha);
 	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
 	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
@@ -4331,7 +4338,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	glUniform1i(sUniforms.UseWave, enableWaveGeometry ? 1 : 0);
 	glUniform1i(sUniforms.RenderMode, renderMode);
 	glUniform1f(sUniforms.WorldTime, (float)WorldTime);
-	glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
+	glUniform3f(sUniforms.LightDir, sCachedLightDir[0], sCachedLightDir[1], sCachedLightDir[2]);
 
 	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)
 	{

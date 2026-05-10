@@ -120,6 +120,10 @@ void main()
     {
         TexCoord = vec2(worldNormal.z * 0.5 + 0.2, worldNormal.y * 0.5 + 0.5);
     }
+    else if (uRenderMode == 11)
+    {
+        TexCoord = (worldNormal.xy * aTexCoord) + uTexCoordOffset;
+    }
     else
     {
         TexCoord = aTexCoord + uTexCoordOffset;
