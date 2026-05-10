@@ -71,7 +71,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(ProjectDir)..\dependencies\include;$(ProjectDir)..\dependencies\include\glm;$(ProjectDir)..\dependencies\include\turbojpeg;$(ProjectDir)..\dependencies\include\Sol;$(ProjectDir)..\dependencies\include\Lua;$(ProjectDir)..\dependencies\include\asio;$(ProjectDir)..\dependencies\ImGui;$(ProjectDir)..\dependencies\ImGui\backends;$(ProjectDir)..\dependencies\include\cryptopp820;$(ProjectDir);$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\include\glm;$(SolutionDir)dependencies\include\turbojpeg;$(SolutionDir)dependencies\include\Sol;$(SolutionDir)dependencies\include\Lua;$(SolutionDir)dependencies\include\asio;$(SolutionDir)dependencies\ImGui;$(SolutionDir)dependencies\ImGui\backends;$(SolutionDir)dependencies\include\cryptopp820;$(SolutionDir)source\</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_FOREIGN_NDEBUG;_LANGUAGE_FOREIGN;_LANGUAGE_ENG;LDS_PATCH_GLOBAL_100520;PROTO_EXTRA;MAIN_UPDATE=603;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_FOREIGN_NDEBUG;_LANGUAGE_FOREIGN;_LANGUAGE_ENG;LDS_PATCH_GLOBAL_100520;PROTO_EXTRA;MAIN_UPDATE=603;FT2_BUILD_LIBRARY;SHADER_VERSION_TEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
@@ -136,7 +136,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(ProjectDir)..\dependencies\include;$(ProjectDir)..\dependencies\include\glm;$(ProjectDir)..\dependencies\include\turbojpeg;$(ProjectDir)..\dependencies\include\Sol;$(ProjectDir)..\dependencies\include\Lua;$(ProjectDir)..\dependencies\include\asio;$(ProjectDir)..\dependencies\ImGui;$(ProjectDir)..\dependencies\ImGui\backends;$(ProjectDir)..\dependencies\include\cryptopp820;$(ProjectDir);$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\include\turbojpeg;$(SolutionDir)dependencies\include\Sol;$(SolutionDir)dependencies\include\Lua;$(SolutionDir)dependencies\include\asio;$(SolutionDir)dependencies\ImGui;$(SolutionDir)dependencies\ImGui\backends;$(SolutionDir)dependencies\include\cryptopp820;$(SolutionDir)source\</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;DEBUG;_WINDOWS;_FOREIGN_DEBUG;_LANGUAGE_FOREIGN;_LANGUAGE_ENG;LDS_PATCH_GLOBAL_100520;PROTO_EXTRA;MAIN_UPDATE=603;FT2_BUILD_LIBRARY;CONSOLE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;DEBUG;_WINDOWS;_FOREIGN_DEBUG;_LANGUAGE_FOREIGN;_LANGUAGE_ENG;LDS_PATCH_GLOBAL_100520;PROTO_EXTRA;MAIN_UPDATE=603;FT2_BUILD_LIBRARY;CONSOLE_DEBUG;SHADER_VERSION_TEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
@@ -1231,6 +1231,28 @@
     <None Include="Shaders\terrain.vs" />
     <None Include="SHADER_INTEGRATION_GUIDE.md" />
     <None Include="Time\FPS_CONTROLLER_INTEGRATION.md" />
+    <None Include="VBO\BlendMesh.fs" />
+    <None Include="VBO\BlendMesh.vs" />
+    <None Include="VBO\Chrome1.fs" />
+    <None Include="VBO\Chrome1.vs" />
+    <None Include="VBO\Chrome2.fs" />
+    <None Include="VBO\Chrome2.vs" />
+    <None Include="VBO\Chrome3.fs" />
+    <None Include="VBO\Chrome3.vs" />
+    <None Include="VBO\Chrome4.fs" />
+    <None Include="VBO\Chrome4.vs" />
+    <None Include="VBO\Chrome5.fs" />
+    <None Include="VBO\Chrome5.vs" />
+    <None Include="VBO\Chrome6.fs" />
+    <None Include="VBO\Chrome6.vs" />
+    <None Include="VBO\Chrome7.fs" />
+    <None Include="VBO\Chrome7.vs" />
+    <None Include="VBO\Metal.fs" />
+    <None Include="VBO\Metal.vs" />
+    <None Include="VBO\Model.fs" />
+    <None Include="VBO\Model.vs" />
+    <None Include="VBO\Oil.fs" />
+    <None Include="VBO\Oil.vs" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="..\dependencies\lib\APICB.lib" />

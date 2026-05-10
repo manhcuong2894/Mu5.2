@@ -100,6 +100,11 @@ void CShaderGL::Shutdown()
     shader_character_id = 0;
     shader_colorized_id = 0;
     shader_particle_id = 0;
+    shader_vbo_model = 0;
+    for (int i = 0; i < 7; ++i) shader_vbo_chrome[i] = 0;
+    shader_vbo_metal = 0;
+    shader_vbo_oil = 0;
+    shader_vbo_blendmesh = 0;
     m_bInitialized = false;
     m_bGpuAssistAvailable = false;
 }
@@ -124,6 +129,39 @@ void CShaderGL::RenderShader(ShaderType type)
             break;
         case SHADER_PARTICLE:
             shader = shader_particle_id;
+            break;
+        case SHADER_MODEL_VBO:
+            shader = shader_vbo_model;
+            break;
+        case SHADER_CHROME1_VBO:
+            shader = shader_vbo_chrome[0];
+            break;
+        case SHADER_CHROME2_VBO:
+            shader = shader_vbo_chrome[1];
+            break;
+        case SHADER_CHROME3_VBO:
+            shader = shader_vbo_chrome[2];
+            break;
+        case SHADER_CHROME4_VBO:
+            shader = shader_vbo_chrome[3];
+            break;
+        case SHADER_CHROME5_VBO:
+            shader = shader_vbo_chrome[4];
+            break;
+        case SHADER_CHROME6_VBO:
+            shader = shader_vbo_chrome[5];
+            break;
+        case SHADER_CHROME7_VBO:
+            shader = shader_vbo_chrome[6];
+            break;
+        case SHADER_METAL_VBO:
+            shader = shader_vbo_metal;
+            break;
+        case SHADER_OIL_VBO:
+            shader = shader_vbo_oil;
+            break;
+        case SHADER_BLENDMESH_VBO:
+            shader = shader_vbo_blendmesh;
             break;
         default:
             shader = shader_id;
@@ -150,6 +188,28 @@ bool CShaderGL::CheckedShader(ShaderType type) const
             return shader_colorized_id != 0;
         case SHADER_PARTICLE:
             return shader_particle_id != 0;
+        case SHADER_MODEL_VBO:
+            return shader_vbo_model != 0;
+        case SHADER_CHROME1_VBO:
+            return shader_vbo_chrome[0] != 0;
+        case SHADER_CHROME2_VBO:
+            return shader_vbo_chrome[1] != 0;
+        case SHADER_CHROME3_VBO:
+            return shader_vbo_chrome[2] != 0;
+        case SHADER_CHROME4_VBO:
+            return shader_vbo_chrome[3] != 0;
+        case SHADER_CHROME5_VBO:
+            return shader_vbo_chrome[4] != 0;
+        case SHADER_CHROME6_VBO:
+            return shader_vbo_chrome[5] != 0;
+        case SHADER_CHROME7_VBO:
+            return shader_vbo_chrome[6] != 0;
+        case SHADER_METAL_VBO:
+            return shader_vbo_metal != 0;
+        case SHADER_OIL_VBO:
+            return shader_vbo_oil != 0;
+        case SHADER_BLENDMESH_VBO:
+            return shader_vbo_blendmesh != 0;
         default:
             return shader_id != 0;
     }
