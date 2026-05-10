@@ -6,6 +6,14 @@
 #include "w_ObjectInfo.h"
 #include <malloc.h>
 
+static void SetIdentityBoneTransform(vec34_t& Matrix)
+{
+	memset(Matrix, 0, sizeof(vec34_t));
+	Matrix[0][0] = 1.0f;
+	Matrix[1][1] = 1.0f;
+	Matrix[2][2] = 1.0f;
+}
+
 void CInterpolateContainer::GetCurrentValue(vec3_t& v3Out, float fCurrentRate, VEC_INTERPOLATES& vecInterpolates)
 {
 	for (auto& interpolateFactor : vecInterpolates)
@@ -217,6 +225,10 @@ void OBJECT::CreateBoneTransform(int NumBones)
 {
 	this->DeleteBoneTransform();
 	this->BoneTransform = new vec34_t[NumBones];
+	for (int i = 0; i < NumBones; ++i)
+	{
+		SetIdentityBoneTransform(this->BoneTransform[i]);
+	}
 }
 
 bool OBJECT::EnsureBoneTransform(int NumBones)
@@ -228,7 +240,29 @@ bool OBJECT::EnsureBoneTransform(int NumBones)
 	if (this->BoneTransform != NULL && _msize(this->BoneTransform) >= RequiredSize)
 		return true;
 
-	this->CreateBoneTransform(NumBones);
+	vec34_t* OldTransform = this->BoneTransform;
+	size_t OldSize = 0;
+	if (OldTransform != NULL)
+	{
+		OldSize = _msize(OldTransform);
+	}
+
+	vec34_t* NewTransform = new vec34_t[NumBones];
+	for (int i = 0; i < NumBones; ++i)
+	{
+		SetIdentityBoneTransform(NewTransform[i]);
+	}
+
+	if (OldTransform != NULL && OldSize > 0)
+	{
+		size_t CopySize = OldSize;
+		if (CopySize > RequiredSize)
+			CopySize = RequiredSize;
+		memcpy(NewTransform, OldTransform, CopySize);
+	}
+
+	this->BoneTransform = NewTransform;
+	SAFE_DELETE_ARRAY(OldTransform);
 	return this->BoneTransform != NULL;
 }
 
