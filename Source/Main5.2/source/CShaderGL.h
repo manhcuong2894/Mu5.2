@@ -22,6 +22,14 @@ public:
         GPU_ASSIST_FORCE = 2
     };
 
+    /// Điều khiển upload VAO/VBO GL_STATIC_DRAW cho geometry BMD không qua GpuAssist.
+    enum StaticMeshVboMode
+    {
+        STATIC_MESH_VBO_OFF = 0,
+        STATIC_MESH_VBO_AUTO = 1,
+        STATIC_MESH_VBO_FORCE = 2
+    };
+
     // Tipos de shader suportados
     enum ShaderType
     {
@@ -58,6 +66,8 @@ public:
     GpuAssistMode GetGpuAssistMode() const;
     bool IsGpuAssistAvailable() const;
     bool IsGpuAssistEnabled() const;
+
+    StaticMeshVboMode GetStaticMeshVboMode() const;
     
     // Obter IDs dos programas
     GLuint GetShaderId() const;
@@ -90,18 +100,27 @@ public:
 
     // Uniforms - matrizes
     void setMat4(const char* name, glm::mat4& matrix) const;
+    void setMat4AtLocation(GLint location, const glm::mat4& matrix) const;
+
+    // Helpers para pipeline VBO/OpenGL3
+    GLint GetUniformLocationCached(GLuint program, const char* name) const;
+    void ApplyVboCameraUniforms(GLuint program) const;
 
     // Matriz de perspectiva
     void SetPerspective(float fov, float aspect, float nearPlane, float farPlane);
+    void SetViewMatrix(const glm::mat4& viewMatrix);
     void run_projection();
 
     // Singleton
     static CShaderGL* Instance();
 
     glm::mat4& GetProjectionMatrix() { return m_ProjectionMatrix; }
+    const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
+    const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
 
 private:
     void LoadGpuAssistConfig();
+    void LoadStaticMeshVboConfig();
     void DetectGpuAssistSupport();
 
     GLuint shader_id;
@@ -118,10 +137,12 @@ private:
     GLuint shader_vbo_blendmesh;
 
     glm::mat4 m_ProjectionMatrix;
+    glm::mat4 m_ViewMatrix;
 
     bool m_bInitialized;
     bool m_bGpuAssistAvailable;
     GpuAssistMode m_eGpuAssistMode;
+    StaticMeshVboMode m_eStaticMeshVboMode;
 };
 
 #define gShaderGL (CShaderGL::Instance())

@@ -7,6 +7,7 @@
 #include <cctype>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 CShaderGL::CShaderGL()
     : shader_id(0),
@@ -20,9 +21,11 @@ CShaderGL::CShaderGL()
       shader_vbo_oil(0),
       shader_vbo_blendmesh(0),
       m_ProjectionMatrix(glm::mat4(1.0f)),
+      m_ViewMatrix(glm::mat4(1.0f)),
       m_bInitialized(false),
       m_bGpuAssistAvailable(false),
-      m_eGpuAssistMode(GPU_ASSIST_AUTO)
+      m_eGpuAssistMode(GPU_ASSIST_AUTO),
+      m_eStaticMeshVboMode(STATIC_MESH_VBO_AUTO)
 {
     for (int i = 0; i < 7; ++i) shader_vbo_chrome[i] = 0;
 }
@@ -70,9 +73,14 @@ void CShaderGL::Init()
     this->shader_vbo_blendmesh = this->LoadShaderProgram("VBO/BlendMesh.vs", "VBO/BlendMesh.fs");
 
     LoadGpuAssistConfig();
+    LoadStaticMeshVboConfig();
     DetectGpuAssistSupport();
 
-    m_bInitialized = (shader_id != 0);
+    m_bInitialized = (shader_id != 0 || shader_terrain_id != 0 || shader_glow_id != 0 ||
+                      shader_character_id != 0 || shader_colorized_id != 0 || shader_particle_id != 0 ||
+                      shader_vbo_model != 0 || shader_vbo_chrome[0] != 0 || shader_vbo_metal != 0 ||
+                      shader_vbo_oil != 0 || shader_vbo_blendmesh != 0);
+    m_ViewMatrix = glm::mat4(1.0f);
 
     if (!m_bInitialized)
     {
@@ -233,6 +241,11 @@ bool CShaderGL::IsGpuAssistEnabled() const
     return m_bGpuAssistAvailable;
 }
 
+CShaderGL::StaticMeshVboMode CShaderGL::GetStaticMeshVboMode() const
+{
+    return m_eStaticMeshVboMode;
+}
+
 GLuint CShaderGL::GetShaderId() const
 {
     return shader_id;
@@ -388,6 +401,30 @@ void CShaderGL::LoadGpuAssistConfig()
     }
 }
 
+void CShaderGL::LoadStaticMeshVboConfig()
+{
+    char configValue[32] = {0};
+    GetPrivateProfileStringA("Graphics", "UseStaticMeshVbo", "Auto", configValue,
+                             sizeof(configValue), ".\\config.ini");
+
+    std::string mode = configValue;
+    std::transform(mode.begin(), mode.end(), mode.begin(),
+                   [](unsigned char c) { return (char)std::tolower(c); });
+
+    if (mode == "0" || mode == "off" || mode == "false")
+    {
+        m_eStaticMeshVboMode = STATIC_MESH_VBO_OFF;
+    }
+    else if (mode == "2" || mode == "force")
+    {
+        m_eStaticMeshVboMode = STATIC_MESH_VBO_FORCE;
+    }
+    else
+    {
+        m_eStaticMeshVboMode = STATIC_MESH_VBO_AUTO;
+    }
+}
+
 void CShaderGL::DetectGpuAssistSupport()
 {
     m_bGpuAssistAvailable = false;
@@ -464,6 +501,40 @@ GLuint CShaderGL::run_shader(const char* shader_text, GLenum type)
 }
 
 static glm::mat4 g_ProjectionMatrix = glm::mat4(1.0f);
+static std::unordered_map<std::size_t, GLint> g_UniformLocationCache;
+
+GLint CShaderGL::GetUniformLocationCached(GLuint program, const char* name) const
+{
+    if (program == 0 || name == NULL)
+        return -1;
+
+    const std::size_t key = (static_cast<std::size_t>(program) << 1) ^ std::hash<std::string>{}(name);
+    auto it = g_UniformLocationCache.find(key);
+    if (it != g_UniformLocationCache.end())
+        return it->second;
+
+    GLint loc = glGetUniformLocation(program, name);
+    g_UniformLocationCache[key] = loc;
+    return loc;
+}
+
+void CShaderGL::ApplyVboCameraUniforms(GLuint program) const
+{
+    if (program == 0)
+        return;
+
+    GLint projLoc = GetUniformLocationCached(program, "uProj");
+    if (projLoc != -1)
+    {
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(m_ProjectionMatrix));
+    }
+
+    GLint viewLoc = GetUniformLocationCached(program, "uView");
+    if (viewLoc != -1)
+    {
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(m_ViewMatrix));
+    }
+}
 
 void CShaderGL::run_projection()
 {
@@ -476,6 +547,19 @@ void CShaderGL::run_projection()
         {
             glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(g_ProjectionMatrix));
         }
+
+        // VBO/OpenGL3 shader path uses uProj/uView naming.
+        loc = glGetUniformLocation(program, "uProj");
+        if (loc != -1)
+        {
+            glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(g_ProjectionMatrix));
+        }
+
+        loc = glGetUniformLocation(program, "uView");
+        if (loc != -1)
+        {
+            glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(m_ViewMatrix));
+        }
     }
 }
 
@@ -484,6 +568,12 @@ void CShaderGL::SetPerspective(float Fov, float Aspect, float ZNear,
 {
     g_ProjectionMatrix = glm::perspective(glm::radians(Fov), Aspect, ZNear, ZFar);
     m_ProjectionMatrix = g_ProjectionMatrix;
+    this->run_projection();
+}
+
+void CShaderGL::SetViewMatrix(const glm::mat4& viewMatrix)
+{
+    m_ViewMatrix = viewMatrix;
     this->run_projection();
 }
 
@@ -543,6 +633,14 @@ void CShaderGL::setMat4(const char* name, glm::mat4& matrix) const
     if (program > 0)
         glUniformMatrix4fv(glGetUniformLocation(program, name), 1, GL_FALSE,
                            glm::value_ptr(matrix));
+}
+
+void CShaderGL::setMat4AtLocation(GLint location, const glm::mat4& matrix) const
+{
+    if (location != -1)
+    {
+        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
+    }
 }
 
 #endif // SHADER_VERSION_TEST

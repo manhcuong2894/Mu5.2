@@ -397,6 +397,8 @@ public:
 	bool Save2(char* DirName, char* FileName);
 	void Release();
 	void CreateBoundingBox();
+	/// Có upload VAO/VBO hay không (GpuAssist luôn cần; mesh tĩnh theo config UseStaticMeshVbo).
+	bool ShouldUploadMeshGpuBuffers() const;
 	void CreateVertexBuffer(int i, Mesh_t& mesh);
 	void RenderVertexBuffer(int i, Mesh_t* m, int vertex_index, vec3_t* vertices, vec2_t* textCoords, vec4_t* colors);
 	void PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, bool isBodyModel, bool globalTransform, bool translate);

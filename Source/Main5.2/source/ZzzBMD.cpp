@@ -79,6 +79,25 @@ static GLuint g_uiLegacyMeshTexCoordVbo = 0;
 static size_t g_uiLegacyMeshVertexBytes = 0;
 static size_t g_uiLegacyMeshColorBytes = 0;
 static size_t g_uiLegacyMeshTexCoordBytes = 0;
+static bool g_bGpuAssistModelViewCacheValid = false;
+static int g_iGpuAssistModelViewCacheWorldTime = -1;
+static float g_fGpuAssistModelViewCache[16] = { 0.0f };
+
+static const float* GetGpuAssistModelViewMatrixCached()
+{
+#ifdef SHADER_VERSION_TEST
+	const int frameTime = (int)WorldTime;
+	if (!g_bGpuAssistModelViewCacheValid || g_iGpuAssistModelViewCacheWorldTime != frameTime)
+	{
+		glGetFloatv(GL_MODELVIEW_MATRIX, g_fGpuAssistModelViewCache);
+		g_iGpuAssistModelViewCacheWorldTime = frameTime;
+		g_bGpuAssistModelViewCacheValid = true;
+	}
+	return g_fGpuAssistModelViewCache;
+#else
+	return NULL;
+#endif // SHADER_VERSION_TEST
+}
 
 static void FlushGpuAssistState()
 {
@@ -106,6 +125,7 @@ static void FlushGpuAssistState()
 void ZzzGpuAssistResetState()
 {
 	FlushGpuAssistState();
+	g_bGpuAssistModelViewCacheValid = false;
 }
 
 static bool IsLegacyMeshStreamAvailable()
@@ -498,6 +518,17 @@ static bool IsGpuAssistEligibleAttachmentModel(int modelType)
 	return false;
 }
 
+static bool IsGpuAssistAutoSafeAttachmentModel(int modelType)
+{
+	if (IsGpuAssistEligibleLinkedArmorFxModel(modelType) || IsGpuAssistEligibleNpcBodyPartModel(modelType))
+		return false;
+
+	if (modelType >= MODEL_WING && modelType < MODEL_HELPER)
+		return false;
+
+	return IsGpuAssistEligibleAttachmentModel(modelType);
+}
+
 static void BuildRenderMeshCache(Mesh_t& mesh)
 {
 	SAFE_DELETE_ARRAY(mesh.RenderVertexIndices);
@@ -545,6 +576,32 @@ static void BuildRenderMeshCache(Mesh_t& mesh)
 	}
 
 	mesh.RenderVertexCount = target;
+}
+
+bool BMD::ShouldUploadMeshGpuBuffers() const
+{
+#ifdef SHADER_VERSION_TEST
+	if (gShaderGL == NULL)
+		return false;
+	if (!GLEW_VERSION_3_3)
+		return false;
+
+	if (gShaderGL->IsGpuAssistEnabled())
+		return true;
+
+	switch (gShaderGL->GetStaticMeshVboMode())
+	{
+	case CShaderGL::STATIC_MESH_VBO_OFF:
+		return false;
+	case CShaderGL::STATIC_MESH_VBO_FORCE:
+		return true;
+	case CShaderGL::STATIC_MESH_VBO_AUTO:
+	default:
+		return NumActions <= 1;
+	}
+#else
+	return false;
+#endif // SHADER_VERSION_TEST
 }
 
 void BMD::Animation(float(*BoneMatrix)[3][4], float AnimationFrame, float PriorFrame, unsigned short PriorAction, vec3_t Angle, vec3_t HeadAngle, bool Parent, bool Translate)
@@ -748,6 +805,13 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	const bool isAttachmentModel = (!isBodyModel && IsGpuAssistEligibleAttachmentModel(modelType));
 	if (!isBodyModel && !isAttachmentModel)
 		return;
+
+	if (gShaderGL->GetGpuAssistMode() != CShaderGL::GPU_ASSIST_FORCE
+		&& isAttachmentModel
+		&& !IsGpuAssistAutoSafeAttachmentModel(modelType))
+	{
+		return;
+	}
 
 	if (!IsGpuAssistEligibleObject(pObject)
 		&& !(isAttachmentModel && pObject != NULL && pObject->Kind == KIND_NPC))
@@ -3452,7 +3516,10 @@ bool BMD::Open(char* DirName, char* ModelFileName)
 			m->m_csTScript = NULL;
 		}
 		BuildRenderMeshCache(*m);
-		CreateVertexBuffer(i, *m);
+#ifdef SHADER_VERSION_TEST
+		if (ShouldUploadMeshGpuBuffers())
+			CreateVertexBuffer(i, *m);
+#endif // SHADER_VERSION_TEST
 	}
 	//#ifdef USE_SHADOWVOLUME
 		/*for(i=0;i<NumMeshs;i++)
@@ -3751,7 +3818,8 @@ bool BMD::Open2(char* DirName, char* ModelFileName, bool bReAlloc)
 		BuildRenderMeshCache(*m);
 
 #ifdef SHADER_VERSION_TEST
-		this->CreateVertexBuffer(i, *m);
+		if (ShouldUploadMeshGpuBuffers())
+			this->CreateVertexBuffer(i, *m);
 #endif // SHADER_VERSION_TEST
 	}
 
@@ -4094,6 +4162,15 @@ void BMD::Init(bool Dummy)
 	BoneHead = -1;
 	StreamMesh = -1;
 	CreateBoundingBox();
+#ifdef SHADER_VERSION_TEST
+	if (gShaderGL != NULL && gShaderGL->IsGpuAssistEnabled())
+	{
+		for (int i = 0; i < NumMeshs; ++i)
+		{
+			CreateVertexBuffer(i, Meshs[i]);
+		}
+	}
+#endif // SHADER_VERSION_TEST
 }
 
 void BMD::CreateBoundingBox()
@@ -4255,6 +4332,9 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	if (program == 0)
 		return;
 
+	if (!gShaderGL->IsGpuAssistEnabled())
+		return;
+
 	struct CharacterUniformCache
 	{
 		GLuint Program;
@@ -4281,8 +4361,16 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	static int sUploadedNumBones = 0;
 	static unsigned int sCachedViewTransformSerial = 0;
 	static unsigned int sUploadedViewTransformSerial = 0;
+	static int sUploadedViewFrameTime = -1;
 	static float sCachedViewMatrix[16] = { 0.0f };
 	static vec3_t sCachedLightDir = { 0.0f, 0.0f, 0.0f };
+	static float sUploadedAlpha = -1.0f;
+	static vec3_t sUploadedBodyLight = { -9999.0f, -9999.0f, -9999.0f };
+	static vec2_t sUploadedTexCoordOffset = { -9999.0f, -9999.0f };
+	static int sUploadedUseLighting = -1;
+	static int sUploadedUseWave = -1;
+	static int sUploadedRenderMode = -1;
+	static float sUploadedWorldTime = -1.0f;
 	if (sUniforms.Program != program)
 	{
 		sUniforms.Program = program;
@@ -4290,6 +4378,15 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		sUploadedNumBones = 0;
 		sCachedViewTransformSerial = 0;
 		sUploadedViewTransformSerial = 0;
+		sUploadedViewFrameTime = -1;
+		sUploadedAlpha = -1.0f;
+		Vector(-9999.0f, -9999.0f, -9999.0f, sUploadedBodyLight);
+		sUploadedTexCoordOffset[0] = -9999.0f;
+		sUploadedTexCoordOffset[1] = -9999.0f;
+		sUploadedUseLighting = -1;
+		sUploadedUseWave = -1;
+		sUploadedRenderMode = -1;
+		sUploadedWorldTime = -1.0f;
 		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
 		sUniforms.Proj = glGetUniformLocation(program, "uProj");
 		sUniforms.View = glGetUniformLocation(program, "uView");
@@ -4323,30 +4420,74 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	{
 		glUseProgram(program);
 		g_uiGpuAssistActiveProgram = program;
+		glUniform1i(sUniforms.Texture1, 0);
+		glUniformMatrix4fv(sUniforms.Proj, 1, GL_FALSE, glm::value_ptr(gShaderGL->GetProjectionMatrix()));
+		sUploadedViewTransformSerial = 0;
+		sUploadedViewFrameTime = -1;
 	}
 
-	if (sCachedViewTransformSerial != m_uiGpuAssistTransformSerial || sCachedViewTransformSerial == 0)
+	const int currentFrameTime = (int)WorldTime;
+	if (sCachedViewTransformSerial != m_uiGpuAssistTransformSerial
+		|| sUploadedViewFrameTime != currentFrameTime
+		|| sCachedViewTransformSerial == 0)
 	{
-		glGetFloatv(GL_MODELVIEW_MATRIX, sCachedViewMatrix);
+		memcpy(sCachedViewMatrix, GetGpuAssistModelViewMatrixCached(), sizeof(sCachedViewMatrix));
 		ComputeGpuAssistLightDirection(sCachedLightDir);
 		sCachedViewTransformSerial = m_uiGpuAssistTransformSerial;
 	}
 
-	glUniform1i(sUniforms.Texture1, 0);
-	glUniformMatrix4fv(sUniforms.Proj, 1, GL_FALSE, glm::value_ptr(gShaderGL->GetProjectionMatrix()));
-	glUniform1f(sUniforms.Alpha, alpha);
-	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
-	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
-	glUniform1i(sUniforms.UseLighting, shaderLighting ? 1 : 0);
-	glUniform1i(sUniforms.UseWave, enableWaveGeometry ? 1 : 0);
-	glUniform1i(sUniforms.RenderMode, renderMode);
-	glUniform1f(sUniforms.WorldTime, (float)WorldTime);
-
-	if (sUploadedViewTransformSerial != m_uiGpuAssistTransformSerial)
+	if (sUploadedViewTransformSerial != m_uiGpuAssistTransformSerial || sUploadedViewFrameTime != currentFrameTime)
 	{
 		glUniformMatrix4fv(sUniforms.View, 1, GL_FALSE, sCachedViewMatrix);
 		glUniform3f(sUniforms.LightDir, sCachedLightDir[0], sCachedLightDir[1], sCachedLightDir[2]);
 		sUploadedViewTransformSerial = m_uiGpuAssistTransformSerial;
+		sUploadedViewFrameTime = currentFrameTime;
+	}
+
+	if (sUploadedAlpha != alpha)
+	{
+		glUniform1f(sUniforms.Alpha, alpha);
+		sUploadedAlpha = alpha;
+	}
+
+	if (sUploadedBodyLight[0] != bodyLight0 || sUploadedBodyLight[1] != bodyLight1 || sUploadedBodyLight[2] != bodyLight2)
+	{
+		glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
+		Vector(bodyLight0, bodyLight1, bodyLight2, sUploadedBodyLight);
+	}
+
+	if (sUploadedTexCoordOffset[0] != texCoordOffsetU || sUploadedTexCoordOffset[1] != texCoordOffsetV)
+	{
+		glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
+		sUploadedTexCoordOffset[0] = texCoordOffsetU;
+		sUploadedTexCoordOffset[1] = texCoordOffsetV;
+	}
+
+	const int useLighting = shaderLighting ? 1 : 0;
+	if (sUploadedUseLighting != useLighting)
+	{
+		glUniform1i(sUniforms.UseLighting, useLighting);
+		sUploadedUseLighting = useLighting;
+	}
+
+	const int useWave = enableWaveGeometry ? 1 : 0;
+	if (sUploadedUseWave != useWave)
+	{
+		glUniform1i(sUniforms.UseWave, useWave);
+		sUploadedUseWave = useWave;
+	}
+
+	if (sUploadedRenderMode != renderMode)
+	{
+		glUniform1i(sUniforms.RenderMode, renderMode);
+		sUploadedRenderMode = renderMode;
+	}
+
+	const float worldTime = (float)WorldTime;
+	if (sUploadedWorldTime != worldTime)
+	{
+		glUniform1f(sUniforms.WorldTime, worldTime);
+		sUploadedWorldTime = worldTime;
 	}
 
 	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)

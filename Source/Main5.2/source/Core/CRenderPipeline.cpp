@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "CRenderPipeline.h"
-#include <GL/glew.h>
 
 CRenderPipeline* CRenderPipeline::m_pInstance = nullptr;
 
