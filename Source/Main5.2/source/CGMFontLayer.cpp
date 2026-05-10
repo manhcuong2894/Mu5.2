@@ -590,6 +590,8 @@ bool CGMFontLayer::RenderTextAtlasLayout(const std::vector<TextAtlasGlyph>& glyp
 	if (dwTextColor == 0)
 		return true;
 
+	ZzzGpuAssistResetState();
+
 	if (g_GMFontTextVbo == 0)
 		glGenBuffers(1, &g_GMFontTextVbo);
 	if (g_GMFontTextVbo == 0)

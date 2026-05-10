@@ -1917,7 +1917,6 @@ void BMD::BeginRender(float Alpha)
 
 void BMD::EndRender()
 {
-	FlushGpuAssistState();
 	glPopMatrix();
 }
 

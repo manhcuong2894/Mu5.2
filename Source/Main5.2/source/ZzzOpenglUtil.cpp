@@ -903,6 +903,7 @@ inline void TEXCOORD(float* c, float u, float v)
 
 void RenderBox(float Matrix[3][4])
 {
+	ZzzGpuAssistResetState();
 	vec3_t BoundingBoxMin;
 	vec3_t BoundingBoxMax;
 	Vector(-10.f, -30.f, -10.f, BoundingBoxMin);
@@ -991,6 +992,7 @@ void RenderBox(float Matrix[3][4])
 
 void RenderPlane3D(float Width, float Height, float Matrix[3][4])
 {
+	ZzzGpuAssistResetState();
 	vec3_t BoundingVertices[4];
 	Vector(-Width, -Width, Height, BoundingVertices[3]);
 	Vector(Width, Width, Height, BoundingVertices[2]);
@@ -1029,6 +1031,7 @@ void EndSprite()
 
 void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_t Light, float Rotation, float u, float v, float uWidth, float vHeight)
 {
+	ZzzGpuAssistResetState();
 	BindTexture(Texture);
 
 	vec3_t p2;
@@ -1132,6 +1135,7 @@ void RenderSprite(int Texture, vec3_t Position, float Width, float Height, vec3_
 
 void RenderSpriteUV(int Texture, vec3_t Position, float Width, float Height, float(*UV)[2], vec3_t Light[4], float Alpha)
 {
+	ZzzGpuAssistResetState();
 	BindTexture(Texture);
 
 	vec3_t p2;
@@ -1277,6 +1281,7 @@ void EndBitmap()
 
 void RenderColor(float x, float y, float Width, float Height, float Alpha, int Flag, bool Scale)
 {
+	ZzzGpuAssistResetState();
 	DisableTexture();
 
 	if (Scale)
@@ -1317,6 +1322,7 @@ void RenderColor(float x, float y, float Width, float Height, float Alpha, int F
 
 void RenderNoColor(float x, float y, float Width, float Height, float Alpha, int Flag)
 {
+	ZzzGpuAssistResetState();
 	DisableTexture();
 
 	x = ConvertNoX(x);
@@ -1360,6 +1366,7 @@ void EndRenderColor()
 
 void RenderColorBitmap(int Texture, float x, float y, float Width, float Height, float u, float v, float uWidth, float vHeight, unsigned int color)
 {
+	ZzzGpuAssistResetState();
 	x = ConvertX(x);
 	y = ConvertY(y);
 
@@ -1426,6 +1433,7 @@ void RenderColorBitmap(int Texture, float x, float y, float Width, float Height,
 
 void RenderBitmap(int Texture, float x, float y, float Width, float Height, float u, float v, float uWidth, float vHeight, bool Scale, bool StartScale, float Alpha)
 {
+	ZzzGpuAssistResetState();
 	if (StartScale)
 	{
 		x = ConvertX(x);
@@ -1485,6 +1493,7 @@ void RenderBitmap(int Texture, float x, float y, float Width, float Height, floa
 
 void RenderNoBitmap(int Texture, float x, float y, float Width, float Height, float u, float v, float uWidth, float vHeight, bool Scale, bool StartScale, float Alpha)
 {
+	ZzzGpuAssistResetState();
 	if (StartScale)
 	{
 		x = ConvertNoX(x);
@@ -1560,6 +1569,7 @@ void RenderNoBitmap(int Texture, float x, float y, float Width, float Height, fl
 
 void RenderBitmapRotate(int Texture, float x, float y, float Width, float Height, float Rotate, float u, float v, float uWidth, float vHeight, bool Scale)
 {
+	ZzzGpuAssistResetState();
 	if (Scale)
 	{
 		x = ConvertX(x);
@@ -1603,6 +1613,7 @@ void RenderBitmapRotate(int Texture, float x, float y, float Width, float Height
 
 void RenderBitRotate(int Texture, float x, float y, float Width, float Height, float Rotate)
 {
+	ZzzGpuAssistResetState();
 	x = ConvertX(x);
 	y = ConvertY(y);
 	Width = ConvertX(Width);
@@ -1651,6 +1662,7 @@ void RenderBitRotate(int Texture, float x, float y, float Width, float Height, f
 
 void RenderPointRotate(int Texture, float ix, float iy, float iWidth, float iHeight, float x, float y, float Width, float Height, float Rotate, float Rotate_Loc, float uWidth, float vHeight, int Num)
 {
+	ZzzGpuAssistResetState();
 	int i = 0;
 	vec3_t p, p2[4], p3, p4[4], Angle;
 	float c[4][2], Matrix[3][4];
@@ -1718,6 +1730,7 @@ void RenderPointRotate(int Texture, float ix, float iy, float iWidth, float iHei
 
 void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float Height, float Rotate, float u, float v, float uWidth, float vHeight)
 {
+	ZzzGpuAssistResetState();
 	BindTexture(Texture);
 
 	vec3_t p[4];
@@ -1757,6 +1770,7 @@ void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float H
 
 void RenderNoBitmapLocalRotate(int Texture, float x, float y, float Width, float Height, float Rotate, float u, float v, float uWidth, float vHeight)
 {
+	ZzzGpuAssistResetState();
 	BindTexture(Texture);
 
 	vec3_t p[4];
@@ -1796,6 +1810,7 @@ void RenderNoBitmapLocalRotate(int Texture, float x, float y, float Width, float
 
 void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float Height, float Rotate, float u, float v, float uWidth, float vHeight, bool Scale)
 {
+	ZzzGpuAssistResetState();
 	float Matrix[3][4];
 	vec3_t Angle, p[4], p2[4];
 	if (Scale)
@@ -1842,6 +1857,7 @@ void RenderBitmapLocalRotate(int Texture, float x, float y, float Width, float H
 
 void RenderBitmapLocalRotate2(int Texture, float x, float y, float Width, float Height, float Rotate, float u, float v, float uWidth, float vHeight, bool Scale)
 {
+	ZzzGpuAssistResetState();
 	float Matrix[3][4];
 	vec3_t Angle, p[4], p2[4];
 
@@ -1884,6 +1900,7 @@ void RenderBitmapLocalRotate2(int Texture, float x, float y, float Width, float 
 
 void RenderBitmapLocalProjection(int Texture, float x, float y, float w, float h, vec3_t Angle, float su, float sv, float uw, float uh, bool Scale)
 {
+	ZzzGpuAssistResetState();
 	float Matrix[3][4];
 	vec3_t sp[4], vertex[4];
 
@@ -1926,6 +1943,7 @@ void RenderBitmapLocalProjection(int Texture, float x, float y, float w, float h
 
 void RenderBitmapAlpha(int Texture, float sx, float sy, float Width, float Height)
 {
+	ZzzGpuAssistResetState();
 	EnableAlphaTest();
 	BindTexture(Texture);
 
@@ -1967,6 +1985,7 @@ void RenderBitmapAlpha(int Texture, float sx, float sy, float Width, float Heigh
 
 void RenderBitmapUV(int Texture, float x, float y, float Width, float Height, float u, float v, float uWidth, float vHeight)
 {
+	ZzzGpuAssistResetState();
 	x = ConvertX(x);
 	y = ConvertY(y);
 	Width = ConvertX(Width);
