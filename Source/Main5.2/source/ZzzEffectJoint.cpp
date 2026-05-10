@@ -7514,6 +7514,33 @@ static bool IsJointTailBatchSafe(const JOINT* o)
 	return true;
 }
 
+static GLuint g_JointTailBatchVbo = 0;
+
+static void DrawJointTailBatch(vec2_t* textCoords, vec3_t* vertices, vec4_t* colors, int vertexCount)
+{
+	if (vertexCount <= 0)
+		return;
+
+	if (g_JointTailBatchVbo == 0)
+		glGenBuffers(1, &g_JointTailBatchVbo);
+
+	const int vertexBytes = vertexCount * sizeof(vec3_t);
+	const int colorBytes = vertexCount * sizeof(vec4_t);
+	const int texCoordBytes = vertexCount * sizeof(vec2_t);
+
+	glBindBuffer(GL_ARRAY_BUFFER, g_JointTailBatchVbo);
+	glBufferData(GL_ARRAY_BUFFER, vertexBytes + colorBytes + texCoordBytes, NULL, GL_STREAM_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, vertexBytes, vertices);
+	glBufferSubData(GL_ARRAY_BUFFER, vertexBytes, colorBytes, colors);
+	glBufferSubData(GL_ARRAY_BUFFER, vertexBytes + colorBytes, texCoordBytes, textCoords);
+
+	glVertexPointer(3, GL_FLOAT, 0, (void*)0);
+	glColorPointer(4, GL_FLOAT, 0, (void*)(UINT_PTR)vertexBytes);
+	glTexCoordPointer(2, GL_FLOAT, 0, (void*)(UINT_PTR)(vertexBytes + colorBytes));
+	glDrawArrays(GL_QUADS, 0, vertexCount);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 static void AppendJointQuad(vec2_t* textCoords, vec3_t* vertices, vec4_t* colors, int& vertexIndex,
 	float u1, float v1, const vec3_t p1, float u2, float v2, const vec3_t p2,
 	float u3, float v3, const vec3_t p3, float u4, float v4, const vec3_t p4, const GLfloat* color)
@@ -7631,17 +7658,11 @@ static bool RenderJointTailsBatch(JOINT* o)
 
 	if (vertexOne > 0)
 	{
-		glVertexPointer(3, GL_FLOAT, 0, verticesOne);
-		glColorPointer(4, GL_FLOAT, 0, colorsOne);
-		glTexCoordPointer(2, GL_FLOAT, 0, textCoordsOne);
-		glDrawArrays(GL_QUADS, 0, vertexOne);
+		DrawJointTailBatch(textCoordsOne, verticesOne, colorsOne, vertexOne);
 	}
 	if (vertexTwo > 0)
 	{
-		glVertexPointer(3, GL_FLOAT, 0, verticesTwo);
-		glColorPointer(4, GL_FLOAT, 0, colorsTwo);
-		glTexCoordPointer(2, GL_FLOAT, 0, textCoordsTwo);
-		glDrawArrays(GL_QUADS, 0, vertexTwo);
+		DrawJointTailBatch(textCoordsTwo, verticesTwo, colorsTwo, vertexTwo);
 	}
 
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);

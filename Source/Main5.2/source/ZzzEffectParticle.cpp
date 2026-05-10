@@ -18,6 +18,7 @@
 #include "MapManager.h"
 #include "NewUISystem.h"
 #include "CShaderGL.h"
+#include <stddef.h>
 
 
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
@@ -152,6 +153,55 @@ struct GpuParticleBillboard
 
 static GpuParticleBillboard g_GpuParticleBillboards[MAX_PARTICLES];
 static bool g_bGpuParticleBatchAvailable = false;
+static GLuint g_GpuParticleBillboardVbo = 0;
+static GLuint g_GpuParticleUniformProgram = 0;
+static GLint g_GpuParticleTextureUniform = -1;
+
+static GLint GetGpuParticleTextureUniform(GLuint program)
+{
+	if (g_GpuParticleUniformProgram != program)
+	{
+		g_GpuParticleUniformProgram = program;
+		g_GpuParticleTextureUniform = glGetUniformLocation(program, "texture1");
+	}
+	return g_GpuParticleTextureUniform;
+}
+
+static void DrawGpuParticleBillboards(GLuint program, const GpuParticleBillboard* billboards, int count)
+{
+	if (count <= 0 || billboards == NULL)
+		return;
+
+	if (g_GpuParticleBillboardVbo == 0)
+		glGenBuffers(1, &g_GpuParticleBillboardVbo);
+
+	glUseProgram(program);
+	const GLint textureUniform = GetGpuParticleTextureUniform(program);
+	if (textureUniform != -1)
+		glUniform1i(textureUniform, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, g_GpuParticleBillboardVbo);
+	glBufferData(GL_ARRAY_BUFFER, count * sizeof(GpuParticleBillboard), billboards, GL_STREAM_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Center));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Size));
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Color));
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, Rotation));
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), (void*)offsetof(GpuParticleBillboard, TexRect));
+	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(4);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+}
 struct ParticleSpriteBatch
 {
 	int Texture;
@@ -395,27 +445,8 @@ static bool RenderGpuPlus15ParticleTexture(int texture, BYTE byRenderOneMore)
 
 	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
-	glUseProgram(program);
-	glUniform1i(glGetUniformLocation(program, "texture1"), 0);
 	BindTexture(texture);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Center[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Size[0]);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Color[0]);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].Rotation);
-	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuParticleBillboard), &g_GpuParticleBillboards[0].TexRect[0]);
-	glDrawArrays(GL_POINTS, 0, count);
-	glDisableVertexAttribArray(4);
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
+	DrawGpuParticleBillboards(program, g_GpuParticleBillboards, count);
 	return true;
 #else
 	UNREFERENCED_PARAMETER(texture);

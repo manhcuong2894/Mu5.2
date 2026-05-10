@@ -17,6 +17,7 @@
 #include "CShaderGL.h"
 #include "CGMCharacter.h"
 #include "ZzzScene.h"
+#include <stddef.h>
 
 
 OBJECT Sprites[MAX_SPRITES];
@@ -30,6 +31,55 @@ struct GpuSpriteBillboard
 };
 
 static GpuSpriteBillboard g_GpuSpriteBillboards[MAX_SPRITES];
+static GLuint g_GpuSpriteBillboardVbo = 0;
+static GLuint g_GpuSpriteUniformProgram = 0;
+static GLint g_GpuSpriteTextureUniform = -1;
+
+static GLint GetGpuSpriteTextureUniform(GLuint program)
+{
+	if (g_GpuSpriteUniformProgram != program)
+	{
+		g_GpuSpriteUniformProgram = program;
+		g_GpuSpriteTextureUniform = glGetUniformLocation(program, "texture1");
+	}
+	return g_GpuSpriteTextureUniform;
+}
+
+static void DrawGpuSpriteBillboards(GLuint program, const GpuSpriteBillboard* billboards, int count)
+{
+	if (count <= 0 || billboards == NULL)
+		return;
+
+	if (g_GpuSpriteBillboardVbo == 0)
+		glGenBuffers(1, &g_GpuSpriteBillboardVbo);
+
+	glUseProgram(program);
+	const GLint textureUniform = GetGpuSpriteTextureUniform(program);
+	if (textureUniform != -1)
+		glUniform1i(textureUniform, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, g_GpuSpriteBillboardVbo);
+	glBufferData(GL_ARRAY_BUFFER, count * sizeof(GpuSpriteBillboard), billboards, GL_STREAM_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Center));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Size));
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Color));
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, Rotation));
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), (void*)offsetof(GpuSpriteBillboard, TexRect));
+	glDrawArrays(GL_POINTS, 0, count);
+	glDisableVertexAttribArray(4);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+}
 
 static bool IsValidSpriteObjectPointer(const OBJECT* object)
 {
@@ -177,27 +227,8 @@ static bool RenderGpuSpriteTexture(int texture, int subType, BYTE byRenderOneMor
 	EnableGpuSpriteBlendState(subType);
 	ZzzGpuAssistResetState();
 	const GLuint program = gShaderGL->GetShaderParticleId();
-	glUseProgram(program);
-	glUniform1i(glGetUniformLocation(program, "texture1"), 0);
 	BindTexture(texture);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Center[0]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Size[0]);
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Color[0]);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].Rotation);
-	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(GpuSpriteBillboard), &g_GpuSpriteBillboards[0].TexRect[0]);
-	glDrawArrays(GL_POINTS, 0, count);
-	glDisableVertexAttribArray(4);
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(0);
-	glUseProgram(0);
+	DrawGpuSpriteBillboards(program, g_GpuSpriteBillboards, count);
 
 	for (int i = 0; i < MAX_SPRITES; ++i)
 	{
