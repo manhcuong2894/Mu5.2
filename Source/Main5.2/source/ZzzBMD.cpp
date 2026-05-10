@@ -1,4 +1,4 @@
-﻿///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -23,6 +23,7 @@
 #include "PhysicsManager.h"
 #include "MuCrypto/MuCrypto.h"
 #include "CShaderGL.h"
+#include <glm/gtc/type_ptr.hpp>
 
 extern float MouseX;
 extern float MouseY;
@@ -824,25 +825,22 @@ void BMD::CacheGpuAssistBoneMatrices()
 
 	for (int i = 0; i < NumBones; ++i)
 	{
-		m_GpuAssistBones[i][0] = m_pGpuAssistBoneMatrices[i][0][0];
-		m_GpuAssistBones[i][1] = m_pGpuAssistBoneMatrices[i][1][0];
-		m_GpuAssistBones[i][2] = m_pGpuAssistBoneMatrices[i][2][0];
-		m_GpuAssistBones[i][3] = 0.0f;
-
-		m_GpuAssistBones[i][4] = m_pGpuAssistBoneMatrices[i][0][1];
-		m_GpuAssistBones[i][5] = m_pGpuAssistBoneMatrices[i][1][1];
-		m_GpuAssistBones[i][6] = m_pGpuAssistBoneMatrices[i][2][1];
-		m_GpuAssistBones[i][7] = 0.0f;
-
-		m_GpuAssistBones[i][8] = m_pGpuAssistBoneMatrices[i][0][2];
-		m_GpuAssistBones[i][9] = m_pGpuAssistBoneMatrices[i][1][2];
-		m_GpuAssistBones[i][10] = m_pGpuAssistBoneMatrices[i][2][2];
-		m_GpuAssistBones[i][11] = 0.0f;
-
-		m_GpuAssistBones[i][12] = m_pGpuAssistBoneMatrices[i][0][3];
-		m_GpuAssistBones[i][13] = m_pGpuAssistBoneMatrices[i][1][3];
-		m_GpuAssistBones[i][14] = m_pGpuAssistBoneMatrices[i][2][3];
-		m_GpuAssistBones[i][15] = 1.0f;
+		float* b = &m_GpuAssistBones[0][0] + (i * 12);
+		// Row 0
+		b[0] = m_pGpuAssistBoneMatrices[i][0][0];
+		b[1] = m_pGpuAssistBoneMatrices[i][0][1];
+		b[2] = m_pGpuAssistBoneMatrices[i][0][2];
+		b[3] = m_pGpuAssistBoneMatrices[i][0][3];
+		// Row 1
+		b[4] = m_pGpuAssistBoneMatrices[i][1][0];
+		b[5] = m_pGpuAssistBoneMatrices[i][1][1];
+		b[6] = m_pGpuAssistBoneMatrices[i][1][2];
+		b[7] = m_pGpuAssistBoneMatrices[i][1][3];
+		// Row 2
+		b[8] = m_pGpuAssistBoneMatrices[i][2][0];
+		b[9] = m_pGpuAssistBoneMatrices[i][2][1];
+		b[10] = m_pGpuAssistBoneMatrices[i][2][2];
+		b[11] = m_pGpuAssistBoneMatrices[i][2][3];
 	}
 }
 
@@ -4258,6 +4256,8 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 	{
 		GLuint Program;
 		GLint Texture1;
+		GLint Proj;
+		GLint View;
 		GLint Alpha;
 		GLint BodyScale;
 		GLint BoneScale;
@@ -4271,14 +4271,6 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		GLint WorldTime;
 		GLint LightDir;
 		GLint Bones;
-		bool StateValid;
-		float AlphaValue;
-		float BodyLightValue[3];
-		float TexCoordOffsetValue[2];
-		int UseLightingValue;
-		int UseWaveValue;
-		int RenderModeValue;
-		float WorldTimeValue;
 	};
 
 	static CharacterUniformCache sUniforms = { 0 };
@@ -4290,6 +4282,8 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		sUploadedTransformSerial = 0;
 		sUploadedNumBones = 0;
 		sUniforms.Texture1 = glGetUniformLocation(program, "texture1");
+		sUniforms.Proj = glGetUniformLocation(program, "uProj");
+		sUniforms.View = glGetUniformLocation(program, "uView");
 		sUniforms.Alpha = glGetUniformLocation(program, "uAlpha");
 		sUniforms.BodyScale = glGetUniformLocation(program, "uBodyScale");
 		sUniforms.BoneScale = glGetUniformLocation(program, "uBoneScale");
@@ -4303,12 +4297,14 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		sUniforms.WorldTime = glGetUniformLocation(program, "uWorldTime");
 		sUniforms.LightDir = glGetUniformLocation(program, "uLightDir");
 		sUniforms.Bones = glGetUniformLocation(program, "uBones");
-		sUniforms.StateValid = false;
 	}
 
 	const bool shaderLighting = (enableLight && renderMode == 0);
 	GLfloat currentColor[4] = { fallbackBodyLight[0], fallbackBodyLight[1], fallbackBodyLight[2], alpha };
-	UNREFERENCED_PARAMETER(fallbackBodyLightReady);
+	if (!fallbackBodyLightReady && !shaderLighting && renderMode == 0)
+	{
+		glGetFloatv(GL_CURRENT_COLOR, currentColor);
+	}
 
 	const float bodyLight0 = (shaderLighting || renderMode != 0) ? BodyLight[0] : currentColor[0];
 	const float bodyLight1 = (shaderLighting || renderMode != 0) ? BodyLight[1] : currentColor[1];
@@ -4320,74 +4316,30 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		g_uiGpuAssistActiveProgram = program;
 	}
 
-	if (!sUniforms.StateValid)
-	{
-		glUniform1i(sUniforms.Texture1, 0);
-		sUniforms.AlphaValue = -9999.0f;
-		sUniforms.BodyLightValue[0] = -9999.0f;
-		sUniforms.BodyLightValue[1] = -9999.0f;
-		sUniforms.BodyLightValue[2] = -9999.0f;
-		sUniforms.TexCoordOffsetValue[0] = -9999.0f;
-		sUniforms.TexCoordOffsetValue[1] = -9999.0f;
-		sUniforms.UseLightingValue = -1;
-		sUniforms.UseWaveValue = -1;
-		sUniforms.RenderModeValue = -1;
-		sUniforms.WorldTimeValue = -9999.0f;
-		sUniforms.StateValid = true;
-	}
+	float viewMatrix[16];
+	vec3_t lightDir;
+	glGetFloatv(GL_MODELVIEW_MATRIX, viewMatrix);
+	ComputeGpuAssistLightDirection(lightDir);
 
-	if (sUniforms.AlphaValue != alpha)
-	{
-		glUniform1f(sUniforms.Alpha, alpha);
-		sUniforms.AlphaValue = alpha;
-	}
-	if (sUniforms.BodyLightValue[0] != bodyLight0 || sUniforms.BodyLightValue[1] != bodyLight1 || sUniforms.BodyLightValue[2] != bodyLight2)
-	{
-		glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
-		sUniforms.BodyLightValue[0] = bodyLight0;
-		sUniforms.BodyLightValue[1] = bodyLight1;
-		sUniforms.BodyLightValue[2] = bodyLight2;
-	}
-	if (sUniforms.TexCoordOffsetValue[0] != texCoordOffsetU || sUniforms.TexCoordOffsetValue[1] != texCoordOffsetV)
-	{
-		glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
-		sUniforms.TexCoordOffsetValue[0] = texCoordOffsetU;
-		sUniforms.TexCoordOffsetValue[1] = texCoordOffsetV;
-	}
-	const int useLightingValue = shaderLighting ? 1 : 0;
-	if (sUniforms.UseLightingValue != useLightingValue)
-	{
-		glUniform1i(sUniforms.UseLighting, useLightingValue);
-		sUniforms.UseLightingValue = useLightingValue;
-	}
-	const int useWaveValue = enableWaveGeometry ? 1 : 0;
-	if (sUniforms.UseWaveValue != useWaveValue)
-	{
-		glUniform1i(sUniforms.UseWave, useWaveValue);
-		sUniforms.UseWaveValue = useWaveValue;
-	}
-	if (sUniforms.RenderModeValue != renderMode)
-	{
-		glUniform1i(sUniforms.RenderMode, renderMode);
-		sUniforms.RenderModeValue = renderMode;
-	}
-	const float worldTimeValue = (float)WorldTime;
-	if (sUniforms.WorldTimeValue != worldTimeValue)
-	{
-		glUniform1f(sUniforms.WorldTime, worldTimeValue);
-		sUniforms.WorldTimeValue = worldTimeValue;
-	}
+	glUniform1i(sUniforms.Texture1, 0);
+	glUniformMatrix4fv(sUniforms.Proj, 1, GL_FALSE, glm::value_ptr(gShaderGL->GetProjectionMatrix()));
+	glUniformMatrix4fv(sUniforms.View, 1, GL_FALSE, viewMatrix);
+	glUniform1f(sUniforms.Alpha, alpha);
+	glUniform3f(sUniforms.BodyLight, bodyLight0, bodyLight1, bodyLight2);
+	glUniform2f(sUniforms.TexCoordOffset, texCoordOffsetU, texCoordOffsetV);
+	glUniform1i(sUniforms.UseLighting, shaderLighting ? 1 : 0);
+	glUniform1i(sUniforms.UseWave, enableWaveGeometry ? 1 : 0);
+	glUniform1i(sUniforms.RenderMode, renderMode);
+	glUniform1f(sUniforms.WorldTime, (float)WorldTime);
+	glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
 
 	if (sUploadedTransformSerial != m_uiGpuAssistTransformSerial || sUploadedNumBones != NumBones)
 	{
-		vec3_t lightDir;
-		ComputeGpuAssistLightDirection(lightDir);
 		glUniform1f(sUniforms.BodyScale, BodyScale);
 		glUniform1f(sUniforms.BoneScale, BoneScale);
 		glUniform3f(sUniforms.BodyOrigin, BodyOrigin[0], BodyOrigin[1], BodyOrigin[2]);
 		glUniform1i(sUniforms.Translate, m_bGpuAssistTranslate ? 1 : 0);
-		glUniform3f(sUniforms.LightDir, lightDir[0], lightDir[1], lightDir[2]);
-		glUniformMatrix4fv(sUniforms.Bones, NumBones, GL_FALSE, &m_GpuAssistBones[0][0]);
+		glUniform4fv(sUniforms.Bones, NumBones * 3, &m_GpuAssistBones[0][0]);
 		sUploadedTransformSerial = m_uiGpuAssistTransformSerial;
 		sUploadedNumBones = NumBones;
 	}
@@ -4397,6 +4349,7 @@ void BMD::RenderMeshGpuAssist(Mesh_t* m, bool enableLight, bool enableWaveGeomet
 		glBindVertexArray(m->VAO);
 		g_uiGpuAssistActiveVao = m->VAO;
 	}
+
 	glDrawElements(GL_TRIANGLES, m->GpuVertexCount, GL_UNSIGNED_SHORT, 0);
 #endif // SHADER_VERSION_TEST
 }
@@ -4465,8 +4418,8 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	std::vector<float> vertices;
 	std::vector<float> normals;
 	std::vector<float> textCoords;
-	std::vector<float> vertexNodes;
-	std::vector<float> normalNodes;
+	std::vector<unsigned int> vertexNodes;
+	std::vector<unsigned int> normalNodes;
 	std::vector<float> sourceVertexIndices;
 	std::vector<unsigned short> indices;
 
@@ -4551,8 +4504,8 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 			textCoords.push_back(textcoord->TexCoordU);
 			textCoords.push_back(textcoord->TexCoordV);
 
-			vertexNodes.push_back((float)vertexNode);
-			normalNodes.push_back((float)normalNode);
+			vertexNodes.push_back((unsigned int)vertexNode * 3u);
+			normalNodes.push_back((unsigned int)normalNode * 3u);
 			sourceVertexIndices.push_back((float)source_vertex_index[k]);
 		}
 
@@ -4607,13 +4560,13 @@ void BMD::CreateVertexBuffer(int i, Mesh_t& mesh)
 	glEnableVertexAttribArray(2);
 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_VertexNodes);
-	glBufferData(GL_ARRAY_BUFFER, vertexNodes.size() * sizeof(float), vertexNodes.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+	glBufferData(GL_ARRAY_BUFFER, vertexNodes.size() * sizeof(unsigned int), vertexNodes.data(), GL_STATIC_DRAW);
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, sizeof(unsigned int), (void*)0);
 	glEnableVertexAttribArray(3);
 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_NormalNodes);
-	glBufferData(GL_ARRAY_BUFFER, normalNodes.size() * sizeof(float), normalNodes.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+	glBufferData(GL_ARRAY_BUFFER, normalNodes.size() * sizeof(unsigned int), normalNodes.data(), GL_STATIC_DRAW);
+	glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT, sizeof(unsigned int), (void*)0);
 	glEnableVertexAttribArray(4);
 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO_SourceVertexIndices);

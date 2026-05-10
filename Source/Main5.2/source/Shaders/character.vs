@@ -3,14 +3,16 @@
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
-layout(location = 3) in float aPositionNode;
-layout(location = 4) in float aNormalNode;
+layout(location = 3) in uint aPositionBone;
+layout(location = 4) in uint aNormalBone;
 layout(location = 5) in float aSourceVertexIndex;
 
 out vec2 TexCoord;
 out vec4 VertexColor;
 
-uniform mat4 uBones[200];
+uniform mat4 uProj;
+uniform mat4 uView;
+uniform vec4 uBones[600];
 uniform vec3 uBodyOrigin;
 uniform vec3 uBodyLight;
 uniform vec3 uLightDir;
@@ -26,15 +28,26 @@ uniform float uWorldTime;
 
 void main()
 {
-    int positionNode = clamp(int(aPositionNode + 0.5), 0, 199);
-    int normalNode = clamp(int(aNormalNode + 0.5), 0, 199);
+    uint positionBone = aPositionBone;
+    uint normalBone = aNormalBone;
+    if (positionBone >= 598u) positionBone = 0u;
+    if (normalBone >= 598u) normalBone = positionBone;
 
-    vec3 worldPosition = (uBones[positionNode] * vec4(aPosition, 1.0)).xyz;
-    vec3 worldNormal = mat3(uBones[normalNode]) * aNormal;
+    vec4 r0 = uBones[positionBone + 0u];
+    vec4 r1 = uBones[positionBone + 1u];
+    vec4 r2 = uBones[positionBone + 2u];
+
+    vec4 pos = vec4(aPosition, 1.0);
+    vec3 worldPosition = vec3(dot(r0, pos), dot(r1, pos), dot(r2, pos));
+
+    vec3 r0n = uBones[normalBone + 0u].xyz;
+    vec3 r1n = uBones[normalBone + 1u].xyz;
+    vec3 r2n = uBones[normalBone + 2u].xyz;
+    vec3 worldNormal = normalize(vec3(dot(r0n, aNormal), dot(r1n, aNormal), dot(r2n, aNormal)));
 
     if (uBoneScale != 1.0)
     {
-        vec3 boneOrigin = vec3(uBones[positionNode][3][0], uBones[positionNode][3][1], uBones[positionNode][3][2]);
+        vec3 boneOrigin = vec3(r0[3], r1[3], r2[3]);
         worldPosition = (worldPosition - boneOrigin) * uBoneScale + boneOrigin;
     }
 
@@ -47,13 +60,13 @@ void main()
     if (uUseWave != 0)
     {
         float waveOffset = sin((uWorldTime + aSourceVertexIndex * 931.0) * 0.007) * 28.0;
-        worldPosition += normalize(worldNormal) * waveOffset;
+        worldPosition += worldNormal * waveOffset;
     }
 
     vec3 color = uBodyLight;
     if (uUseLighting != 0)
     {
-        float luminosity = dot(normalize(worldNormal), normalize(uLightDir)) * 0.8 + 0.4;
+        float luminosity = dot(worldNormal, normalize(uLightDir)) * 0.8 + 0.4;
         luminosity = max(luminosity, 0.2);
         color *= luminosity;
     }
@@ -113,5 +126,7 @@ void main()
     }
 
     VertexColor = vec4(color, uAlpha);
-    gl_Position = gl_ModelViewProjectionMatrix * vec4(worldPosition, 1.0);
+
+    // Use uniforms if available, otherwise fallback to built-ins
+    gl_Position = uProj * uView * vec4(worldPosition, 1.0);
 }

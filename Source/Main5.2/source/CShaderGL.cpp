@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "CShaderGL.h"
 
 #ifdef SHADER_VERSION_TEST
@@ -15,11 +15,16 @@ CShaderGL::CShaderGL()
       shader_character_id(0),
       shader_colorized_id(0),
       shader_particle_id(0),
+      shader_vbo_model(0),
+      shader_vbo_metal(0),
+      shader_vbo_oil(0),
+      shader_vbo_blendmesh(0),
       m_ProjectionMatrix(glm::mat4(1.0f)),
       m_bInitialized(false),
       m_bGpuAssistAvailable(false),
       m_eGpuAssistMode(GPU_ASSIST_AUTO)
 {
+    for (int i = 0; i < 7; ++i) shader_vbo_chrome[i] = 0;
 }
 
 CShaderGL::~CShaderGL()
@@ -51,6 +56,19 @@ void CShaderGL::Init()
     this->shader_particle_id =
         this->LoadShaderProgram("Shaders/particle.vs", "Shaders/particle.gs", "Shaders/particle.fs");
 
+    // Load VBO Specialized Shaders
+    this->shader_vbo_model = this->LoadShaderProgram("VBO/Model.vs", "VBO/Model.fs");
+    this->shader_vbo_chrome[0] = this->LoadShaderProgram("VBO/Chrome1.vs", "VBO/Chrome1.fs");
+    this->shader_vbo_chrome[1] = this->LoadShaderProgram("VBO/Chrome2.vs", "VBO/Chrome2.fs");
+    this->shader_vbo_chrome[2] = this->LoadShaderProgram("VBO/Chrome3.vs", "VBO/Chrome3.fs");
+    this->shader_vbo_chrome[3] = this->LoadShaderProgram("VBO/Chrome4.vs", "VBO/Chrome4.fs");
+    this->shader_vbo_chrome[4] = this->LoadShaderProgram("VBO/Chrome5.vs", "VBO/Chrome5.fs");
+    this->shader_vbo_chrome[5] = this->LoadShaderProgram("VBO/Chrome6.vs", "VBO/Chrome6.fs");
+    this->shader_vbo_chrome[6] = this->LoadShaderProgram("VBO/Chrome7.vs", "VBO/Chrome7.fs");
+    this->shader_vbo_metal = this->LoadShaderProgram("VBO/Metal.vs", "VBO/Metal.fs");
+    this->shader_vbo_oil = this->LoadShaderProgram("VBO/Oil.vs", "VBO/Oil.fs");
+    this->shader_vbo_blendmesh = this->LoadShaderProgram("VBO/BlendMesh.vs", "VBO/BlendMesh.fs");
+
     LoadGpuAssistConfig();
     DetectGpuAssistSupport();
 
@@ -70,6 +88,11 @@ void CShaderGL::Shutdown()
     if (shader_character_id != 0) glDeleteProgram(shader_character_id);
     if (shader_colorized_id != 0) glDeleteProgram(shader_colorized_id);
     if (shader_particle_id != 0) glDeleteProgram(shader_particle_id);
+    if (shader_vbo_model != 0) glDeleteProgram(shader_vbo_model);
+    for (int i = 0; i < 7; ++i) if (shader_vbo_chrome[i] != 0) glDeleteProgram(shader_vbo_chrome[i]);
+    if (shader_vbo_metal != 0) glDeleteProgram(shader_vbo_metal);
+    if (shader_vbo_oil != 0) glDeleteProgram(shader_vbo_oil);
+    if (shader_vbo_blendmesh != 0) glDeleteProgram(shader_vbo_blendmesh);
 
     shader_id = 0;
     shader_terrain_id = 0;
@@ -178,6 +201,25 @@ GLuint CShaderGL::GetShaderColorizedId() const
 GLuint CShaderGL::GetShaderParticleId() const
 {
     return shader_particle_id;
+}
+
+GLuint CShaderGL::GetShaderVboId(int mode) const
+{
+    switch (mode)
+    {
+    case 1: return shader_vbo_chrome[0];
+    case 2: return shader_vbo_chrome[1];
+    case 3: return shader_vbo_chrome[2];
+    case 4: return shader_vbo_chrome[3];
+    case 5: return shader_vbo_chrome[4];
+    case 6: return shader_vbo_chrome[5];
+    case 7: return shader_vbo_chrome[6];
+    case 8: return shader_vbo_chrome[3]; // Chrome 8 often maps to Chrome 4 logic
+    case 9: return shader_vbo_metal;
+    case 10: return shader_vbo_oil;
+    case 11: return shader_vbo_blendmesh;
+    default: return shader_vbo_model;
+    }
 }
 
 GLuint CShaderGL::LoadShaderProgram(const char* vertexShaderFile,

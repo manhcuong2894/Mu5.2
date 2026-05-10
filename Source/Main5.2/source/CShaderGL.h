@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -30,7 +30,18 @@ public:
         SHADER_GLOW = 2,
         SHADER_CHARACTER = 3,
         SHADER_COLORIZED = 4,
-        SHADER_PARTICLE = 5
+        SHADER_PARTICLE = 5,
+        SHADER_MODEL_VBO = 6,
+        SHADER_CHROME1_VBO = 7,
+        SHADER_CHROME2_VBO = 8,
+        SHADER_CHROME3_VBO = 9,
+        SHADER_CHROME4_VBO = 10,
+        SHADER_CHROME5_VBO = 11,
+        SHADER_CHROME6_VBO = 12,
+        SHADER_CHROME7_VBO = 13,
+        SHADER_METAL_VBO = 14,
+        SHADER_OIL_VBO = 15,
+        SHADER_BLENDMESH_VBO = 16
     };
 
     CShaderGL();
@@ -55,6 +66,7 @@ public:
     GLuint GetShaderCharacterId() const;
     GLuint GetShaderColorizedId() const;
     GLuint GetShaderParticleId() const;
+    GLuint GetShaderVboId(int mode) const;
 
     // Carregamento de shaders
     GLuint LoadShaderProgram(const char* vertexShaderFile, const char* fragmentShaderFile);
@@ -86,6 +98,8 @@ public:
     // Singleton
     static CShaderGL* Instance();
 
+    glm::mat4& GetProjectionMatrix() { return m_ProjectionMatrix; }
+
 private:
     void LoadGpuAssistConfig();
     void DetectGpuAssistSupport();
@@ -96,6 +110,12 @@ private:
     GLuint shader_character_id;
     GLuint shader_colorized_id;
     GLuint shader_particle_id;
+
+    GLuint shader_vbo_model;
+    GLuint shader_vbo_chrome[7];
+    GLuint shader_vbo_metal;
+    GLuint shader_vbo_oil;
+    GLuint shader_vbo_blendmesh;
 
     glm::mat4 m_ProjectionMatrix;
 
