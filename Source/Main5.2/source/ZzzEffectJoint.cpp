@@ -20,6 +20,7 @@
 #include "ZzzScene.h"
 
 static const int JOINT_HERO_WING_RESERVE = 160;
+static const int JOINT_REMOTE_WING_RESERVE = 80;
 static const float JOINT_HERO_WING_PRIORITY_RADIUS = 220.f;
 
 static int g_iJointAllocCursor = 0;
@@ -167,6 +168,17 @@ extern int g_iCrowdVisiblePlayerCount;
 extern unsigned int g_uiCrowdAnimationFrameId;
 extern int g_iRemotePlayerJointEffectBudget;
 extern int g_iRemotePlayerJointEffectUsed;
+extern int g_iWingEffectRenderScope;
+
+static bool IsWingJointRenderScope()
+{
+	return g_iWingEffectRenderScope > 0;
+}
+
+static bool IsProtectedWingJointEffect(OBJECT* Target)
+{
+	return IsWingJointRenderScope() || IsWingJointEffectTarget(Target);
+}
 
 static bool IsRemotePlayerJointTarget(OBJECT* target)
 {
@@ -213,7 +225,7 @@ static bool ShouldThrottleRemoteJoint(int Type, int SubType, OBJECT* Target)
 {
 	UNREFERENCED_PARAMETER(SubType);
 
-	if (IsWingJointEffectTarget(Target))
+	if (IsProtectedWingJointEffect(Target))
 		return false;
 
 	if (!IsRemotePlayerJointTarget(Target) || !IsThrottleableRemoteJoint(Type))
@@ -252,9 +264,13 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 		return;
 	}
 
-	const bool priorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
-	const int searchLimit = priorityEffect ? MAX_JOINTS : (MAX_JOINTS - JOINT_HERO_WING_RESERVE);
-	int& allocCursor = priorityEffect ? g_iPriorityJointAllocCursor : g_iJointAllocCursor;
+	const bool heroPriorityEffect = IsPriorityWingJoint(Type, SubType, Position, TargetPosition, Target);
+	const bool protectedWingEffect = IsProtectedWingJointEffect(Target);
+	const int remoteWingSearchLimit = MAX_JOINTS - JOINT_HERO_WING_RESERVE;
+	const int normalSearchLimit = remoteWingSearchLimit - JOINT_REMOTE_WING_RESERVE;
+	const int searchLimit = heroPriorityEffect ? MAX_JOINTS
+		: (protectedWingEffect ? remoteWingSearchLimit : normalSearchLimit);
+	int& allocCursor = heroPriorityEffect ? g_iPriorityJointAllocCursor : g_iJointAllocCursor;
 	if (allocCursor < 0 || allocCursor >= searchLimit)
 	{
 		allocCursor = 0;

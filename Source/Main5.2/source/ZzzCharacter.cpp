@@ -118,6 +118,7 @@ int g_iRemotePlayerSpriteEffectUsed = 0;
 int g_iRemotePlayerJointEffectBudget = -1;
 int g_iRemotePlayerJointEffectUsed = 0;
 int g_iCrowdBodyPartLodSkipped = 0;
+int g_iWingEffectRenderScope = 0;
 static BYTE g_byCrowdEquipmentFxZone[MAX_CHARACTERS_CLIENT] = { 0 };
 extern float  ParentMatrix[3][4];
 extern int CurrentSkill;
@@ -207,6 +208,11 @@ static bool IsCrowdWingOrHelperType(int Type)
 {
 	return ((Type >= MODEL_WING && Type <= MODEL_WING + 200)
 		|| (Type >= MODEL_HELPER && Type <= MODEL_HELPER + 200));
+}
+
+static bool IsCrowdWingType(int Type)
+{
+	return (Type >= MODEL_WING && Type <= MODEL_WING + 200);
 }
 
 enum ECrowdEquipmentFxZone
@@ -833,8 +839,19 @@ static void RenderCrowdManagedBodyPart(CHARACTER* c, OBJECT* o, int Type, PART_t
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
 	}
 
+	const bool wingEffectScope = IsCrowdWingType(Type);
+	if (wingEffectScope)
+	{
+		++g_iWingEffectRenderScope;
+	}
+
 	RenderPartObject(&c->Object, Type, p, Light, Alpha, ItemLevel, Option1, ExtOption,
 		GlobalTransform, HideSkin, Translate, Select, RenderType);
+
+	if (wingEffectScope)
+	{
+		--g_iWingEffectRenderScope;
+	}
 
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 }
@@ -7918,7 +7935,19 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
 	}
 
+	const bool wingEffectScope = IsCrowdWingType(Type);
+	if (wingEffectScope)
+	{
+		++g_iWingEffectRenderScope;
+	}
+
 	RenderPartObjectEffect(Object, Type, c->Light, pObject->Alpha, Level << 3, Option1, false, 0, RenderType);
+
+	if (wingEffectScope)
+	{
+		--g_iWingEffectRenderScope;
+	}
+
 	pModel->ClearGpuAssist();
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 

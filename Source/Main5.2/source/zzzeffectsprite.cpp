@@ -313,6 +313,7 @@ static bool RenderGpuTransientSprites(BYTE byRenderOneMore)
 }
 
 static const int SPRITE_HERO_WING_RESERVE = 256;
+static const int SPRITE_REMOTE_WING_RESERVE = 128;
 static const float HERO_WING_PRIORITY_RADIUS = 220.f;
 
 static bool IsValidSpriteVec3(const vec3_t position)
@@ -399,7 +400,7 @@ static bool IsWingGlowSpriteType(int Type, int SubType)
 	}
 }
 
-static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, OBJECT* Owner)
+static bool IsHeroPriorityWingSprite(int Type, int SubType, const vec3_t Position, OBJECT* Owner)
 {
 	const OBJECT* heroObject = GetLiveHeroSpriteObject();
 	if (heroObject == NULL)
@@ -422,6 +423,17 @@ extern int g_iCrowdVisiblePlayerCount;
 extern unsigned int g_uiCrowdAnimationFrameId;
 extern int g_iRemotePlayerSpriteEffectBudget;
 extern int g_iRemotePlayerSpriteEffectUsed;
+extern int g_iWingEffectRenderScope;
+
+static bool IsWingSpriteRenderScope()
+{
+	return g_iWingEffectRenderScope > 0;
+}
+
+static bool IsProtectedWingSpriteEffect(OBJECT* Owner)
+{
+	return IsWingSpriteRenderScope() || IsWingSpriteEffectOwner(Owner);
+}
 
 static bool IsRemotePlayerEffectOwner(OBJECT* owner)
 {
@@ -468,7 +480,7 @@ static bool ShouldThrottleRemoteSprite(int Type, int SubType, OBJECT* Owner)
 {
 	UNREFERENCED_PARAMETER(SubType);
 
-	if (IsWingSpriteEffectOwner(Owner))
+	if (IsProtectedWingSpriteEffect(Owner))
 		return false;
 
 	if (!IsRemotePlayerEffectOwner(Owner) || !IsThrottleableRemoteSprite(Type))
@@ -496,8 +508,12 @@ int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* O
 		return false;
 	}
 
-	const bool priorityEffect = IsPriorityWingSprite(Type, SubType, Position, Owner);
-	const int searchLimit = priorityEffect ? MAX_SPRITES : (MAX_SPRITES - SPRITE_HERO_WING_RESERVE);
+	const bool heroPriorityEffect = IsHeroPriorityWingSprite(Type, SubType, Position, Owner);
+	const bool protectedWingEffect = IsProtectedWingSpriteEffect(Owner);
+	const int remoteWingSearchLimit = MAX_SPRITES - SPRITE_HERO_WING_RESERVE;
+	const int normalSearchLimit = remoteWingSearchLimit - SPRITE_REMOTE_WING_RESERVE;
+	const int searchLimit = heroPriorityEffect ? MAX_SPRITES
+		: (protectedWingEffect ? remoteWingSearchLimit : normalSearchLimit);
 
 	for (int i = 0; i < searchLimit; i++)
 	{
