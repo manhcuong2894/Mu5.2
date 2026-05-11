@@ -93,7 +93,7 @@ static bool IsHeroOrWingJointTarget(OBJECT* target, const OBJECT* heroObject)
 	if (target->Owner == heroObject)
 		return true;
 
-	return IsWingJointEffectTarget(target);
+	return false;
 }
 
 static bool IsWingGlowJointType(int Type, int SubType)
@@ -118,8 +118,17 @@ static bool IsPriorityWingJoint(int Type, int SubType, const vec3_t Position, co
 	if (heroObject == NULL)
 		return false;
 
+	const bool remotePlayerTarget = IsValidJointObjectPointer(Target)
+		&& Target != heroObject
+		&& Target->Owner != heroObject
+		&& ((Target->Kind == KIND_PLAYER && Target->Type == MODEL_PLAYER)
+			|| (IsValidJointObjectPointer(Target->Owner)
+				&& Target->Owner->Kind == KIND_PLAYER
+				&& Target->Owner->Type == MODEL_PLAYER));
+
 	return IsHeroOrWingJointTarget(Target, heroObject)
-		|| (IsWingGlowJointType(Type, SubType) && (IsNearHeroJointPosition(Position, heroObject) || IsNearHeroJointPosition(TargetPosition, heroObject)));
+		|| (!remotePlayerTarget && IsWingGlowJointType(Type, SubType)
+			&& (IsNearHeroJointPosition(Position, heroObject) || IsNearHeroJointPosition(TargetPosition, heroObject)));
 }
 
 

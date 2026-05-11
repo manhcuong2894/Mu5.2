@@ -378,7 +378,7 @@ static bool IsHeroOrWingSpriteOwner(OBJECT* owner, const OBJECT* heroObject)
 	if (owner->Owner == heroObject)
 		return true;
 
-	return IsWingSpriteEffectOwner(owner);
+	return false;
 }
 
 static bool IsWingGlowSpriteType(int Type, int SubType)
@@ -405,8 +405,17 @@ static bool IsPriorityWingSprite(int Type, int SubType, const vec3_t Position, O
 	if (heroObject == NULL)
 		return false;
 
+	const bool remotePlayerOwner = IsValidSpriteObjectPointer(Owner)
+		&& Owner != heroObject
+		&& Owner->Owner != heroObject
+		&& ((Owner->Kind == KIND_PLAYER && Owner->Type == MODEL_PLAYER)
+			|| (IsValidSpriteObjectPointer(Owner->Owner)
+				&& Owner->Owner->Kind == KIND_PLAYER
+				&& Owner->Owner->Type == MODEL_PLAYER));
+
 	return IsHeroOrWingSpriteOwner(Owner, heroObject)
-		|| (IsWingGlowSpriteType(Type, SubType) && IsNearHeroSpritePosition(Position, heroObject));
+		|| (!remotePlayerOwner && IsWingGlowSpriteType(Type, SubType)
+			&& IsNearHeroSpritePosition(Position, heroObject));
 }
 
 extern int g_iCrowdVisiblePlayerCount;
