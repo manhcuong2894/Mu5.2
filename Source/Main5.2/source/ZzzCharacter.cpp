@@ -790,6 +790,16 @@ static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
 		return true;
 	}
 
+	if (o->CurrentAction < PLAYER_STOP_MALE || o->CurrentAction > PLAYER_STOP_RIDE_WEAPON)
+	{
+		return true;
+	}
+
+	if (ShouldAlwaysUpdateCrowdPose(o))
+	{
+		return true;
+	}
+
 	int step = GetCrowdAdaptivePoseUpdateStep(o);
 	const int zone = GetCrowdEquipmentFxZone(c, o);
 
@@ -810,6 +820,35 @@ static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
 		{
 			step += 1;
 		}
+	}
+
+	const float dist2 = GetDistance2ToHero(o);
+	if (g_iCrowdVisiblePlayerCount >= 110)
+	{
+		if (dist2 > (520.0f * 520.0f))
+		{
+			step += 2;
+		}
+		else if (dist2 > (360.0f * 360.0f))
+		{
+			step += 1;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 90)
+	{
+		if (dist2 > (460.0f * 460.0f))
+		{
+			step += 1;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 70 && dist2 > (520.0f * 520.0f))
+	{
+		step += 1;
+	}
+
+	if (step > 8)
+	{
+		step = 8;
 	}
 
 	if (step <= 1)
