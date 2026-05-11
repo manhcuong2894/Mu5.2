@@ -175,17 +175,17 @@ static int GetCrowdAdaptivePerformanceLevel()
 		const float targetFps = (float)gmProtect->ajust_fps_render;
 		const float fpsRatio = FPS / targetFps;
 
-		if (g_iCrowdVisiblePlayerCount >= 12)
+		if (g_iCrowdVisiblePlayerCount >= 20)
 		{
-			if (fpsRatio < 0.65f)
+			if (fpsRatio < 0.55f)
 			{
 				level = 3;
 			}
-			else if (fpsRatio < 0.82f && level < 2)
+			else if (fpsRatio < 0.75f && level < 2)
 			{
 				level = 2;
 			}
-			else if (fpsRatio < 0.95f && level < 1)
+			else if (fpsRatio < 0.90f && level < 1)
 			{
 				level = 1;
 			}
@@ -199,7 +199,7 @@ static bool IsCrowdAdaptiveLodActive()
 {
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
 	return (g_iCrowdVisiblePlayerCount >= 24
-		|| (performanceLevel > 0 && g_iCrowdVisiblePlayerCount >= 12));
+		|| (performanceLevel > 0 && g_iCrowdVisiblePlayerCount >= 20));
 }
 
 static bool IsCrowdWingOrHelperType(int Type)
@@ -269,22 +269,22 @@ static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		fullEnterDist *= 0.60f;
-		fullExitDist *= 0.60f;
-		farEnterDist *= 0.60f;
-		farExitDist *= 0.60f;
+		fullEnterDist *= 0.78f;
+		fullExitDist *= 0.78f;
+		farEnterDist *= 0.78f;
+		farExitDist *= 0.78f;
 		break;
 	case 2:
-		fullEnterDist *= 0.72f;
-		fullExitDist *= 0.72f;
-		farEnterDist *= 0.72f;
-		farExitDist *= 0.72f;
+		fullEnterDist *= 0.88f;
+		fullExitDist *= 0.88f;
+		farEnterDist *= 0.88f;
+		farExitDist *= 0.88f;
 		break;
 	case 1:
-		fullEnterDist *= 0.86f;
-		fullExitDist *= 0.86f;
-		farEnterDist *= 0.86f;
-		farExitDist *= 0.86f;
+		fullEnterDist *= 0.96f;
+		fullExitDist *= 0.96f;
+		farEnterDist *= 0.96f;
+		farExitDist *= 0.96f;
 		break;
 	default:
 		break;
@@ -381,10 +381,10 @@ static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT*
 		case CROWD_EQUIPMENT_FX_FULL:
 			return true;
 		case CROWD_EQUIPMENT_FX_MID:
-			return performanceLevel < 3;
+			return true;
 		case CROWD_EQUIPMENT_FX_FAR:
 		default:
-			return (performanceLevel == 0 && g_iCrowdVisiblePlayerCount < 60);
+			return (performanceLevel < 2 && g_iCrowdVisiblePlayerCount < 70);
 		}
 	}
 
@@ -407,13 +407,9 @@ static int GetCrowdAdaptiveEquipmentFxCap(const CHARACTER* c, const OBJECT* o, i
 
 	if (IsCrowdWingOrHelperType(Type))
 	{
-		if (zone == CROWD_EQUIPMENT_FX_FAR && performanceLevel >= 1)
+		if (zone == CROWD_EQUIPMENT_FX_FAR && performanceLevel >= 2)
 		{
-			return 2;
-		}
-		if (zone == CROWD_EQUIPMENT_FX_MID && performanceLevel >= 3)
-		{
-			return 3;
+			return (performanceLevel >= 3) ? 2 : 3;
 		}
 		return -1;
 	}
@@ -487,10 +483,13 @@ static int GetCrowdEquipmentFxUpdateStep(const OBJECT* o)
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		step += 2;
+		step += 1;
 		break;
 	case 2:
-		step += 1;
+		if (step < 3 && dist2 > (260.0f * 260.0f))
+		{
+			step += 1;
+		}
 		break;
 	default:
 		break;
@@ -642,13 +641,13 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		if (dist2 > (120.0f * 120.0f) && step < 6)
+		if (dist2 > (180.0f * 180.0f) && step < 5)
 		{
-			step = 6;
+			step = 5;
 		}
 		break;
 	case 2:
-		if (dist2 > (180.0f * 180.0f) && step < 4)
+		if (dist2 > (260.0f * 260.0f) && step < 4)
 		{
 			step = 4;
 		}
@@ -742,12 +741,12 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 
 	if (performanceLevel >= 3)
 	{
-		return dist2 <= (70.0f * 70.0f);
+		return dist2 <= (110.0f * 110.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return dist2 <= (100.0f * 100.0f);
+		return dist2 <= (150.0f * 150.0f);
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 60)
@@ -789,12 +788,12 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
 	if (performanceLevel >= 3)
 	{
-		return dist2 > (80.0f * 80.0f);
+		return dist2 > (135.0f * 135.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return dist2 > (120.0f * 120.0f);
+		return dist2 > (190.0f * 190.0f);
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 80)
@@ -864,12 +863,12 @@ bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 
 	if (performanceLevel >= 3)
 	{
-		return !isMainEquipment && dist2 > (180.0f * 180.0f);
+		return !isMainEquipment && dist2 > (260.0f * 260.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return !isMainEquipment && dist2 > (240.0f * 240.0f);
+		return !isMainEquipment && dist2 > (340.0f * 340.0f);
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 80)
@@ -12031,14 +12030,14 @@ void RenderCharactersClient()
 			g_iRemotePlayerJointEffectBudget = 450;
 		}
 
-		int budgetPercent = 85;
+		int budgetPercent = 95;
 		if (performanceLevel >= 3)
 		{
-			budgetPercent = 50;
+			budgetPercent = 70;
 		}
 		else if (performanceLevel >= 2)
 		{
-			budgetPercent = 65;
+			budgetPercent = 82;
 		}
 
 		g_iRemotePlayerSpriteEffectBudget = (g_iRemotePlayerSpriteEffectBudget * budgetPercent) / 100;
