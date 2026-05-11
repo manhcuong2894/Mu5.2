@@ -13086,21 +13086,21 @@ void RenderPartObject(OBJECT* o, int Type, void* p2, vec3_t Light, float Alpha, 
 		BodyLight(o, b);
 
 		bool useGpuAssistMesh = (Select <= 1 && HideSkin == false);
-		if (!GlobalTransform && !o->EnsureBoneTransform(b->NumBones))
+		bool useObjectBoneTransform = false;
+		if (!GlobalTransform && o->EnableBoneMatrix == 1)
 		{
-			b->ClearGpuAssist();
-			return;
+			useObjectBoneTransform = o->EnsureBoneTransform(b->NumBones);
 		}
 		if (useGpuAssistMesh)
 		{
-			b->PrepareGpuAssist(o, Type, RenderType, p == NULL, GlobalTransform, Translate);
+			b->PrepareGpuAssist(o, Type, RenderType, p == NULL, !useObjectBoneTransform, Translate);
 		}
 		else
 		{
 			b->ClearGpuAssist();
 		}
 
-		if (GlobalTransform)
+		if (GlobalTransform || !useObjectBoneTransform)
 		{
 			b->Transform(BoneTransform, o->BoundingBoxMin, o->BoundingBoxMax, &o->OBB, Translate);
 		}

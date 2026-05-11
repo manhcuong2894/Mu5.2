@@ -2143,7 +2143,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 			float Wave = (int)WorldTime % 10000 * 0.0001f;
 			int Texture = IndexTexture[m->Texture];
 
-			if (RenderFlag != RENDER_TEXTURE && (Texture == BITMAP_SKIN
+			if (!(RenderFlag & RENDER_TEXTURE) && (Texture == BITMAP_SKIN
 				|| Texture == BITMAP_HQSKIN
 				|| Texture == BITMAP_HQSKIN2
 				|| Texture == BITMAP_HQSKIN3
@@ -2211,7 +2211,7 @@ void BMD::RenderMesh(int i, int RenderFlag, float Alpha, int BlendMesh, float Bl
 
 				if (Texture != -1)
 				{
-					if (LightTexture[m->Texture] != 0 && (HideSkin || RenderFlag != RENDER_TEXTURE))
+					if (LightTexture[m->Texture] != 0 && (HideSkin || !(RenderFlag & RENDER_TEXTURE)))
 					{
 						return;
 					}
@@ -7008,5 +7008,3 @@ bool BMD::runtime_make_effect(int EffectIndex, OBJECT* pObj, float Alpha, int Re
 }
 
 #endif // EFFECT_KERNEL_VERTEX
-
-
