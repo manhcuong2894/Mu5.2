@@ -215,6 +215,30 @@ static bool IsCrowdWingType(int Type)
 	return (Type >= MODEL_WING && Type <= MODEL_WING + 200);
 }
 
+class CCrowdWingEffectRenderScope
+{
+public:
+	explicit CCrowdWingEffectRenderScope(bool active)
+		: m_Active(active)
+	{
+		if (m_Active)
+		{
+			++g_iWingEffectRenderScope;
+		}
+	}
+
+	~CCrowdWingEffectRenderScope()
+	{
+		if (m_Active && g_iWingEffectRenderScope > 0)
+		{
+			--g_iWingEffectRenderScope;
+		}
+	}
+
+private:
+	bool m_Active;
+};
+
 enum ECrowdEquipmentFxZone
 {
 	CROWD_EQUIPMENT_FX_FULL = 0,
@@ -839,19 +863,10 @@ static void RenderCrowdManagedBodyPart(CHARACTER* c, OBJECT* o, int Type, PART_t
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
 	}
 
-	const bool wingEffectScope = IsCrowdWingType(Type);
-	if (wingEffectScope)
-	{
-		++g_iWingEffectRenderScope;
-	}
+	CCrowdWingEffectRenderScope wingEffectScope(IsCrowdWingType(Type));
 
 	RenderPartObject(&c->Object, Type, p, Light, Alpha, ItemLevel, Option1, ExtOption,
 		GlobalTransform, HideSkin, Translate, Select, RenderType);
-
-	if (wingEffectScope)
-	{
-		--g_iWingEffectRenderScope;
-	}
 
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
 }
@@ -7935,18 +7950,9 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 		g_iEquipmentFxRenderLevelCap = adaptiveFxRenderLevelCap;
 	}
 
-	const bool wingEffectScope = IsCrowdWingType(Type);
-	if (wingEffectScope)
-	{
-		++g_iWingEffectRenderScope;
-	}
+	CCrowdWingEffectRenderScope wingEffectScope(IsCrowdWingType(Type));
 
 	RenderPartObjectEffect(Object, Type, c->Light, pObject->Alpha, Level << 3, Option1, false, 0, RenderType);
-
-	if (wingEffectScope)
-	{
-		--g_iWingEffectRenderScope;
-	}
 
 	pModel->ClearGpuAssist();
 	g_iEquipmentFxRenderLevelCap = previousFxRenderLevelCap;
