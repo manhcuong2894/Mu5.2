@@ -164,9 +164,47 @@ static int GetCrowdHeadChatPositionStep(const OBJECT *object) {
   return 1;
 }
 
+static bool IsImportantCrowdHeadChatOwner(const CHAT *chat,
+                                          CHARACTER *owner) {
+  if (chat == NULL || owner == NULL || owner == Hero) {
+    return true;
+  }
+
+  if (chat->LifeTime[0] > 0 || chat->LifeTime[1] > 0 ||
+      chat->szShopTitle[0] != '\0') {
+    return true;
+  }
+
+  if (g_isCharacterBuff((&owner->Object), eBuff_GMEffect) ||
+      owner->CtlCode == CTLCODE_20OPERATOR ||
+      owner->CtlCode == CTLCODE_08OPERATOR) {
+    return true;
+  }
+
+  const int ownerIndex = gmCharacters->GetCharacterIndex(owner);
+  if (SelectedCharacter != -1 && ownerIndex == SelectedCharacter) {
+    return true;
+  }
+
+  if (chat->x <= MouseX &&
+      MouseX <
+          (int)(chat->x + chat->Width * gwinhandle->GetScreenX() / WindowWidth) &&
+      chat->y <= MouseY &&
+      MouseY <
+          (int)(chat->y + chat->Height * gwinhandle->GetScreenY() / WindowHeight)) {
+    return true;
+  }
+
+  return false;
+}
+
 static bool ShouldSkipCrowdHeadChatRender(const CHAT *chat,
                                           CHARACTER *owner) {
   if (!IsCrowdHeadChatOwner(chat, owner) || Hero == NULL) {
+    return false;
+  }
+
+  if (IsImportantCrowdHeadChatOwner(chat, owner)) {
     return false;
   }
 
@@ -182,17 +220,24 @@ static bool ShouldSkipCrowdHeadChatRender(const CHAT *chat,
       return bucket != 0u;
     }
   } else if (g_iCrowdVisiblePlayerCount >= 70) {
-    if (dist2 > (340.0f * 340.0f)) {
+    if (dist2 > (300.0f * 300.0f)) {
       return true;
     }
-    if (dist2 > (190.0f * 190.0f)) {
+    if (dist2 > (170.0f * 170.0f)) {
       return bucket > 1u;
     }
   } else if (g_iCrowdVisiblePlayerCount >= 55) {
-    if (dist2 > (420.0f * 420.0f)) {
+    if (dist2 > (360.0f * 360.0f)) {
       return true;
     }
-    if (dist2 > (260.0f * 260.0f)) {
+    if (dist2 > (220.0f * 220.0f)) {
+      return bucket == 3u;
+    }
+  } else if (g_iCrowdVisiblePlayerCount >= 45) {
+    if (dist2 > (460.0f * 460.0f)) {
+      return true;
+    }
+    if (dist2 > (300.0f * 300.0f)) {
       return bucket == 3u;
     }
   }
@@ -202,8 +247,14 @@ static bool ShouldSkipCrowdHeadChatRender(const CHAT *chat,
 
 static bool ShouldCompactCrowdHeadChatDetails(CHARACTER *owner) {
   if (owner == NULL || owner == Hero || Hero == NULL ||
-      SceneFlag != MAIN_SCENE || g_iCrowdVisiblePlayerCount < 45 ||
+      SceneFlag != MAIN_SCENE || g_iCrowdVisiblePlayerCount < 40 ||
       owner->GetKind() != KIND_PLAYER || owner->Object.Type != MODEL_PLAYER) {
+    return false;
+  }
+
+  if (g_isCharacterBuff((&owner->Object), eBuff_GMEffect) ||
+      owner->CtlCode == CTLCODE_20OPERATOR ||
+      owner->CtlCode == CTLCODE_08OPERATOR) {
     return false;
   }
 
@@ -219,7 +270,21 @@ static bool ShouldCompactCrowdHeadChatDetails(CHARACTER *owner) {
     return dist2 > (220.0f * 220.0f);
   }
 
-  return dist2 > (300.0f * 300.0f);
+  return dist2 > (260.0f * 260.0f);
+}
+
+static bool ShouldRenderCrowdHeadChatWaveName(const CHAT *chat,
+                                              CHARACTER *owner,
+                                              bool compactCrowdName) {
+  if (!GMProtect->IsRenderWave(chat->ID)) {
+    return false;
+  }
+
+  if (!compactCrowdName) {
+    return true;
+  }
+
+  return IsImportantCrowdHeadChatOwner(chat, owner);
 }
 
 static bool HasHeadChatVectorChanged(const vec3_t a, const vec3_t b,
@@ -1021,7 +1086,7 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
         curX += gensW;
       }
       
-      if (GMProtect->IsRenderWave(c->ID)) {
+      if (ShouldRenderCrowdHeadChatWaveName(c, pCharacter, compactCrowdName)) {
         GMFontLayer->RenderWave(curX, RenderPos.y, c->ID, 0, iLineHeight, RT3_SORT_LEFT, NULL);
       } else {
         GMFontLayer->RenderText(curX, RenderPos.y, c->ID, 0, iLineHeight, RT3_SORT_LEFT);
@@ -1035,7 +1100,7 @@ void CGMHeadChat::RenderBoolean(int x, int y, CHAT *c) {
         RenderBitmap(BITMAP_GUILD, (float)curX, logoY, 16.f, 16.f, 0.0, 0.0, 1.f, 1.f, false, false);
       }
     } else {
-      if (GMProtect->IsRenderWave(c->ID)) {
+      if (ShouldRenderCrowdHeadChatWaveName(c, pCharacter, compactCrowdName)) {
         GMFontLayer->RenderWave(RenderPos.x, RenderPos.y, c->ID, 0, iLineHeight, RT3_WRITE_CENTER, NULL);
       } else {
         GMFontLayer->RenderText(RenderPos.x, RenderPos.y, c->ID, 0, iLineHeight, RT3_WRITE_CENTER);
