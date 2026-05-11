@@ -159,7 +159,7 @@ void SEASON3B::CNewUINameWindow::RenderName()
 			CHARACTER* pCharacter = gmCharacters->GetCharacter(i);
 			OBJECT* o = &pCharacter->Object;
 
-			if (o->Live && o->Kind == KIND_PLAYER && pCharacter->Dead == 0)
+			if (o->Live && o->Visible && o->Kind == KIND_PLAYER && pCharacter->Dead == 0)
 			{
 #ifdef PLAYER_INFO_SYSTEM
 				if (gmProtect->m_RenderCharacterName)
