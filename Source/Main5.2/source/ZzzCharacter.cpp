@@ -579,6 +579,49 @@ static bool ShouldUpdateCrowdPlus15TransientFxThisFrame(const CHARACTER* c, cons
 	}
 }
 
+static CHARACTER* FindCrowdPoseCharacter(const OBJECT* o)
+{
+	if (o == NULL || gmCharacters == NULL)
+	{
+		return NULL;
+	}
+
+	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)
+	{
+		CHARACTER* c = gmCharacters->GetCharacter(i);
+		if (c != NULL && &c->Object == o)
+		{
+			return c;
+		}
+	}
+
+	return NULL;
+}
+
+static bool ShouldAlwaysUpdateCrowdPose(const OBJECT* o)
+{
+	CHARACTER* c = FindCrowdPoseCharacter(o);
+	if (c == NULL)
+	{
+		return false;
+	}
+
+	if (g_isCharacterBuff((&c->Object), eBuff_GMEffect)
+		|| c->CtlCode == CTLCODE_20OPERATOR
+		|| c->CtlCode == CTLCODE_08OPERATOR)
+	{
+		return true;
+	}
+
+	const int characterIndex = gmCharacters->GetCharacterIndex(c);
+	if (SelectedCharacter != -1 && characterIndex == SelectedCharacter)
+	{
+		return true;
+	}
+
+	return (Hero != NULL && Hero->TargetCharacter == c->Key);
+}
+
 int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 {
 	if (o == NULL || Hero == NULL)
@@ -601,10 +644,34 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 		return 1;
 	}
 
+	if (ShouldAlwaysUpdateCrowdPose(o))
+	{
+		return 1;
+	}
+
 	const float dist2 = GetDistance2ToHero(o);
 	int step = 1;
 
-	if (g_iCrowdVisiblePlayerCount >= 100)
+	if (g_iCrowdVisiblePlayerCount >= 110)
+	{
+		if (dist2 > (620.0f * 620.0f))
+		{
+			step = 10;
+		}
+		else if (dist2 > (480.0f * 480.0f))
+		{
+			step = 7;
+		}
+		else if (dist2 > (340.0f * 340.0f))
+		{
+			step = 5;
+		}
+		else if (dist2 > (240.0f * 240.0f))
+		{
+			step = 3;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 100)
 	{
 		if (g_iCrowdVisiblePlayerCount >= 115 && dist2 > (380.0f * 380.0f))
 		{
