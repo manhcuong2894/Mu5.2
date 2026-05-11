@@ -761,7 +761,8 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 		return true;
 	}
 
-	if (g_isCharacterBuff((OBJECT*)o, eBuff_GMEffect)
+	OBJECT* mutableObject = (OBJECT*)o;
+	if (g_isCharacterBuff(mutableObject, eBuff_GMEffect)
 		|| c->CtlCode == CTLCODE_20OPERATOR
 		|| c->CtlCode == CTLCODE_08OPERATOR)
 	{
