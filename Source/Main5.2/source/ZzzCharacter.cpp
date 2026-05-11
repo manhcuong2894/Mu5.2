@@ -598,22 +598,62 @@ static CHARACTER* FindCrowdPoseCharacter(const OBJECT* o)
 	return NULL;
 }
 
-static bool ShouldAlwaysUpdateCrowdPose(const OBJECT* o)
+static CHARACTER* g_pCrowdPoseContextCharacter = NULL;
+
+class CCrowdPoseCharacterScope
 {
-	CHARACTER* c = FindCrowdPoseCharacter(o);
+public:
+	explicit CCrowdPoseCharacterScope(CHARACTER* c)
+		: m_Previous(g_pCrowdPoseContextCharacter)
+	{
+		g_pCrowdPoseContextCharacter = c;
+	}
+
+	~CCrowdPoseCharacterScope()
+	{
+		g_pCrowdPoseContextCharacter = m_Previous;
+	}
+
+private:
+	CHARACTER* m_Previous;
+};
+
+static CHARACTER* GetCrowdPoseCharacter(const OBJECT* o)
+{
+	if (o == NULL)
+	{
+		return NULL;
+	}
+
+	if (g_pCrowdPoseContextCharacter != NULL && &g_pCrowdPoseContextCharacter->Object == o)
+	{
+		return g_pCrowdPoseContextCharacter;
+	}
+
+	return FindCrowdPoseCharacter(o);
+}
+
+static bool ShouldAlwaysUpdateCrowdPose(const CHARACTER* c, const OBJECT* o)
+{
 	if (c == NULL)
 	{
 		return false;
 	}
 
-	if (g_isCharacterBuff((&c->Object), eBuff_GMEffect)
+	OBJECT* mutableObject = (OBJECT*)o;
+	if (mutableObject == NULL)
+	{
+		mutableObject = (OBJECT*)&c->Object;
+	}
+
+	if (g_isCharacterBuff(mutableObject, eBuff_GMEffect)
 		|| c->CtlCode == CTLCODE_20OPERATOR
 		|| c->CtlCode == CTLCODE_08OPERATOR)
 	{
 		return true;
 	}
 
-	const int characterIndex = gmCharacters->GetCharacterIndex(c);
+	const int characterIndex = gmCharacters->GetCharacterIndex((CHARACTER*)c);
 	if (SelectedCharacter != -1 && characterIndex == SelectedCharacter)
 	{
 		return true;
@@ -622,7 +662,12 @@ static bool ShouldAlwaysUpdateCrowdPose(const OBJECT* o)
 	return (Hero != NULL && Hero->TargetCharacter == c->Key);
 }
 
-int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
+static bool ShouldAlwaysUpdateCrowdPose(const OBJECT* o)
+{
+	return ShouldAlwaysUpdateCrowdPose(GetCrowdPoseCharacter(o), o);
+}
+
+static int GetCrowdAdaptivePoseUpdateStep(const CHARACTER* c, const OBJECT* o)
 {
 	if (o == NULL || Hero == NULL)
 	{
@@ -644,7 +689,7 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 		return 1;
 	}
 
-	if (ShouldAlwaysUpdateCrowdPose(o))
+	if (ShouldAlwaysUpdateCrowdPose(c, o))
 	{
 		return 1;
 	}
@@ -756,14 +801,19 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 	return step;
 }
 
-bool ShouldUpdateCrowdPoseThisFrame(const OBJECT* o, unsigned int salt)
+int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
+{
+	return GetCrowdAdaptivePoseUpdateStep(GetCrowdPoseCharacter(o), o);
+}
+
+static bool ShouldUpdateCrowdPoseThisFrame(const CHARACTER* c, const OBJECT* o, unsigned int salt)
 {
 	if (o == NULL)
 	{
 		return true;
 	}
 
-	const int step = GetCrowdAdaptivePoseUpdateStep(o);
+	const int step = GetCrowdAdaptivePoseUpdateStep(c, o);
 	if (step <= 1)
 	{
 		return true;
@@ -776,6 +826,11 @@ bool ShouldUpdateCrowdPoseThisFrame(const OBJECT* o, unsigned int salt)
 
 	const unsigned int seed = g_uiCrowdAnimationFrameId + salt + (unsigned int)(((UINT_PTR)o) >> 4);
 	return (seed % (unsigned int)step) == 0;
+}
+
+bool ShouldUpdateCrowdPoseThisFrame(const OBJECT* o, unsigned int salt)
+{
+	return ShouldUpdateCrowdPoseThisFrame(GetCrowdPoseCharacter(o), o, salt);
 }
 
 static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
@@ -795,12 +850,12 @@ static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
 		return true;
 	}
 
-	if (ShouldAlwaysUpdateCrowdPose(o))
+	if (ShouldAlwaysUpdateCrowdPose(c, o))
 	{
 		return true;
 	}
 
-	int step = GetCrowdAdaptivePoseUpdateStep(o);
+	int step = GetCrowdAdaptivePoseUpdateStep(c, o);
 	const int zone = GetCrowdEquipmentFxZone(c, o);
 
 	if (zone == CROWD_EQUIPMENT_FX_MID)
@@ -7480,7 +7535,7 @@ void MoveCharacterClient(CHARACTER* cc)
 
 		MoveMonsterClient(cc, co);
 
-		const bool shouldUpdateCharacter = bIsHero || ShouldUpdateCrowdPoseThisFrame(co, 17u);
+		const bool shouldUpdateCharacter = bIsHero || ShouldUpdateCrowdPoseThisFrame(cc, co, 17u);
 		if (shouldUpdateCharacter)
 		{
 			MoveCharacter(cc, co);
@@ -9490,6 +9545,8 @@ void RenderEye(OBJECT* o, int Left, int Right, float fSize = 1.0f)
 
 void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 {
+	CCrowdPoseCharacterScope crowdPoseScope(c);
+
 	if (g_isCharacterBuff(o, eBuff_CrywolfNPCHide))
 	{
 		return;
