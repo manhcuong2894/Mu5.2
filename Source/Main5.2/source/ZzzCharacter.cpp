@@ -157,15 +157,15 @@ static int GetCrowdAdaptivePerformanceLevel()
 		return level;
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 80)
+	if (g_iCrowdVisiblePlayerCount >= 95)
 	{
 		level = 3;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 60)
+	else if (g_iCrowdVisiblePlayerCount >= 75)
 	{
 		level = 2;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 30)
+	else if (g_iCrowdVisiblePlayerCount >= 40)
 	{
 		level = 1;
 	}
@@ -175,17 +175,17 @@ static int GetCrowdAdaptivePerformanceLevel()
 		const float targetFps = (float)gmProtect->ajust_fps_render;
 		const float fpsRatio = FPS / targetFps;
 
-		if (g_iCrowdVisiblePlayerCount >= 20)
+		if (g_iCrowdVisiblePlayerCount >= 30)
 		{
-			if (fpsRatio < 0.55f)
+			if (fpsRatio < 0.45f)
 			{
 				level = 3;
 			}
-			else if (fpsRatio < 0.75f && level < 2)
+			else if (fpsRatio < 0.65f && level < 2)
 			{
 				level = 2;
 			}
-			else if (fpsRatio < 0.90f && level < 1)
+			else if (fpsRatio < 0.82f && level < 1)
 			{
 				level = 1;
 			}
@@ -198,8 +198,8 @@ static int GetCrowdAdaptivePerformanceLevel()
 static bool IsCrowdAdaptiveLodActive()
 {
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
-	return (g_iCrowdVisiblePlayerCount >= 24
-		|| (performanceLevel > 0 && g_iCrowdVisiblePlayerCount >= 20));
+	return (g_iCrowdVisiblePlayerCount >= 30
+		|| (performanceLevel > 0 && g_iCrowdVisiblePlayerCount >= 30));
 }
 
 static bool IsCrowdWingOrHelperType(int Type)
@@ -230,35 +230,35 @@ static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 	float farEnterDist = 380.0f;
 	float farExitDist = 440.0f;
 
-	if (g_iCrowdVisiblePlayerCount >= 80)
+	if (g_iCrowdVisiblePlayerCount >= 95)
 	{
 		fullEnterDist = 120.0f;
 		fullExitDist = 150.0f;
 		farEnterDist = 220.0f;
 		farExitDist = 260.0f;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 70)
+	else if (g_iCrowdVisiblePlayerCount >= 85)
 	{
 		fullEnterDist = 145.0f;
 		fullExitDist = 180.0f;
 		farEnterDist = 260.0f;
 		farExitDist = 310.0f;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 60)
+	else if (g_iCrowdVisiblePlayerCount >= 75)
 	{
 		fullEnterDist = 180.0f;
 		fullExitDist = 220.0f;
 		farEnterDist = 320.0f;
 		farExitDist = 380.0f;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 45)
+	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
 		fullEnterDist = 200.0f;
 		fullExitDist = 240.0f;
 		farEnterDist = 350.0f;
 		farExitDist = 410.0f;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 30)
+	else if (g_iCrowdVisiblePlayerCount >= 40)
 	{
 		fullEnterDist = 220.0f;
 		fullExitDist = 260.0f;
@@ -269,22 +269,18 @@ static CrowdEquipmentFxThresholds GetCrowdEquipmentFxThresholds()
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		fullEnterDist *= 0.78f;
-		fullExitDist *= 0.78f;
-		farEnterDist *= 0.78f;
-		farExitDist *= 0.78f;
+		fullEnterDist *= 0.90f;
+		fullExitDist *= 0.90f;
+		farEnterDist *= 0.90f;
+		farExitDist *= 0.90f;
 		break;
 	case 2:
-		fullEnterDist *= 0.88f;
-		fullExitDist *= 0.88f;
-		farEnterDist *= 0.88f;
-		farExitDist *= 0.88f;
-		break;
-	case 1:
 		fullEnterDist *= 0.96f;
 		fullExitDist *= 0.96f;
 		farEnterDist *= 0.96f;
 		farExitDist *= 0.96f;
+		break;
+	case 1:
 		break;
 	default:
 		break;
@@ -384,7 +380,7 @@ static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT*
 			return true;
 		case CROWD_EQUIPMENT_FX_FAR:
 		default:
-			return (performanceLevel < 2 && g_iCrowdVisiblePlayerCount < 70);
+			return performanceLevel < 3;
 		}
 	}
 
@@ -407,9 +403,9 @@ static int GetCrowdAdaptiveEquipmentFxCap(const CHARACTER* c, const OBJECT* o, i
 
 	if (IsCrowdWingOrHelperType(Type))
 	{
-		if (zone == CROWD_EQUIPMENT_FX_FAR && performanceLevel >= 2)
+		if (zone == CROWD_EQUIPMENT_FX_FAR && performanceLevel >= 3)
 		{
-			return (performanceLevel >= 3) ? 2 : 3;
+			return 3;
 		}
 		return -1;
 	}
@@ -446,35 +442,35 @@ static int GetCrowdEquipmentFxUpdateStep(const OBJECT* o)
 	const float dist2 = GetDistance2ToHero(o);
 	int step = 1;
 
-	if (g_iCrowdVisiblePlayerCount >= 60)
+	if (g_iCrowdVisiblePlayerCount >= 75)
 	{
-		if (dist2 > (320.0f * 320.0f))
+		if (dist2 > (400.0f * 400.0f))
 		{
 			step = 4;
 		}
-		else if (dist2 > (180.0f * 180.0f))
+		else if (dist2 > (240.0f * 240.0f))
 		{
 			step = 3;
 		}
-		else if (dist2 > (100.0f * 100.0f))
+		else if (dist2 > (140.0f * 140.0f))
 		{
 			step = 2;
 		}
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 45)
+	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
-		if (dist2 > (260.0f * 260.0f))
+		if (dist2 > (340.0f * 340.0f))
 		{
 			step = 3;
 		}
-		else if (dist2 > (150.0f * 150.0f))
+		else if (dist2 > (200.0f * 200.0f))
 		{
 			step = 2;
 		}
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 30)
+	else if (g_iCrowdVisiblePlayerCount >= 40)
 	{
-		if (dist2 > (220.0f * 220.0f))
+		if (dist2 > (280.0f * 280.0f))
 		{
 			step = 2;
 		}
@@ -483,14 +479,12 @@ static int GetCrowdEquipmentFxUpdateStep(const OBJECT* o)
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		step += 1;
-		break;
-	case 2:
-		if (step < 3 && dist2 > (260.0f * 260.0f))
+		if (dist2 > (320.0f * 320.0f))
 		{
 			step += 1;
 		}
 		break;
+	case 2:
 	default:
 		break;
 	}
@@ -574,36 +568,47 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 	const float dist2 = GetDistance2ToHero(o);
 	int step = 1;
 
-	if (g_iCrowdVisiblePlayerCount >= 70)
+	if (g_iCrowdVisiblePlayerCount >= 85)
 	{
-		if (g_iCrowdVisiblePlayerCount >= 80 && dist2 > (220.0f * 220.0f))
+		if (g_iCrowdVisiblePlayerCount >= 95 && dist2 > (300.0f * 300.0f))
 		{
-			step = 12;
+			step = 10;
 		}
-		else if (dist2 > (520.0f * 520.0f))
+		else if (dist2 > (560.0f * 560.0f))
 		{
 			step = 9;
 		}
-		else if (dist2 > (340.0f * 340.0f))
+		else if (dist2 > (400.0f * 400.0f))
 		{
 			step = 6;
 		}
-		else if (dist2 > (180.0f * 180.0f))
+		else if (dist2 > (240.0f * 240.0f))
 		{
 			step = 4;
 		}
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 55)
+	else if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		if (dist2 > (460.0f * 460.0f))
+		if (dist2 > (520.0f * 520.0f))
 		{
 			step = 7;
 		}
-		else if (dist2 > (260.0f * 260.0f))
+		else if (dist2 > (320.0f * 320.0f))
 		{
 			step = 5;
 		}
-		else if (dist2 > (140.0f * 140.0f))
+		else if (dist2 > (200.0f * 200.0f))
+		{
+			step = 3;
+		}
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 55)
+	{
+		if (dist2 > (440.0f * 440.0f))
+		{
+			step = 5;
+		}
+		else if (dist2 > (260.0f * 260.0f))
 		{
 			step = 3;
 		}
@@ -612,20 +617,9 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 	{
 		if (dist2 > (380.0f * 380.0f))
 		{
-			step = 6;
+			step = 3;
 		}
-		else if (dist2 > (220.0f * 220.0f))
-		{
-			step = 4;
-		}
-	}
-	else if (g_iCrowdVisiblePlayerCount >= 30)
-	{
-		if (dist2 > (300.0f * 300.0f))
-		{
-			step = 4;
-		}
-		else if (dist2 > (180.0f * 180.0f))
+		else if (dist2 > (240.0f * 240.0f))
 		{
 			step = 2;
 		}
@@ -641,15 +635,15 @@ int GetCrowdAdaptivePoseUpdateStep(const OBJECT* o)
 	switch (GetCrowdAdaptivePerformanceLevel())
 	{
 	case 3:
-		if (dist2 > (180.0f * 180.0f) && step < 5)
+		if (dist2 > (300.0f * 300.0f) && step < 4)
 		{
-			step = 5;
+			step = 4;
 		}
 		break;
 	case 2:
-		if (dist2 > (260.0f * 260.0f) && step < 4)
+		if (dist2 > (400.0f * 400.0f) && step < 3)
 		{
-			step = 4;
+			step = 3;
 		}
 		break;
 	default:
@@ -698,16 +692,16 @@ static bool ShouldUpdateCrowdClothThisFrame(const CHARACTER* c, const OBJECT* o)
 
 	if (zone == CROWD_EQUIPMENT_FX_MID)
 	{
-		if (step < 3)
+		if (step < 2)
 		{
-			step = 3;
+			step = 2;
 		}
 	}
 	else if (zone == CROWD_EQUIPMENT_FX_FAR)
 	{
-		if (step < 5)
+		if (step < 4)
 		{
-			step = 5;
+			step = 4;
 		}
 		else
 		{
@@ -741,30 +735,30 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 
 	if (performanceLevel >= 3)
 	{
-		return dist2 <= (110.0f * 110.0f);
+		return dist2 <= (160.0f * 160.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return dist2 <= (150.0f * 150.0f);
+		return dist2 <= (210.0f * 210.0f);
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 60)
+	if (g_iCrowdVisiblePlayerCount >= 85)
 	{
-		return dist2 <= (85.0f * 85.0f);
+		return dist2 <= (170.0f * 170.0f);
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 45)
+	if (g_iCrowdVisiblePlayerCount >= 70)
 	{
-		return dist2 <= (130.0f * 130.0f);
+		return dist2 <= (210.0f * 210.0f);
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 30)
+	if (g_iCrowdVisiblePlayerCount >= 40)
 	{
-		return dist2 <= (180.0f * 180.0f);
+		return dist2 <= (250.0f * 250.0f);
 	}
 
-	return dist2 <= (240.0f * 240.0f);
+	return dist2 <= (300.0f * 300.0f);
 }
 
 bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
@@ -788,30 +782,30 @@ bool ShouldUseCrowdSimplifiedRender(const OBJECT* o)
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
 	if (performanceLevel >= 3)
 	{
-		return dist2 > (135.0f * 135.0f);
+		return dist2 > (220.0f * 220.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return dist2 > (190.0f * 190.0f);
+		return dist2 > (280.0f * 280.0f);
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 80)
-	{
-		return dist2 > (90.0f * 90.0f);
-	}
-
-	if (g_iCrowdVisiblePlayerCount >= 70)
-	{
-		return dist2 > (130.0f * 130.0f);
-	}
-
-	if (g_iCrowdVisiblePlayerCount >= 60)
+	if (g_iCrowdVisiblePlayerCount >= 95)
 	{
 		return dist2 > (170.0f * 170.0f);
 	}
 
-	return dist2 > (240.0f * 240.0f);
+	if (g_iCrowdVisiblePlayerCount >= 85)
+	{
+		return dist2 > (220.0f * 220.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 75)
+	{
+		return dist2 > (260.0f * 260.0f);
+	}
+
+	return dist2 > (320.0f * 320.0f);
 }
 
 static bool ShouldSkipCrowdBodyPartLod(const CHARACTER* c, const OBJECT* o, int bodyPartIndex)
@@ -848,7 +842,7 @@ bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
 
-	if (g_iCrowdVisiblePlayerCount < 45 && performanceLevel < 2)
+	if (g_iCrowdVisiblePlayerCount < 60 && performanceLevel < 2)
 	{
 		return false;
 	}
@@ -863,22 +857,22 @@ bool ShouldCullCrowdLinkedObject(const CHARACTER* c, const OBJECT* o, int Type)
 
 	if (performanceLevel >= 3)
 	{
-		return !isMainEquipment && dist2 > (260.0f * 260.0f);
+		return !isMainEquipment && dist2 > (360.0f * 360.0f);
 	}
 
 	if (performanceLevel >= 2)
 	{
+		return !isMainEquipment && dist2 > (460.0f * 460.0f);
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 95)
+	{
 		return !isMainEquipment && dist2 > (340.0f * 340.0f);
 	}
 
-	if (g_iCrowdVisiblePlayerCount >= 80)
+	if (g_iCrowdVisiblePlayerCount >= 85)
 	{
-		return !isMainEquipment && dist2 > (240.0f * 240.0f);
-	}
-
-	if (g_iCrowdVisiblePlayerCount >= 70)
-	{
-		return !isMainEquipment && dist2 > (320.0f * 320.0f);
+		return !isMainEquipment && dist2 > (420.0f * 420.0f);
 	}
 
 	return false;
@@ -11995,30 +11989,30 @@ void RenderCharactersClient()
 	g_iRemotePlayerSpriteEffectBudget = -1;
 	g_iRemotePlayerJointEffectBudget = -1;
 
-	if (g_iCrowdVisiblePlayerCount >= 80)
-	{
-		g_iRemotePlayerSpriteEffectBudget = 260;
-		g_iRemotePlayerJointEffectBudget = 120;
-	}
-	else if (g_iCrowdVisiblePlayerCount >= 70)
-	{
-		g_iRemotePlayerSpriteEffectBudget = 260;
-		g_iRemotePlayerJointEffectBudget = 120;
-	}
-	else if (g_iCrowdVisiblePlayerCount >= 60)
+	if (g_iCrowdVisiblePlayerCount >= 95)
 	{
 		g_iRemotePlayerSpriteEffectBudget = 320;
 		g_iRemotePlayerJointEffectBudget = 160;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 45)
+	else if (g_iCrowdVisiblePlayerCount >= 85)
 	{
-		g_iRemotePlayerSpriteEffectBudget = 480;
-		g_iRemotePlayerJointEffectBudget = 240;
+		g_iRemotePlayerSpriteEffectBudget = 420;
+		g_iRemotePlayerJointEffectBudget = 210;
 	}
-	else if (g_iCrowdVisiblePlayerCount >= 30)
+	else if (g_iCrowdVisiblePlayerCount >= 75)
+	{
+		g_iRemotePlayerSpriteEffectBudget = 540;
+		g_iRemotePlayerJointEffectBudget = 270;
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 60)
 	{
 		g_iRemotePlayerSpriteEffectBudget = 720;
 		g_iRemotePlayerJointEffectBudget = 360;
+	}
+	else if (g_iCrowdVisiblePlayerCount >= 40)
+	{
+		g_iRemotePlayerSpriteEffectBudget = 900;
+		g_iRemotePlayerJointEffectBudget = 450;
 	}
 
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
@@ -12030,14 +12024,14 @@ void RenderCharactersClient()
 			g_iRemotePlayerJointEffectBudget = 450;
 		}
 
-		int budgetPercent = 95;
+		int budgetPercent = 100;
 		if (performanceLevel >= 3)
 		{
-			budgetPercent = 70;
+			budgetPercent = 82;
 		}
 		else if (performanceLevel >= 2)
 		{
-			budgetPercent = 82;
+			budgetPercent = 92;
 		}
 
 		g_iRemotePlayerSpriteEffectBudget = (g_iRemotePlayerSpriteEffectBudget * budgetPercent) / 100;
