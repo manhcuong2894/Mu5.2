@@ -761,6 +761,24 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 		return true;
 	}
 
+	if (g_isCharacterBuff((OBJECT*)o, eBuff_GMEffect)
+		|| c->CtlCode == CTLCODE_20OPERATOR
+		|| c->CtlCode == CTLCODE_08OPERATOR)
+	{
+		return true;
+	}
+
+	const int characterIndex = gmCharacters->GetCharacterIndex((CHARACTER*)c);
+	if (SelectedCharacter != -1 && characterIndex == SelectedCharacter)
+	{
+		return true;
+	}
+
+	if (Hero != NULL && Hero->TargetCharacter == c->Key)
+	{
+		return true;
+	}
+
 	if (!IsCrowdAdaptiveLodActive())
 	{
 		return true;
@@ -768,30 +786,61 @@ static bool ShouldRenderCrowdPlayerShadow(const CHARACTER* c, const OBJECT* o)
 
 	const float dist2 = GetDistance2ToHero(o);
 	const int performanceLevel = GetCrowdAdaptivePerformanceLevel();
+	const unsigned int bucket =
+		(unsigned int)(((UINT_PTR)o >> 4) & 3u);
 
 	if (performanceLevel >= 3)
 	{
-		return dist2 <= (220.0f * 220.0f);
+		if (dist2 <= (140.0f * 140.0f))
+		{
+			return true;
+		}
+		return dist2 <= (220.0f * 220.0f) && bucket == 0u;
 	}
 
 	if (performanceLevel >= 2)
 	{
-		return dist2 <= (280.0f * 280.0f);
+		if (dist2 <= (200.0f * 200.0f))
+		{
+			return true;
+		}
+		return dist2 <= (300.0f * 300.0f) && bucket <= 1u;
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 100)
 	{
-		return dist2 <= (220.0f * 220.0f);
+		if (dist2 <= (160.0f * 160.0f))
+		{
+			return true;
+		}
+		return dist2 <= (240.0f * 240.0f) && bucket == 0u;
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 85)
 	{
-		return dist2 <= (260.0f * 260.0f);
+		if (dist2 <= (220.0f * 220.0f))
+		{
+			return true;
+		}
+		return dist2 <= (300.0f * 300.0f) && bucket <= 1u;
+	}
+
+	if (g_iCrowdVisiblePlayerCount >= 70)
+	{
+		if (dist2 <= (260.0f * 260.0f))
+		{
+			return true;
+		}
+		return dist2 <= (340.0f * 340.0f) && bucket != 3u;
 	}
 
 	if (g_iCrowdVisiblePlayerCount >= 55)
 	{
-		return dist2 <= (320.0f * 320.0f);
+		if (dist2 <= (300.0f * 300.0f))
+		{
+			return true;
+		}
+		return dist2 <= (380.0f * 380.0f) && bucket != 3u;
 	}
 
 	return dist2 <= (360.0f * 360.0f);
