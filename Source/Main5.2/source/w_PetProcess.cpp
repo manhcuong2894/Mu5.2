@@ -171,7 +171,7 @@ void PetProcess::UnRegister(CHARACTER* Owner, int itemType, bool isUnregistAll)
 				basepet.lock()->Release();
 				m_petsList.erase(tempiter);
 
-				if (-1 == itemType || !isUnregistAll)
+				if (!isUnregistAll)
 					return;
 			}
 		}

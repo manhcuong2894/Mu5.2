@@ -2250,11 +2250,17 @@ void ReceiveChangePlayer(BYTE *ReceiveBuffer) {
         }
       }
       break;
-    case 8:
+    case 8: {
+      int previousHelperItemType = -1;
+      if (pCharacter->Helper.Type >= MODEL_ITEM) {
+        previousHelperItemType = pCharacter->Helper.Type - MODEL_ITEM;
+      }
+
+      gGoboidManager->DeleteBug(o, 0);
+      ThePetProcess().DeletePet(pCharacter, previousHelperItemType, true);
+
       if (Type == 0x1FFF) {
         pCharacter->Helper.Type = -1;
-        gGoboidManager->DeleteBug(o, 0);
-        ThePetProcess().DeletePet(pCharacter, pCharacter->Helper.Type, true);
       } else {
         pCharacter->Helper.Type = MODEL_ITEM + Type;
         // c->Helper.Level = LevelConvert(Level);
@@ -2317,6 +2323,7 @@ void ReceiveChangePlayer(BYTE *ReceiveBuffer) {
         }
       }
       break;
+    }
     case 237:
       if (Type == 0x1FFF) {
         pCharacter->MuunHelper[0].Type = -1;
@@ -2343,7 +2350,7 @@ void ReceiveChangePlayer(BYTE *ReceiveBuffer) {
         pCharacter->Core.Option1 = Option;
         pCharacter->Core.ExtOption = ExtOption;
       } else {
-        pCharacter->Flag.Type = -1;
+        pCharacter->Core.Type = -1;
       }
       break;
 #endif // SHUTDOWN_CORE_WING4
