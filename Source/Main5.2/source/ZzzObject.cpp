@@ -11637,6 +11637,12 @@ void RenderPartObjectBodyColor2(BMD* b, OBJECT* o, int Type, float Alpha, int Re
 
 void NextGradeObjectRender(CHARACTER* c)
 {
+	const int blinkPhase = ((int)(WorldTime / 500.0f)) & 1;
+	if (blinkPhase != 0)
+	{
+		return;
+	}
+
 	int weaponIndex;
 	int weaponIndex2;
 	BMD* b = gmClientModels->GetModel(c->Object.Type);
