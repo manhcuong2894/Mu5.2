@@ -298,14 +298,6 @@ void BMD::PrepareGpuAssist(OBJECT* pObject, int modelType, int renderTypeHint, b
 	if (!isBodyModel && !isAttachmentModel)
 		return;
 
-	if (Hero != NULL
-		&& pObject == &Hero->Object
-		&& modelType >= MODEL_WING
-		&& modelType < MODEL_HELPER)
-	{
-		return;
-	}
-
 	if (NumBones <= 0 || NumBones > MAX_BONES || NumMeshs <= 0)
 		return;
 
