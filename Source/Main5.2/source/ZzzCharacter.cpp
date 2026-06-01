@@ -7112,6 +7112,7 @@ void RenderLinkObject(float x, float y, float z, CHARACTER* c, PART_t* f, int Ty
 
 	OBJECT* Object = &g_ItemObject[Type];
 	Object->Type = Type;
+	Object->Owner = pObject;
 
 	ItemObjectAttribute(Object);
 	pModel->LightEnable = Object->LightEnable;
@@ -11659,11 +11660,36 @@ void RenderCharactersClient()
 
 	++g_uiCrowdAnimationFrameId;
 
+	const bool prioritizeHeroEffects = (Hero != NULL && g_iCrowdVisiblePlayerCount >= 24);
+	if (prioritizeHeroEffects)
+	{
+		OBJECT* heroObject = &Hero->Object;
+
+		if (!(0x04 & Hero->CtlCode) || SceneFlag != MAIN_SCENE)
+		{
+			if (heroObject->Live && heroObject->Visible)
+			{
+				const int heroIndex = gmCharacters->GetCharacterIndex(Hero);
+				RenderCharacter(Hero, heroObject, (heroIndex == SelectedCharacter || heroIndex == SelectedNpc));
+
+				if (heroObject->Type == MODEL_PLAYER)
+				{
+					battleCastle::CreateBattleCastleCharacter_Visual(Hero, heroObject);
+				}
+			}
+		}
+	}
+
 	for (int i = 0; i < MAX_CHARACTERS_CLIENT; ++i)
 	{
 		CHARACTER* c = gmCharacters->GetCharacter(i);
 
 		OBJECT* o = &c->Object;
+
+		if (prioritizeHeroEffects && c == Hero)
+		{
+			continue;
+		}
 
 		if (c != Hero && battleCastle::IsBattleCastleStart() == true && g_isCharacterBuff(o, eBuff_Cloaking))
 		{

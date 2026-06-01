@@ -18,26 +18,56 @@
 
 OBJECT Sprites[MAX_SPRITES];
 
-int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
+static bool IsHeroEffectOwner(const OBJECT* Owner)
+{
+	return (Hero != NULL
+		&& (Owner == &Hero->Object
+			|| (Owner != NULL && Owner->Owner == &Hero->Object)));
+}
+
+static int FindSpriteSlot(OBJECT* Owner)
 {
 	for (int i = 0; i < MAX_SPRITES; i++)
 	{
-		OBJECT* o = &Sprites[i];
-		if (!o->Live)
+		if (!Sprites[i].Live)
 		{
-			o->Live = true;
-			o->Type = Type;
-			o->SubType = SubType;
-			o->Owner = Owner;
-			o->AnimationFrame = 1.f;
-			o->Scale = Scale;
-			o->Angle[2] = Rotation;
-			VectorCopy(Position, o->Position);
-			VectorCopy(Position, o->StartPosition);
-			VectorCopy(Light, o->Light);
 			return i;
 		}
 	}
+
+	if (IsHeroEffectOwner(Owner))
+	{
+		for (int i = 0; i < MAX_SPRITES; i++)
+		{
+			if (!IsHeroEffectOwner(Sprites[i].Owner))
+			{
+				return i;
+			}
+		}
+	}
+
+	return -1;
+}
+
+int CreateSprite(int Type, vec3_t Position, float Scale, vec3_t Light, OBJECT* Owner, float Rotation, int SubType)
+{
+	const int slot = FindSpriteSlot(Owner);
+	if (slot >= 0)
+	{
+		OBJECT* o = &Sprites[slot];
+		o->Live = true;
+		o->Type = Type;
+		o->SubType = SubType;
+		o->Owner = Owner;
+		o->AnimationFrame = 1.f;
+		o->Scale = Scale;
+		o->Angle[2] = Rotation;
+		VectorCopy(Position, o->Position);
+		VectorCopy(Position, o->StartPosition);
+		VectorCopy(Light, o->Light);
+		return slot;
+	}
+
 	return false;
 }
 
