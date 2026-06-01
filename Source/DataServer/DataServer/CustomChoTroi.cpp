@@ -63,6 +63,15 @@ static void ChoTroiNormalizeItemBuffer(BYTE *item, int itemLength,
   }
 }
 
+static void ChoTroiSendSellAnswer(int uIndex, int aIndex, int result) {
+  SDHP_ANS_MARKET_SELL pMsg;
+  memset(&pMsg, 0, sizeof(pMsg));
+  pMsg.h.set(0xFE, 0x01, sizeof(pMsg));
+  pMsg.Result = result;
+  pMsg.aIndex = aIndex;
+  gSocketManager.DataSend(uIndex, (BYTE *)&pMsg, pMsg.h.size);
+}
+
 CChoTroi::CChoTroi() {}
 
 CChoTroi::~CChoTroi() {}
@@ -343,6 +352,7 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
   if (!gQueryManager.ExecQuery(szQuery)) {
     LogAdd(LOG_RED, "[ChoTroi] Loi Sell Item len cho !!");
     gQueryManager.Close();
+    ChoTroiSendSellAnswer(uIndex, lpMsg->aIndex, 0);
     return;
   }
 
@@ -360,6 +370,7 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
     LogAdd(LOG_RED, "[ChoTroi] Khong tim thay row moi de cap nhat item [%s][%s]",
            szAccountID, szName);
     gQueryManager.Close();
+    ChoTroiSendSellAnswer(uIndex, lpMsg->aIndex, 0);
     return;
   }
 
@@ -379,6 +390,9 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
   if (!gQueryManager.ExecQuery(szQuery, id)) {
     LogAdd(LOG_RED, "[ChoTroi] Loi cap nhat blob item [%s][%s] ID=%d",
            szAccountID, szName, id);
+    gQueryManager.Close();
+    ChoTroiSendSellAnswer(uIndex, lpMsg->aIndex, 0);
+    return;
   } else {
 #if (MARKET_DEBUG)
     LogAdd(LOG_BLUE, "[ChoTroi] SaveItem OK ID=%d Account=%s Name=%s Len=%d",
@@ -387,6 +401,7 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
   }
 
   gQueryManager.Close();
+  ChoTroiSendSellAnswer(uIndex, lpMsg->aIndex, 1);
 
   // --
 

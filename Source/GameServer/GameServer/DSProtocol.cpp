@@ -782,6 +782,9 @@ void DataServerProtocolCore(BYTE HeadCode, BYTE *ReceiveBuffer, int Size) // OK
     case 0x00:
       gBCustomChoTroi.DGAnsItemList((CUSTOM_LOAD_COUNT *)ReceiveBuffer);
       break;
+    case 0x01:
+      gBCustomChoTroi.DGAnsItemSell((SDHP_ANS_MARKET_SELL *)ReceiveBuffer);
+      break;
     case 0x02:
       gBCustomChoTroi.DGAnsItemBuy((SDHP_ANS_MARKET_BUY *)ReceiveBuffer);
       break;

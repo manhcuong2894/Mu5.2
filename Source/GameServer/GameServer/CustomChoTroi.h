@@ -91,6 +91,12 @@ struct SDHP_REQ_MARKET_SELL
 	int ItemDay;
 	int Pass;
 };
+struct SDHP_ANS_MARKET_SELL
+{
+	PSBMSG_HEAD h;
+	int Result;
+	int aIndex;
+};
 //===Get List Cho Troi
 struct PMSG_REQ_MARKET_ITEM //Client Send GS
 {
@@ -189,6 +195,7 @@ public:
 	void RollbackCacheItem(int aIndex, bool sendClientState, bool saveCharacter, const char* reason);
 	void RollBack(int aIndex, XULY_CGPACKET* lpMsg);
 	void CGReqItemSell(PMSG_REQ_MARKET_SELL* lpMsg, int aIndex);
+	void DGAnsItemSell(SDHP_ANS_MARKET_SELL* lpMsg);
 	void CGReqItemList(PMSG_REQ_MARKET_ITEM* lpMsg, int aIndex);
 	void DGAnsItemList(CUSTOM_LOAD_COUNT* lpMsg);
 	void CGOpenListChoTroi(int aIndex);

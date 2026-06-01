@@ -91,6 +91,7 @@ static bool ChoTroiBuyConfirmOpen = false;
 static int ChoTroiPendingBuyID = -1;
 static int ChoTroiPendingBuyPass = -1;
 static const int CHOTROI_BUY_PASS_INPUT_WIDTH = 130;
+static DWORD ChoTroiLastSellConfirmTick = 0;
 
 static void ChoTroiConfirmBuyCallback(LPVOID lpParam);
 static bool OpenChoTroiBuyConfirm(const CustomChoTroi::MARKET_DATA &marketData,
@@ -182,6 +183,24 @@ static void RequestChoTroiList(int typeItem) {
   }
 
   UpdateMaxPosChoTroi = true;
+}
+
+static bool IsChoTroiCoinTypeEnabled(int coinType) {
+  if (coinType < 1 || coinType > 6) {
+    return false;
+  }
+
+  return (gCusChoTroi.OnCointType & (1 << (coinType - 1))) != 0;
+}
+
+static int GetFirstEnabledChoTroiCoinType() {
+  for (int coinType = 1; coinType <= 6; coinType++) {
+    if (IsChoTroiCoinTypeEnabled(coinType)) {
+      return coinType;
+    }
+  }
+
+  return 0;
 }
 
 static void SetChoTroiInputState(CUITextInputBox *input, int state) {
@@ -1110,13 +1129,32 @@ void DrawInfoPhai(int X, int Y) {
         PassChoTroi->GetText(szPassChoTroi, 5 + 1);
       }
 
-      if (gInterface->DrawButton(StartX + (WindowW / 2) - (ButtonW / 2),
-                                 StartY + WindowH - 30, 110, 12,
-                                 gTextClient.txtClient_ChoTroi[5])) {
+      const float SellButtonX = StartX + (WindowW / 2) - (ButtonW / 2);
+      const float SellButtonY = StartY + WindowH - 30;
+      const float SellButtonW = 110.0f;
+      const float SellButtonH = (SellButtonW * 20.0f) / 100.0f;
+      bool confirmSell =
+          gInterface->DrawButton(SellButtonX, SellButtonY, SellButtonW, 12,
+                                 gTextClient.txtClient_ChoTroi[5]);
+
+      if (!confirmSell &&
+          SEASON3B::CheckMouseIn(SellButtonX, SellButtonY, SellButtonW,
+                                 SellButtonH) &&
+          SEASON3B::IsRelease(VK_LBUTTON) &&
+          GetTickCount() - ChoTroiLastSellConfirmTick > 500) {
+        ChoTroiLastSellConfirmTick = GetTickCount();
+        PlayBuffer(25, 0, 0);
+        confirmSell = true;
+      }
+
+      if (confirmSell) {
+        ChoTroiLastSellConfirmTick = GetTickCount();
         if (atoi(szGiaTriCoin) == 0) {
+          gInterface->DrawMessage(1, "Cho Troi: Hay nhap gia ban.");
           return;
         }
-        if (TypeCoinBan < 1 || TypeCoinBan > 6) {
+        if (!IsChoTroiCoinTypeEnabled(TypeCoinBan)) {
+          gInterface->DrawMessage(1, "Cho Troi: Hay chon loai tien dang bat.");
           return;
         }
         // gInterface->DrawMessage(1, "Coint %d", atoi(szGiaTriCoin));
@@ -1926,6 +1964,9 @@ void CustomChoTroi::GCSetListChoTroi(BYTE *Recv, int Size) {
   }
 
   gCusChoTroi.OnCointType = packetType;
+  if (!IsChoTroiCoinTypeEnabled(TypeCoinBan)) {
+    TypeCoinBan = GetFirstEnabledChoTroiCoinType();
+  }
 
   for (int n = 0; n < packetCount; n++) {
     BYTE *row = Recv + dataOffset + (rowSize * n);
