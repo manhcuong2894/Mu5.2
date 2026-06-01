@@ -22,6 +22,8 @@ extern bool MouseOnWindow;
 extern DWORD g_dwKeyFocusUIID;
 CUIPhotoViewer m_PhotoViewChotroi;
 SEASON3B::CNewUIScrollBar *WindowChoTroiScrollBar = NULL;
+SEASON3B::CNewUIScrollBarHTML *ChoTroiSellCurrencyScrollBar = NULL;
+SEASON3B::CNewUIScrollBarHTML *ChoTroiFilterCurrencyScrollBar = NULL;
 CUITextInputBox *CoinRaoBanChoTroi = NULL;
 CUITextInputBox *NgayRaoBanChoTroi = NULL; // HSD Them
 CUITextInputBox *PassChoTroi = NULL;
@@ -89,6 +91,7 @@ static bool ChoTroiBuyConfirmOpen = false;
 static int ChoTroiPendingBuyID = -1;
 static int ChoTroiPendingBuyPass = -1;
 static const int CHOTROI_BUY_PASS_INPUT_WIDTH = 130;
+static const int CHOTROI_CURRENCY_DROPDOWN_VISIBLE_MAX = 5;
 
 static void ChoTroiConfirmBuyCallback(LPVOID lpParam);
 static bool OpenChoTroiBuyConfirm(const CustomChoTroi::MARKET_DATA &marketData,
@@ -196,6 +199,145 @@ static const char *GetChoTroiFilterCurrencyName() {
   }
 
   return gCusChoTroi.GetCurrencyName(LocItemCurrency);
+}
+
+static int GetChoTroiCurrencyDropdownCount(bool includeAllOption) {
+  int count = includeAllOption ? 1 : 0;
+
+  if (!gCusChoTroi.m_CurrencyList.empty()) {
+    return count + (int)gCusChoTroi.m_CurrencyList.size();
+  }
+
+  for (int i = 1; i <= 10; i++) {
+    if (gCusChoTroi.IsCurrencyEnabled(i)) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+static int GetChoTroiCurrencyDropdownId(int optionIndex,
+                                        bool includeAllOption) {
+  if (includeAllOption) {
+    if (optionIndex == 0) {
+      return 0;
+    }
+    optionIndex--;
+  }
+
+  if (!gCusChoTroi.m_CurrencyList.empty()) {
+    if (optionIndex >= 0 &&
+        optionIndex < (int)gCusChoTroi.m_CurrencyList.size()) {
+      return gCusChoTroi.m_CurrencyList[optionIndex].Id;
+    }
+
+    return 0;
+  }
+
+  int currentIndex = 0;
+  for (int i = 1; i <= 10; i++) {
+    if (!gCusChoTroi.IsCurrencyEnabled(i)) {
+      continue;
+    }
+
+    if (currentIndex == optionIndex) {
+      return i;
+    }
+
+    currentIndex++;
+  }
+
+  return 0;
+}
+
+static const char *GetChoTroiCurrencyDropdownName(int currencyId) {
+  return (currencyId <= 0) ? "Tat ca" : gCusChoTroi.GetCurrencyName(currencyId);
+}
+
+static void RenderChoTroiCurrencyDropdown(
+    float listX, float listY, float listW, float rowH, bool includeAllOption,
+    int &selectedCurrency, bool &isOpen,
+    SEASON3B::CNewUIScrollBarHTML *&scrollBar) {
+  if (!isOpen) {
+    return;
+  }
+
+  const int optionCount = GetChoTroiCurrencyDropdownCount(includeAllOption);
+  if (optionCount <= 0) {
+    return;
+  }
+
+  const int visibleCount =
+      (optionCount > CHOTROI_CURRENCY_DROPDOWN_VISIBLE_MAX)
+          ? CHOTROI_CURRENCY_DROPDOWN_VISIBLE_MAX
+          : optionCount;
+  const bool useScroll =
+      (optionCount > CHOTROI_CURRENCY_DROPDOWN_VISIBLE_MAX);
+  const float listH = rowH * visibleCount;
+
+  gInterface->DrawBarForm(listX, listY, listW, listH, 0.0, 0.0, 0.0, 0.85);
+
+  int scrollOffset = 0;
+  if (useScroll) {
+    if (scrollBar == NULL) {
+      scrollBar = new SEASON3B::CNewUIScrollBarHTML();
+      scrollBar->Create((int)(listX + listW + 3), (int)listY, (int)listH);
+      scrollBar->SetPercent(0.0f);
+    } else {
+      scrollBar->SetPos((int)(listX + listW + 3), (int)listY);
+    }
+
+    const int maxScroll = optionCount - visibleCount;
+    scrollBar->SetMaxPos(maxScroll);
+    if (scrollBar->GetCurPos() > maxScroll) {
+      scrollBar->SetCurPos(maxScroll);
+    }
+
+    if (SEASON3B::CheckMouseIn(listX, listY, listW + 12, listH)) {
+      if (MouseWheel < 0) {
+        MouseWheel = 0;
+        scrollBar->SetCurPos(scrollBar->GetCurPos() + 1);
+      } else if (MouseWheel > 0) {
+        MouseWheel = 0;
+        scrollBar->SetCurPos(scrollBar->GetCurPos() - 1);
+      }
+    }
+
+    scrollBar->UpdateMouseEvent();
+    scrollBar->Update();
+    scrollOffset = scrollBar->GetCurPos();
+  }
+
+  for (int row = 0; row < visibleCount; row++) {
+    const int optionIndex = scrollOffset + row;
+    const int currencyId =
+        GetChoTroiCurrencyDropdownId(optionIndex, includeAllOption);
+    DWORD selectHover = 0x0;
+    const float rowY = listY + (rowH * row);
+
+    if (SEASON3B::CheckMouseIn(listX, rowY, listW, rowH)) {
+      selectHover = 0x66646450;
+      if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
+          (GetKeyState(VK_LBUTTON) & 0x8000)) {
+        selectedCurrency = currencyId;
+        isOpen = false;
+        if (scrollBar != NULL) {
+          scrollBar->SetPercent(0.0f);
+        }
+        gInterface->Data[eTIME].EventTick = GetTickCount();
+        PlayBuffer(25, 0, 0);
+      }
+    }
+
+    SEASON3B::TextDraw((HFONT)g_hFontBold, listX, rowY, 0xFFFFFFFF,
+                       selectHover, listW, 0, 3, "%s",
+                       GetChoTroiCurrencyDropdownName(currencyId));
+  }
+
+  if (useScroll && scrollBar != NULL) {
+    scrollBar->Render();
+  }
 }
 
 static void SetChoTroiInputState(CUITextInputBox *input, int state) {
@@ -913,6 +1055,10 @@ void DrawInfoPhai(int X, int Y) {
         gInterface->Data[eTIME].EventTick = GetTickCount();
         PlayBuffer(25, 0, 0);
         SelectFilterCurrencyChoTroi ^= 1;
+        if (!SelectFilterCurrencyChoTroi &&
+            ChoTroiFilterCurrencyScrollBar != NULL) {
+          ChoTroiFilterCurrencyScrollBar->SetPercent(0.0f);
+        }
       }
     }
     RenderBitmap(SEASON3B::CNewUICastleWindow::IMAGE_CASTLEWINDOW_SCROLL_DOWN_BTN,
@@ -951,78 +1097,10 @@ void DrawInfoPhai(int X, int Y) {
       const float FilterListY = FilterCurrencyY + FilterCurrencyH;
       const float FilterListW = FilterCurrencyW - 25;
       const float FilterRowH = 15;
-      const int CurrencyCount =
-          (gCusChoTroi.m_CurrencyList.empty())
-              ? 10
-              : (int)gCusChoTroi.m_CurrencyList.size();
-      const int RowCount = CurrencyCount + 1;
-
-      gInterface->DrawBarForm(FilterListX, FilterListY, FilterListW,
-                              FilterRowH * RowCount, 0.0, 0.0, 0.0, 0.85);
-
-      DWORD SelectHover = 0x0;
-      if (SEASON3B::CheckMouseIn(FilterListX, FilterListY, FilterListW,
-                                 FilterRowH)) {
-        SelectHover = 0x66646450;
-        if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
-            (GetKeyState(VK_LBUTTON) & 0x8000)) {
-          LocItemCurrency = 0;
-          SelectFilterCurrencyChoTroi = false;
-          gInterface->Data[eTIME].EventTick = GetTickCount();
-          PlayBuffer(25, 0, 0);
-        }
-      }
-
-      SEASON3B::TextDraw((HFONT)g_hFontBold, FilterListX, FilterListY,
-                         0xFFFFFFFF, SelectHover, FilterListW, 0, 3, "Tat ca");
-
-      if (gCusChoTroi.m_CurrencyList.empty()) {
-        int drawIndex = 1;
-        for (int i = 1; i <= 10; i++) {
-          if (!gCusChoTroi.IsCurrencyEnabled(i)) {
-            continue;
-          }
-
-          DWORD CurrencySelectHover = 0x0;
-          const float RowY = FilterListY + (FilterRowH * drawIndex);
-          if (SEASON3B::CheckMouseIn(FilterListX, RowY, FilterListW,
-                                     FilterRowH)) {
-            CurrencySelectHover = 0x66646450;
-            if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
-                (GetKeyState(VK_LBUTTON) & 0x8000)) {
-              LocItemCurrency = i;
-              SelectFilterCurrencyChoTroi = false;
-              gInterface->Data[eTIME].EventTick = GetTickCount();
-              PlayBuffer(25, 0, 0);
-            }
-          }
-
-          SEASON3B::TextDraw((HFONT)g_hFontBold, FilterListX, RowY,
-                             0xFFFFFFFF, CurrencySelectHover, FilterListW, 0,
-                             3, "%s", gCusChoTroi.GetCurrencyName(i));
-          drawIndex++;
-        }
-      } else {
-        for (int i = 0; i < (int)gCusChoTroi.m_CurrencyList.size(); i++) {
-          DWORD CurrencySelectHover = 0x0;
-          const float RowY = FilterListY + (FilterRowH * (i + 1));
-          if (SEASON3B::CheckMouseIn(FilterListX, RowY, FilterListW,
-                                     FilterRowH)) {
-            CurrencySelectHover = 0x66646450;
-            if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
-                (GetKeyState(VK_LBUTTON) & 0x8000)) {
-              LocItemCurrency = gCusChoTroi.m_CurrencyList[i].Id;
-              SelectFilterCurrencyChoTroi = false;
-              gInterface->Data[eTIME].EventTick = GetTickCount();
-              PlayBuffer(25, 0, 0);
-            }
-          }
-
-          SEASON3B::TextDraw((HFONT)g_hFontBold, FilterListX, RowY,
-                             0xFFFFFFFF, CurrencySelectHover, FilterListW, 0,
-                             3, "%s", gCusChoTroi.m_CurrencyList[i].Name);
-        }
-      }
+      RenderChoTroiCurrencyDropdown(FilterListX, FilterListY, FilterListW,
+                                    FilterRowH, true, LocItemCurrency,
+                                    SelectFilterCurrencyChoTroi,
+                                    ChoTroiFilterCurrencyScrollBar);
     }
   } break;
   case 1: // Rao Ban
@@ -1072,6 +1150,9 @@ void DrawInfoPhai(int X, int Y) {
           gInterface->Data[eTIME].EventTick = GetTickCount();
           PlayBuffer(25, 0, 0);
           SelectCurrencyChoTroi ^= 1;
+          if (!SelectCurrencyChoTroi && ChoTroiSellCurrencyScrollBar != NULL) {
+            ChoTroiSellCurrencyScrollBar->SetPercent(0.0f);
+          }
         }
       }
       RenderBitmap(SEASON3B::CNewUICastleWindow::IMAGE_CASTLEWINDOW_SCROLL_DOWN_BTN,
@@ -1191,60 +1272,10 @@ void DrawInfoPhai(int X, int Y) {
         const float CurrencyListY = CurrencyBoxY + 20;
         const float CurrencyListW = 115;
         const float CurrencyRowH = 15;
-        const int CurrencyCount =
-            (gCusChoTroi.m_CurrencyList.empty())
-                ? 10
-                : (int)gCusChoTroi.m_CurrencyList.size();
-
-        gInterface->DrawBarForm(CurrencyListX, CurrencyListY, CurrencyListW,
-                                CurrencyRowH * CurrencyCount, 0.0, 0.0, 0.0,
-                                0.85);
-
-        if (gCusChoTroi.m_CurrencyList.empty()) {
-          for (int i = 1; i <= 10; i++) {
-            if (!gCusChoTroi.IsCurrencyEnabled(i)) {
-              continue;
-            }
-
-            DWORD SelectHover = 0x0;
-            const float RowY = CurrencyListY + (CurrencyRowH * (i - 1));
-            if (SEASON3B::CheckMouseIn(CurrencyListX, RowY, CurrencyListW,
-                                       CurrencyRowH)) {
-              SelectHover = 0x66646450;
-              if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
-                  (GetKeyState(VK_LBUTTON) & 0x8000)) {
-                TypeCoinBan = i;
-                SelectCurrencyChoTroi = false;
-                gInterface->Data[eTIME].EventTick = GetTickCount();
-                PlayBuffer(25, 0, 0);
-              }
-            }
-
-            SEASON3B::TextDraw((HFONT)g_hFontBold, CurrencyListX, RowY,
-                               0xFFFFFFFF, SelectHover, CurrencyListW, 0, 3,
-                               "%s", gCusChoTroi.GetCurrencyName(i));
-          }
-        } else {
-          for (int i = 0; i < (int)gCusChoTroi.m_CurrencyList.size(); i++) {
-            DWORD SelectHover = 0x0;
-            const float RowY = CurrencyListY + (CurrencyRowH * i);
-            if (SEASON3B::CheckMouseIn(CurrencyListX, RowY, CurrencyListW,
-                                       CurrencyRowH)) {
-              SelectHover = 0x66646450;
-              if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
-                  (GetKeyState(VK_LBUTTON) & 0x8000)) {
-                TypeCoinBan = gCusChoTroi.m_CurrencyList[i].Id;
-                SelectCurrencyChoTroi = false;
-                gInterface->Data[eTIME].EventTick = GetTickCount();
-                PlayBuffer(25, 0, 0);
-              }
-            }
-
-            SEASON3B::TextDraw((HFONT)g_hFontBold, CurrencyListX, RowY,
-                               0xFFFFFFFF, SelectHover, CurrencyListW, 0, 3,
-                               "%s", gCusChoTroi.m_CurrencyList[i].Name);
-          }
-        }
+        RenderChoTroiCurrencyDropdown(CurrencyListX, CurrencyListY,
+                                      CurrencyListW, CurrencyRowH, false,
+                                      TypeCoinBan, SelectCurrencyChoTroi,
+                                      ChoTroiSellCurrencyScrollBar);
       }
 
       if (gInterface->DrawButton(StartX + (WindowW / 2) - (ButtonW / 2),
@@ -2012,6 +2043,12 @@ void CustomChoTroi::SetShowItemCache(BYTE *Recv) {
 
 void CustomChoTroi::GCSetCurrencyList(BYTE *Recv, int Size) {
   this->m_CurrencyList.clear();
+  if (ChoTroiSellCurrencyScrollBar != NULL) {
+    ChoTroiSellCurrencyScrollBar->SetPercent(0.0f);
+  }
+  if (ChoTroiFilterCurrencyScrollBar != NULL) {
+    ChoTroiFilterCurrencyScrollBar->SetPercent(0.0f);
+  }
 
   int packetSize = ChoTroiGetPacketSize(Recv, Size);
   int packetCount = 0;
