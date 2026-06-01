@@ -428,7 +428,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   if (lpMsg->ItemPrice < 0) {
     return;
   }
-  if (lpMsg->ItemPriceType < eMarketPriceWC ||
+  if (lpMsg->ItemPriceType < eMarketPriceWC &&
       lpMsg->ItemPriceType > eMarketPriceC) {
     return;
   }
@@ -507,7 +507,6 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   if (lpUser->CH_IndexItem[0] == -1) {
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(1)); //
-    ChoTroiSendClientCacheState(aIndex, 0);
     return;
   }
   if (ItemPriceType < 1 || ItemPriceType > 6 || ItemPrice < 1) {
@@ -662,29 +661,14 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
                          ItemPrice, "Chaos"); //
   }
   gDataServerConnection.DataSend((BYTE *)&pMsg, pMsg.h.size);
-}
 
-void BCustomChoTroi::DGAnsItemSell(SDHP_ANS_MARKET_SELL *lpMsg) {
-  if (!OBJECT_RANGE(lpMsg->aIndex)) {
-    return;
-  }
-
-  LPOBJ lpUser = &gObj[lpMsg->aIndex];
-
-  if (lpMsg->Result == 0) {
-    gNotice.GCNoticeSend(lpMsg->aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(0));
-    this->RollbackCacheItem(lpMsg->aIndex, true, true, "MarketSellDbFail");
-    return;
-  }
-
-  lpUser->CH_IndexItem[0] = -1;
-  lpUser->CH_InfoItem[0].Clear();
-  lpUser->StatusCacheItem = -1;
-
+  gObj[aIndex].CH_IndexItem[0] = -1;
+  gObj[aIndex].CH_InfoItem[0].Clear();
+  gObj[aIndex].StatusCacheItem = -1;
+  //====Set Clear Cache Item Client
   XULY_CGPACKET cMsg;
   cMsg.header.set(0xD3, 0x01, sizeof(cMsg));
-  cMsg.ThaoTac = 2;
+  cMsg.ThaoTac = 2; // Show Item Cache
   DataSend(lpUser->Index, (BYTE *)&cMsg, cMsg.header.size);
 }
 
