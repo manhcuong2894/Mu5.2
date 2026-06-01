@@ -149,6 +149,11 @@ static bool IsCrowdWingOrHelperType(int Type)
 		|| (Type >= MODEL_HELPER && Type <= MODEL_HELPER + 200));
 }
 
+static bool IsHeroWingOrHelperType(const CHARACTER* c, int Type)
+{
+	return (c == Hero && IsCrowdWingOrHelperType(Type));
+}
+
 enum ECrowdEquipmentFxZone
 {
 	CROWD_EQUIPMENT_FX_FULL = 0,
@@ -276,6 +281,11 @@ static int GetCrowdEquipmentFxZone(const CHARACTER* c, const OBJECT* o)
 
 static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT* o, int Type)
 {
+	if (IsHeroWingOrHelperType(c, Type))
+	{
+		return true;
+	}
+
 	switch (GetCrowdEquipmentFxZone(c, o))
 	{
 	case CROWD_EQUIPMENT_FX_FULL:
@@ -290,6 +300,11 @@ static bool ShouldRenderCrowdBrightEquipmentFx(const CHARACTER* c, const OBJECT*
 
 static int GetCrowdAdaptiveEquipmentFxCap(const CHARACTER* c, const OBJECT* o, int Type)
 {
+	if (IsHeroWingOrHelperType(c, Type))
+	{
+		return -1;
+	}
+
 	switch (GetCrowdEquipmentFxZone(c, o))
 	{
 	case CROWD_EQUIPMENT_FX_FAR:
