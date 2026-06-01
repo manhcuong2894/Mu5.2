@@ -10199,7 +10199,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 
 	if (!gMapManager->InChaosCastle() && !(gMapManager->IsCursedTemple() && !c->SafeZone))
 	{
-		if (g_pOption->GetRenderEquipment() && ShouldRenderHighCostEquipmentFx(c, o))
+		if (g_pOption->GetRenderEquipment())
 		{
 			if (gmProtect->max_item_level_on >= 15)
 			{
