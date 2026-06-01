@@ -47,6 +47,21 @@ static LPOBJ ChoTroiFindOnlineSeller(const char *name) {
   return gObjFind(sellerName);
 }
 
+static void ChoTroiDebugSell(int aIndex, const char *format, ...) {
+  char message[256] = {0};
+
+  va_list args;
+  va_start(args, format);
+  vsprintf_s(message, sizeof(message), format, args);
+  va_end(args);
+
+  LogAdd(LOG_BLUE, "%s", message);
+
+  if (OBJMAX_RANGE(aIndex)) {
+    gNotice.GCNoticeSend(aIndex, 1, 0, 0, 0, 0, 0, "%s", message);
+  }
+}
+
 // === Helper: Count jewel in inventory by item index ===
 static int ChoTroi_CountJewel(int aIndex, int itemIndex) {
   LPOBJ lpObj = &gObj[aIndex];
@@ -425,23 +440,35 @@ void BCustomChoTroi::ClientSendItemRaoBan(int aIndex,
 }
 
 void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
+  ChoTroiDebugSell(
+      aIndex,
+      "[ChoTroiDebug] GS recv D3/14 result=%d price=%d coin=%d day=%d pass=%d",
+      lpMsg->Result, lpMsg->ItemPrice, lpMsg->ItemPriceType, lpMsg->ItemDay,
+      lpMsg->Pass);
+
   if (lpMsg->ItemPrice < 0) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: price < 0");
     return;
   }
   if (lpMsg->ItemPriceType < eMarketPriceWC &&
       lpMsg->ItemPriceType > eMarketPriceC) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: invalid coin type %d",
+                     lpMsg->ItemPriceType);
     return;
   }
 
   int ItemPriceType = lpMsg->ItemPriceType;
   int ItemPrice = lpMsg->ItemPrice;
   if (!OBJECT_RANGE(aIndex)) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: OBJECT_RANGE false");
     return;
   }
 
   switch (ItemPriceType) {
   case eMarketPriceWC: {
     if (!(this->OnCointType & 1)) {
+      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: WC disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -449,6 +476,8 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   } break;
   case eMarketPriceWP: {
     if (!(this->OnCointType & 2)) {
+      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: WP disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -456,6 +485,8 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   } break;
   case eMarketPriceGP: {
     if (!(this->OnCointType & 4)) {
+      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: GP disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -463,6 +494,9 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   } break;
   case eMarketPriceB: {
     if (!(this->OnCointType & 8)) {
+      ChoTroiDebugSell(aIndex,
+                       "[ChoTroiDebug] GS stop: Bless disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -470,6 +504,9 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   } break;
   case eMarketPriceS: {
     if (!(this->OnCointType & 16)) {
+      ChoTroiDebugSell(aIndex,
+                       "[ChoTroiDebug] GS stop: Soul disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -478,6 +515,9 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
 
   case eMarketPriceC: {
     if (!(this->OnCointType & 32)) {
+      ChoTroiDebugSell(aIndex,
+                       "[ChoTroiDebug] GS stop: Chaos disabled OnCoin=%d",
+                       this->OnCointType);
       gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                            this->GetMessage(11)); //
       return;
@@ -488,6 +528,13 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   }
 
   LPOBJ lpUser = &gObj[aIndex];
+  ChoTroiDebugSell(
+      aIndex,
+      "[ChoTroiDebug] GS state interface=%d use=%d cacheSlot=%d status=%d "
+      "item=%d",
+      lpUser->Interface.type, lpUser->Interface.use, lpUser->CH_IndexItem[0],
+      lpUser->StatusCacheItem, lpUser->CH_InfoItem[0].IsItem() ? 1 : 0);
+
   if (lpUser->Interface.type == INTERFACE_CHAOS_BOX ||
       lpUser->Interface.type == INTERFACE_TRADE ||
       lpUser->Interface.type == INTERFACE_PARTY ||
@@ -499,17 +546,22 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
       lpUser->DieRegen != 0 || lpUser->Teleport != 0 ||
       lpUser->PShopOpen != 0 || lpUser->ChaosLock != 0 ||
       lpUser->SkillSummonPartyTime != 0) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: interface/state blocked");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(0)); //
     return;
   }
 
   if (lpUser->CH_IndexItem[0] == -1) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: no cached item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(1)); //
     return;
   }
   if (ItemPriceType < 1 || ItemPriceType > 6 || ItemPrice < 1) {
+    ChoTroiDebugSell(aIndex,
+                     "[ChoTroiDebug] GS stop: invalid final price/coin p=%d c=%d",
+                     ItemPrice, ItemPriceType);
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(0)); //
     return;
@@ -554,6 +606,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
                                  &lpUser->CH_InfoItem[0]);
 
   if (lpUser->CH_InfoItem[0].m_IsPeriodicItem) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: periodic item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -561,6 +614,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   }
 
   if (lpUser->CH_InfoItem[0].m_LoadPeriodicItem) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: loaded periodic item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -568,12 +622,14 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   }
 
   if (lpUser->CH_InfoItem[0].m_PeriodicItemTime) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: periodic item time");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
     return;
   }
   if (lpUser->CH_InfoItem[0].m_JewelOfHarmonyOption) {
+    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: harmony option");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -660,6 +716,10 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
                                                 lpUser->CH_InfoItem[0].m_Level),
                          ItemPrice, "Chaos"); //
   }
+  ChoTroiDebugSell(aIndex,
+                   "[ChoTroiDebug] GS send EE/01 to DS price=%d coin=%d "
+                   "typeItem=%d day=%d",
+                   pMsg.Price, pMsg.PriceType, pMsg.TypeItem, pMsg.ItemDay);
   gDataServerConnection.DataSend((BYTE *)&pMsg, pMsg.h.size);
 
   gObj[aIndex].CH_IndexItem[0] = -1;
@@ -670,6 +730,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   cMsg.header.set(0xD3, 0x01, sizeof(cMsg));
   cMsg.ThaoTac = 2; // Show Item Cache
   DataSend(lpUser->Index, (BYTE *)&cMsg, cMsg.header.size);
+  ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS sent D3/01 clear cache to client");
 }
 
 //===Send Get List DS

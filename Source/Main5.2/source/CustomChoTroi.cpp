@@ -20,10 +20,6 @@ CustomChoTroi gCusChoTroi;
 extern info::ITEM_ATTRIBUTE *ItemAttribute;
 extern bool MouseOnWindow;
 extern DWORD g_dwKeyFocusUIID;
-extern float g_fScreenRate_x;
-extern float g_fScreenRate_y;
-extern unsigned int WindowWidth;
-extern unsigned int WindowHeight;
 CUIPhotoViewer m_PhotoViewChotroi;
 SEASON3B::CNewUIScrollBar *WindowChoTroiScrollBar = NULL;
 CUITextInputBox *CoinRaoBanChoTroi = NULL;
@@ -95,11 +91,33 @@ static bool ChoTroiBuyConfirmOpen = false;
 static int ChoTroiPendingBuyID = -1;
 static int ChoTroiPendingBuyPass = -1;
 static const int CHOTROI_BUY_PASS_INPUT_WIDTH = 130;
-static DWORD ChoTroiSellConfirmTick = 0;
+static char ChoTroiSellDebugText[256] = {0};
+static DWORD ChoTroiSellDebugTick = 0;
+static DWORD ChoTroiSellMouseDebugTick = 0;
 
 static void ChoTroiConfirmBuyCallback(LPVOID lpParam);
 static bool OpenChoTroiBuyConfirm(const CustomChoTroi::MARKET_DATA &marketData,
                                   int pass);
+
+static void SetChoTroiSellDebug(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  vsprintf_s(ChoTroiSellDebugText, sizeof(ChoTroiSellDebugText), format, args);
+  va_end(args);
+
+  ChoTroiSellDebugTick = GetTickCount();
+  gInterface->DrawMessage(1, "%s", ChoTroiSellDebugText);
+}
+
+static void RenderChoTroiSellDebug(float x, float y, float width) {
+  if (ChoTroiSellDebugText[0] == 0 ||
+      GetTickCount() - ChoTroiSellDebugTick > 15000) {
+    return;
+  }
+
+  SEASON3B::TextDraw((HFONT)g_hFontMini, x, y, 0x33FF33FF, 0x00000096,
+                     (int)width, 0, 1, "%s", ChoTroiSellDebugText);
+}
 
 static void ClearChoTroiBuyConfirmState(bool closeMessageBox) {
   if (closeMessageBox && ChoTroiBuyConfirmOpen &&
@@ -193,68 +211,6 @@ static void SetChoTroiInputState(CUITextInputBox *input, int state) {
   if (input != NULL) {
     input->SetState(state);
   }
-}
-
-static void SyncChoTroiInputPosition(CUITextInputBox *input, float x, float y,
-                                     int width, int height) {
-  if (input == NULL) {
-    return;
-  }
-
-  input->SetPosition((int)x, (int)y);
-
-  HWND hEditWnd = input->GetHandle();
-  if (hEditWnd != NULL) {
-    SetWindowPos(hEditWnd, NULL, (int)(x * g_fScreenRate_x + WindowWidth),
-                 (int)(y * g_fScreenRate_y + WindowHeight),
-                 (int)(width * g_fScreenRate_x),
-                 (int)(height * g_fScreenRate_y),
-                 SWP_NOZORDER | SWP_NOACTIVATE);
-  }
-}
-
-static bool IsChoTroiSellCoinEnabled(int coinType) {
-  if (coinType < 1 || coinType > 6) {
-    return false;
-  }
-
-  if (gCusChoTroi.OnCointType == 0) {
-    return true;
-  }
-
-  return (gCusChoTroi.OnCointType & (1 << (coinType - 1))) != 0;
-}
-
-static void NormalizeChoTroiSellCoinType() {
-  if (IsChoTroiSellCoinEnabled(TypeCoinBan)) {
-    return;
-  }
-
-  for (int coinType = 1; coinType <= 6; coinType++) {
-    if (IsChoTroiSellCoinEnabled(coinType)) {
-      TypeCoinBan = coinType;
-      return;
-    }
-  }
-}
-
-static bool IsChoTroiSellConfirmClick(float x, float y, float width,
-                                      float height) {
-  if (!SEASON3B::CheckMouseIn((int)x, (int)y, (int)width, (int)height)) {
-    return false;
-  }
-
-  if ((GetKeyState(VK_LBUTTON) & 0x8000) == 0) {
-    return false;
-  }
-
-  if (GetTickCount() - ChoTroiSellConfirmTick < 500) {
-    return false;
-  }
-
-  ChoTroiSellConfirmTick = GetTickCount();
-  PlayBuffer(25, 0, 0);
-  return true;
 }
 
 static void HideChoTroiInputBoxes() {
@@ -862,8 +818,7 @@ void CustomChoTroi::UpdateInputFocus() {
     const float TCoinBoxY = StartY + 150.0f;
     EnsureChoTroiNumberInput(CoinRaoBanChoTroi, pGameWindow,
                              ChoTroiInputWidth, ChoTroiInputHeight, 8, "1");
-    SyncChoTroiInputPosition(CoinRaoBanChoTroi, TCoinX, TCoinY,
-                             ChoTroiInputWidth, ChoTroiInputHeight);
+    CoinRaoBanChoTroi->SetPosition(TCoinX, TCoinY);
     CoinRaoBanChoTroi->DoAction();
     HandleChoTroiInputFocus(CoinRaoBanChoTroi, ChoTroiInputBoxX, TCoinBoxY,
                             ChoTroiInputBoxW, ChoTroiInputBoxH);
@@ -873,8 +828,7 @@ void CustomChoTroi::UpdateInputFocus() {
     const float NgayBoxY = StartY + 170.0f;
     EnsureChoTroiNumberInput(NgayRaoBanChoTroi, pGameWindow,
                              ChoTroiInputWidth, ChoTroiInputHeight, 2, "1");
-    SyncChoTroiInputPosition(NgayRaoBanChoTroi, NgayX, NgayY,
-                             ChoTroiInputWidth, ChoTroiInputHeight);
+    NgayRaoBanChoTroi->SetPosition(NgayX, NgayY);
     NgayRaoBanChoTroi->DoAction();
     HandleChoTroiInputFocus(NgayRaoBanChoTroi, ChoTroiInputBoxX, NgayBoxY,
                             ChoTroiInputBoxW, ChoTroiInputBoxH);
@@ -884,8 +838,7 @@ void CustomChoTroi::UpdateInputFocus() {
     const float PassBoxY = StartY + 190.0f;
     EnsureChoTroiNumberInput(PassChoTroi, pGameWindow, ChoTroiInputWidth,
                              ChoTroiInputHeight, 6, "");
-    SyncChoTroiInputPosition(PassChoTroi, PassX, PassY, ChoTroiInputWidth,
-                             ChoTroiInputHeight);
+    PassChoTroi->SetPosition(PassX, PassY);
     PassChoTroi->DoAction();
     HandleChoTroiInputFocus(PassChoTroi, ChoTroiInputBoxX, PassBoxY,
                             ChoTroiInputBoxW, ChoTroiInputBoxH);
@@ -1034,8 +987,6 @@ void DrawInfoPhai(int X, int Y) {
     float CheckBoxX = StartX + (WindowW / 2) - 90;
 
     if (HasSellCache) {
-      NormalizeChoTroiSellCoinType();
-
       if (gInterface->RenderCheckBox(CheckBoxX, StartY + 110, 0xFFCC00C8,
                                      TypeCoinBan == 1 ? TRUE : FALSE,
                                      gTextClient.txtClient_ChoTroi[1])) {
@@ -1091,7 +1042,7 @@ void DrawInfoPhai(int X, int Y) {
       const float ChoTroiInputBoxH = 20;
       float TCoinX = StartX + (WindowW / 2) - 30;
       float TCoinY = StartY + 154;
-      const float TCoinBoxY = StartY + 150;
+      const float TCoinBoxY = StartY + 100;
       if (!CoinRaoBanChoTroi) {
         CoinRaoBanChoTroi = new CUITextInputBox;
         CoinRaoBanChoTroi->Init(pGameWindow, ChoTroiInputWidth,
@@ -1101,14 +1052,12 @@ void DrawInfoPhai(int X, int Y) {
         CoinRaoBanChoTroi->SetFont((HFONT)g_hFont);
         CoinRaoBanChoTroi->SetState(UISTATE_NORMAL);
         CoinRaoBanChoTroi->SetOption(UIOPTION_NUMBERONLY);
-        SyncChoTroiInputPosition(CoinRaoBanChoTroi, TCoinX, TCoinY,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        CoinRaoBanChoTroi->SetPosition(TCoinX, TCoinY);
         CoinRaoBanChoTroi->SetText("1");
         strcpy_s(szGiaTriCoin, sizeof(szGiaTriCoin), "1");
       } else {
         CoinRaoBanChoTroi->SetState(UISTATE_NORMAL);
-        SyncChoTroiInputPosition(CoinRaoBanChoTroi, TCoinX, TCoinY,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        CoinRaoBanChoTroi->SetPosition(TCoinX, TCoinY);
         CoinRaoBanChoTroi->Render();
         CoinRaoBanChoTroi->DoAction();
         HandleChoTroiInputFocus(CoinRaoBanChoTroi, ChoTroiInputBoxX,
@@ -1135,14 +1084,12 @@ void DrawInfoPhai(int X, int Y) {
         NgayRaoBanChoTroi->SetFont((HFONT)g_hFont);
         NgayRaoBanChoTroi->SetState(UISTATE_NORMAL);
         NgayRaoBanChoTroi->SetOption(UIOPTION_NUMBERONLY);
-        SyncChoTroiInputPosition(NgayRaoBanChoTroi, NTCoinX, NTCoinY,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        NgayRaoBanChoTroi->SetPosition(NTCoinX, NTCoinY);
         NgayRaoBanChoTroi->SetText("1");
         strcpy_s(szNgayRaoBan, sizeof(szNgayRaoBan), "1");
       } else {
         NgayRaoBanChoTroi->SetState(UISTATE_NORMAL);
-        SyncChoTroiInputPosition(NgayRaoBanChoTroi, NTCoinX, NTCoinY,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        NgayRaoBanChoTroi->SetPosition(NTCoinX, NTCoinY);
         NgayRaoBanChoTroi->Render();
         NgayRaoBanChoTroi->DoAction();
         HandleChoTroiInputFocus(NgayRaoBanChoTroi, ChoTroiInputBoxX,
@@ -1174,13 +1121,11 @@ void DrawInfoPhai(int X, int Y) {
         PassChoTroi->SetFont((HFONT)g_hFont);
         PassChoTroi->SetState(UISTATE_NORMAL);
         PassChoTroi->SetOption(UIOPTION_NUMBERONLY);
-        SyncChoTroiInputPosition(PassChoTroi, NTCoinX2, NTCoinY2,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        PassChoTroi->SetPosition(NTCoinX2, NTCoinY2);
         PassChoTroi->SetText("");
       } else {
         PassChoTroi->SetState(UISTATE_NORMAL);
-        SyncChoTroiInputPosition(PassChoTroi, NTCoinX2, NTCoinY2,
-                                 ChoTroiInputWidth, ChoTroiInputHeight);
+        PassChoTroi->SetPosition(NTCoinX2, NTCoinY2);
         PassChoTroi->Render();
         PassChoTroi->DoAction();
         HandleChoTroiInputFocus(PassChoTroi, ChoTroiInputBoxX, NTCoinBoxY2,
@@ -1192,31 +1137,39 @@ void DrawInfoPhai(int X, int Y) {
       const float ConfirmY = StartY + WindowH - 30;
       const float ConfirmW = 110.0f;
       const float ConfirmH = (ConfirmW * 20.0f) / 100.0f;
-      bool confirmSell =
+      const bool MouseInConfirm =
+          SEASON3B::CheckMouseIn((int)ConfirmX, (int)ConfirmY, (int)ConfirmW,
+                                 (int)ConfirmH) != 0;
+      const bool MouseDownConfirm =
+          MouseInConfirm && ((GetKeyState(VK_LBUTTON) & 0x8000) != 0);
+      bool ConfirmButtonClick =
           gInterface->DrawButton(ConfirmX, ConfirmY, ConfirmW, 12,
                                  gTextClient.txtClient_ChoTroi[5]);
-      if (!confirmSell) {
-        confirmSell =
-            IsChoTroiSellConfirmClick(ConfirmX, ConfirmY, ConfirmW, ConfirmH);
+
+      if (MouseDownConfirm && !ConfirmButtonClick &&
+          GetTickCount() - ChoTroiSellMouseDebugTick > 1000) {
+        ChoTroiSellMouseDebugTick = GetTickCount();
+        SetChoTroiSellDebug(
+            "[ChoTroiDebug] Mouse on XacNhan, DrawButton=0 cache=%p show=%d "
+            "price=%s coin=%d day=%s",
+            gCusChoTroi.ItemCacheSelect, gCusChoTroi.ItemCacheShow ? 1 : 0,
+            szGiaTriCoin, TypeCoinBan, szNgayRaoBan);
       }
 
-      if (confirmSell) {
-        if (CoinRaoBanChoTroi != NULL) {
-          CoinRaoBanChoTroi->GetText(szGiaTriCoin, 8 + 1);
-        }
-        if (NgayRaoBanChoTroi != NULL) {
-          NgayRaoBanChoTroi->GetText(szNgayRaoBan, 2 + 1);
-        }
-        if (PassChoTroi != NULL) {
-          PassChoTroi->GetText(szPassChoTroi, 5 + 1);
-        }
+      if (ConfirmButtonClick) {
+        SetChoTroiSellDebug(
+            "[ChoTroiDebug] Client Confirm click cache=%p show=%d price=%s "
+            "coin=%d day=%s pass=%s",
+            gCusChoTroi.ItemCacheSelect, gCusChoTroi.ItemCacheShow ? 1 : 0,
+            szGiaTriCoin, TypeCoinBan, szNgayRaoBan,
+            (szPassChoTroi[0] == 0) ? "-1" : szPassChoTroi);
         if (atoi(szGiaTriCoin) == 0) {
-          gInterface->DrawMessage(1, "Cho Troi: Hay nhap gia ban.");
+          SetChoTroiSellDebug("[ChoTroiDebug] Client stop: price is 0");
           return;
         }
-        if (TypeCoinBan < 1 || TypeCoinBan > 6 ||
-            !IsChoTroiSellCoinEnabled(TypeCoinBan)) {
-          gInterface->DrawMessage(1, "Cho Troi: Hay chon loai tien ban.");
+        if (TypeCoinBan < 1 || TypeCoinBan > 6) {
+          SetChoTroiSellDebug("[ChoTroiDebug] Client stop: coin type invalid %d",
+                              TypeCoinBan);
           return;
         }
         // gInterface->DrawMessage(1, "Coint %d", atoi(szGiaTriCoin));
@@ -1236,6 +1189,11 @@ void DrawInfoPhai(int X, int Y) {
         pMsg.ItemPrice = atoi(szGiaTriCoin);
         pMsg.ItemDay = itemDay;            // HSD Them
         pMsg.Pass = (szPassChoTroi[0] == 0) ? -1 : atoi(szPassChoTroi);
+        SetChoTroiSellDebug(
+            "[ChoTroiDebug] Client send D3/14 price=%d coin=%d day=%d pass=%d "
+            "size=%d",
+            pMsg.ItemPrice, pMsg.ItemPriceType, pMsg.ItemDay, pMsg.Pass,
+            pMsg.h.size);
         memset(&szGiaTriCoin, 0, sizeof(szGiaTriCoin));
         memset(&szNgayRaoBan, 0, sizeof(szNgayRaoBan));   // HSD Them
         memset(&szPassChoTroi, 0, sizeof(szPassChoTroi)); // HSD Them
@@ -1251,6 +1209,8 @@ void DrawInfoPhai(int X, int Y) {
       if (CacheItemRaoBan == -1) {
         CacheItemRaoBan = 1;
       }
+
+      RenderChoTroiSellDebug(StartX - 20, StartY + WindowH - 8, WindowW + 40);
 
       //Item trong ô Rao Bán
       g_pNewUISystem->RenderItem3DFree(
