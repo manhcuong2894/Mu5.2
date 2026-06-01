@@ -37,13 +37,9 @@ char szPassChoTroi[5 + 1] = {
 };
 
 int SelectBarChoTroiNumber = 0;
-char *NameGiaCoin[7] = {"NULL",
-                        gTextClient.txtClient_ChoTroi[1],
-                        gTextClient.txtClient_ChoTroi[2],
-                        gTextClient.txtClient_ChoTroi[3],
-                        "Bless",
-                        "Soul",
-                        "Chaos"};
+static const char *ChoTroiCurrencyFallbackName[11] = {
+    "NULL", "WC", "WP", "GP", "Bless", "Soul",
+    "Chaos", "Life", "Creation", "Harmony", "Zen"};
 char *SelectBarListChoTroi[13] = {
     gTextClient.txtClient_ChoTroi[26], gTextClient.txtClient_ChoTroi[27],
     gTextClient.txtClient_ChoTroi[28], gTextClient.txtClient_ChoTroi[29],
@@ -53,6 +49,7 @@ char *SelectBarListChoTroi[13] = {
     gTextClient.txtClient_ChoTroi[36], gTextClient.txtClient_ChoTroi[37],
     gTextClient.txtClient_ChoTroi[38]};
 bool SelectBarChoTroi = false;
+bool SelectCurrencyChoTroi = false;
 CUITextInputBox *m_TimTuKhoaChoTroi = NULL;
 CUITextInputBox *m_TimTuKhoaChoTroi_Clear = NULL;
 CUITextInputBox *NhapPassChoTroi = NULL;
@@ -91,33 +88,10 @@ static bool ChoTroiBuyConfirmOpen = false;
 static int ChoTroiPendingBuyID = -1;
 static int ChoTroiPendingBuyPass = -1;
 static const int CHOTROI_BUY_PASS_INPUT_WIDTH = 130;
-static char ChoTroiSellDebugText[256] = {0};
-static DWORD ChoTroiSellDebugTick = 0;
-static DWORD ChoTroiSellMouseDebugTick = 0;
 
 static void ChoTroiConfirmBuyCallback(LPVOID lpParam);
 static bool OpenChoTroiBuyConfirm(const CustomChoTroi::MARKET_DATA &marketData,
                                   int pass);
-
-static void SetChoTroiSellDebug(const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-  vsprintf_s(ChoTroiSellDebugText, sizeof(ChoTroiSellDebugText), format, args);
-  va_end(args);
-
-  ChoTroiSellDebugTick = GetTickCount();
-  gInterface->DrawMessage(1, "%s", ChoTroiSellDebugText);
-}
-
-static void RenderChoTroiSellDebug(float x, float y, float width) {
-  if (ChoTroiSellDebugText[0] == 0 ||
-      GetTickCount() - ChoTroiSellDebugTick > 15000) {
-    return;
-  }
-
-  SEASON3B::TextDraw((HFONT)g_hFontMini, x, y, 0x33FF33FF, 0x00000096,
-                     (int)width, 0, 1, "%s", ChoTroiSellDebugText);
-}
 
 static void ClearChoTroiBuyConfirmState(bool closeMessageBox) {
   if (closeMessageBox && ChoTroiBuyConfirmOpen &&
@@ -207,6 +181,14 @@ static void RequestChoTroiList(int typeItem) {
   UpdateMaxPosChoTroi = true;
 }
 
+static void EnsureChoTroiSelectedCurrency() {
+  if (gCusChoTroi.IsCurrencyEnabled(TypeCoinBan)) {
+    return;
+  }
+
+  TypeCoinBan = gCusChoTroi.GetFirstCurrencyId();
+}
+
 static void SetChoTroiInputState(CUITextInputBox *input, int state) {
   if (input != NULL) {
     input->SetState(state);
@@ -278,6 +260,7 @@ static void ClearChoTroiSellCache(bool sendRollback) {
   gCusChoTroi.ItemCacheTime = 0;
   ChoTroiSellCacheSourceSlot = -1;
   CacheItemRaoBan = -1;
+  SelectCurrencyChoTroi = false;
   ResetChoTroiSellInputs();
 }
 
@@ -586,10 +569,7 @@ static bool OpenChoTroiBuyConfirm(const CustomChoTroi::MARKET_DATA &marketData,
 
   DeleteChoTroiTempItem(item);
 
-  const char *priceName = "Coin";
-  if (marketData.PriceType >= 1 && marketData.PriceType <= 6) {
-    priceName = NameGiaCoin[marketData.PriceType];
-  }
+  const char *priceName = gCusChoTroi.GetCurrencyName(marketData.PriceType);
 
   char message[256] = {0};
   sprintf_s(message, sizeof(message),
@@ -709,9 +689,37 @@ static bool ChoTroiTryPacketLayout(BYTE *recv, int packetSize, int countOffset,
   return true;
 }
 
+static bool ChoTroiTryCurrencyPacketLayout(BYTE *recv, int packetSize,
+                                           int countOffset, int rowSize,
+                                           int *count) {
+  const int dataOffset = countOffset + (int)sizeof(int);
+
+  if (recv == NULL || count == NULL) {
+    return false;
+  }
+
+  if (packetSize > 0 && dataOffset > packetSize) {
+    return false;
+  }
+
+  int packetCount = ChoTroiReadInt(recv + countOffset);
+  if (packetCount < 0 || packetCount > 31) {
+    return false;
+  }
+
+  if (packetSize > 0 && dataOffset + (packetCount * rowSize) > packetSize) {
+    return false;
+  }
+
+  *count = packetCount;
+  return true;
+}
+
 CustomChoTroi::CustomChoTroi() {
   gCusChoTroi.mListItemFind.clear();
   gCusChoTroi.m_DataChoTroi.clear();
+  gCusChoTroi.m_CurrencyList.clear();
+  OnCointType = 0;
   m_iNumCurOpenTab = 0;
   ItemCacheSelect = NULL;
   ItemCacheTime = 0;
@@ -814,8 +822,8 @@ void CustomChoTroi::UpdateInputFocus() {
     const float ChoTroiInputBoxH = 20.0f;
 
     float TCoinX = StartX + 80.0f;
-    float TCoinY = StartY + 154.0f;
-    const float TCoinBoxY = StartY + 150.0f;
+    float TCoinY = StartY + 139.0f;
+    const float TCoinBoxY = StartY + 135.0f;
     EnsureChoTroiNumberInput(CoinRaoBanChoTroi, pGameWindow,
                              ChoTroiInputWidth, ChoTroiInputHeight, 8, "1");
     CoinRaoBanChoTroi->SetPosition(TCoinX, TCoinY);
@@ -824,8 +832,8 @@ void CustomChoTroi::UpdateInputFocus() {
                             ChoTroiInputBoxW, ChoTroiInputBoxH);
 
     float NgayX = StartX + 80.0f;
-    float NgayY = StartY + 174.0f;
-    const float NgayBoxY = StartY + 170.0f;
+    float NgayY = StartY + 164.0f;
+    const float NgayBoxY = StartY + 160.0f;
     EnsureChoTroiNumberInput(NgayRaoBanChoTroi, pGameWindow,
                              ChoTroiInputWidth, ChoTroiInputHeight, 2, "1");
     NgayRaoBanChoTroi->SetPosition(NgayX, NgayY);
@@ -834,8 +842,8 @@ void CustomChoTroi::UpdateInputFocus() {
                             ChoTroiInputBoxW, ChoTroiInputBoxH);
 
     float PassX = StartX + 80.0f;
-    float PassY = StartY + 194.0f;
-    const float PassBoxY = StartY + 190.0f;
+    float PassY = StartY + 189.0f;
+    const float PassBoxY = StartY + 185.0f;
     EnsureChoTroiNumberInput(PassChoTroi, pGameWindow, ChoTroiInputWidth,
                              ChoTroiInputHeight, 6, "");
     PassChoTroi->SetPosition(PassX, PassY);
@@ -984,56 +992,43 @@ void DrawInfoPhai(int X, int Y) {
     float ButtonW = 100;
     gInterface->DrawInfoBox(SlotX - 15, SlotY - 20, SlotW, SlotH,
                             (HoverItemSell ? 0x66646496 : 0x00000096), 0);
-    float CheckBoxX = StartX + (WindowW / 2) - 90;
-
     if (HasSellCache) {
-      if (gInterface->RenderCheckBox(CheckBoxX, StartY + 110, 0xFFCC00C8,
-                                     TypeCoinBan == 1 ? TRUE : FALSE,
-                                     gTextClient.txtClient_ChoTroi[1])) {
-        if (gCusChoTroi.OnCointType & 1)
-          TypeCoinBan = 1;
-      }
+      EnsureChoTroiSelectedCurrency();
 
-      if (gInterface->RenderCheckBox(CheckBoxX + 50, StartY + 110, 0xFFCC00C8,
-                                     TypeCoinBan == 2 ? TRUE : FALSE,
-                                     gTextClient.txtClient_ChoTroi[2])) {
-        if (gCusChoTroi.OnCointType & 2)
-          TypeCoinBan = 2;
-      }
-      if (gInterface->RenderCheckBox(CheckBoxX + (50 * 2), StartY + 110,
-                                     0xFFCC00C8,
-                                     TypeCoinBan == 3 ? TRUE : FALSE,
-                                     gTextClient.txtClient_ChoTroi[3])) {
-        if (gCusChoTroi.OnCointType & 4)
-          TypeCoinBan = 3;
-      }
+      const float CurrencyBoxX = StartX + (WindowW / 2) - 90;
+      const float CurrencyBoxY = StartY + 110;
+      const float CurrencyBoxW = 140;
+      const float CurrencyBoxH = 20;
+      DWORD CurrencyHoverBG = 0x0;
+      int CurrencyHover = 0;
 
-      if (gInterface->RenderCheckBox(CheckBoxX, StartY + 130, 0xFFCC00C8,
-                                     TypeCoinBan == 4 ? TRUE : FALSE, "Bless")) {
-        if (gCusChoTroi.OnCointType & 8)
-          TypeCoinBan = 4;
+      RenderBitmap(SEASON3B::CNewUIGuildMakeWindow::IMAGE_GUILDMAKE_EDITBOX,
+                   CurrencyBoxX, CurrencyBoxY, CurrencyBoxW, CurrencyBoxH, 0.0,
+                   0.0, 0.82, 0.71, 1, 1, 0.0);
+      if (SEASON3B::CheckMouseIn(CurrencyBoxX, CurrencyBoxY, CurrencyBoxW,
+                                 CurrencyBoxH)) {
+        CurrencyHover = 1;
+        CurrencyHoverBG = 0x66646450;
+        if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
+            (GetKeyState(VK_LBUTTON) & 0x8000)) {
+          gInterface->Data[eTIME].EventTick = GetTickCount();
+          PlayBuffer(25, 0, 0);
+          SelectCurrencyChoTroi ^= 1;
+        }
       }
-
-      if (gInterface->RenderCheckBox(CheckBoxX + (50 * 1), StartY + 130,
-                                     0xFFCC00C8,
-                                     TypeCoinBan == 5 ? TRUE : FALSE, "Soul")) {
-        if (gCusChoTroi.OnCointType & 16)
-          TypeCoinBan = 5;
-      }
-
-      if (gInterface->RenderCheckBox(CheckBoxX + (50 * 2), StartY + 130,
-                                     0xFFCC00C8,
-                                     TypeCoinBan == 6 ? TRUE : FALSE, "Chaos")) {
-        if (gCusChoTroi.OnCointType & 32)
-          TypeCoinBan = 6;
-      }
+      RenderBitmap(SEASON3B::CNewUICastleWindow::IMAGE_CASTLEWINDOW_SCROLL_DOWN_BTN,
+                   CurrencyBoxX + 4, CurrencyBoxY + 3, 13.5, 13.5, 0.0,
+                   0.21 * CurrencyHover, 0.91, 0.21, 1, 1, 0.0);
+      SEASON3B::TextDraw((HFONT)g_hFontBold, CurrencyBoxX + 20,
+                         CurrencyBoxY + 4, 0xFFFFFFFF, CurrencyHoverBG, 115,
+                         0, 3, "%s", gCusChoTroi.GetCurrencyName(TypeCoinBan));
 
       //Ngày bán
       RenderBitmap(SEASON3B::CNewUIGuildMakeWindow::IMAGE_GUILDMAKE_EDITBOX,
-                   StartX + (WindowW / 2) - 90, StartY + 150, 140, 20, 0.0, 0.0,
+                   StartX + (WindowW / 2) - 90, StartY + 135, 140, 20, 0.0, 0.0,
                    0.82, 0.71, 1, 1, 0.0);
       SEASON3B::TextDraw((HFONT)g_hFont, StartX + (WindowW / 2) - 90,
-                         StartY + 154, 0xFFFFFFC8, 0x0, 70, 0, 3,
+                         StartY + 139, 0xFFFFFFC8, 0x0, 70, 0, 3,
                          gTextClient.txtClient_ChoTroi[4]);
       const int ChoTroiInputWidth = 70;
       const int ChoTroiInputHeight = 14;
@@ -1041,8 +1036,8 @@ void DrawInfoPhai(int X, int Y) {
       const float ChoTroiInputBoxW = 140;
       const float ChoTroiInputBoxH = 20;
       float TCoinX = StartX + (WindowW / 2) - 30;
-      float TCoinY = StartY + 154;
-      const float TCoinBoxY = StartY + 100;
+      float TCoinY = StartY + 139;
+      const float TCoinBoxY = StartY + 135;
       if (!CoinRaoBanChoTroi) {
         CoinRaoBanChoTroi = new CUITextInputBox;
         CoinRaoBanChoTroi->Init(pGameWindow, ChoTroiInputWidth,
@@ -1067,14 +1062,14 @@ void DrawInfoPhai(int X, int Y) {
       }
       //HSD
       RenderBitmap(SEASON3B::CNewUIGuildMakeWindow::IMAGE_GUILDMAKE_EDITBOX,
-                   StartX + (WindowW / 2) - 90, StartY + 170, 140, 20, 0.0, 0.0,
+                   StartX + (WindowW / 2) - 90, StartY + 160, 140, 20, 0.0, 0.0,
                    0.82, 0.71, 1, 1, 0.0);
       SEASON3B::TextDraw((HFONT)g_hFont, StartX + (WindowW / 2) - 90,
-                         StartY + 174, 0xFFFFFFC8, 0x0, 70, 0, 3,
+                         StartY + 164, 0xFFFFFFC8, 0x0, 70, 0, 3,
                          gTextClient.txtClient_ChoTroi[43]);
       float NTCoinX = StartX + (WindowW / 2) - 30;
-      float NTCoinY = StartY + 174;
-      const float NTCoinBoxY = StartY + 170;
+      float NTCoinY = StartY + 164;
+      const float NTCoinBoxY = StartY + 160;
       if (!NgayRaoBanChoTroi) {
         NgayRaoBanChoTroi = new CUITextInputBox;
         NgayRaoBanChoTroi->Init(pGameWindow, ChoTroiInputWidth,
@@ -1105,13 +1100,13 @@ void DrawInfoPhai(int X, int Y) {
 
       //Pass
       RenderBitmap(SEASON3B::CNewUIGuildMakeWindow::IMAGE_GUILDMAKE_EDITBOX,
-                   StartX + (WindowW / 2) - 90, StartY + 190, 140, 20, 0.0, 0.0,
+                   StartX + (WindowW / 2) - 90, StartY + 185, 140, 20, 0.0, 0.0,
                    0.82, 0.71, 1, 1, 0.0);
       SEASON3B::TextDraw((HFONT)g_hFont, StartX + (WindowW / 2) - 90,
-                         StartY + 194, 0xFFFFFFC8, 0x0, 70, 0, 3, "Pass:");
+                         StartY + 189, 0xFFFFFFC8, 0x0, 70, 0, 3, "Pass:");
       float NTCoinX2 = StartX + (WindowW / 2) - 30;
-      float NTCoinY2 = StartY + 194;
-      const float NTCoinBoxY2 = StartY + 190;
+      float NTCoinY2 = StartY + 189;
+      const float NTCoinBoxY2 = StartY + 185;
       if (!PassChoTroi) {
         PassChoTroi = new CUITextInputBox;
         PassChoTroi->Init(pGameWindow, ChoTroiInputWidth,
@@ -1133,43 +1128,74 @@ void DrawInfoPhai(int X, int Y) {
         PassChoTroi->GetText(szPassChoTroi, 5 + 1);
       }
 
-      const float ConfirmX = StartX + (WindowW / 2) - (ButtonW / 2);
-      const float ConfirmY = StartY + WindowH - 30;
-      const float ConfirmW = 110.0f;
-      const float ConfirmH = (ConfirmW * 20.0f) / 100.0f;
-      const bool MouseInConfirm =
-          SEASON3B::CheckMouseIn((int)ConfirmX, (int)ConfirmY, (int)ConfirmW,
-                                 (int)ConfirmH) != 0;
-      const bool MouseDownConfirm =
-          MouseInConfirm && ((GetKeyState(VK_LBUTTON) & 0x8000) != 0);
-      bool ConfirmButtonClick =
-          gInterface->DrawButton(ConfirmX, ConfirmY, ConfirmW, 12,
-                                 gTextClient.txtClient_ChoTroi[5]);
+      if (SelectCurrencyChoTroi) {
+        const float CurrencyListX = CurrencyBoxX + 20;
+        const float CurrencyListY = CurrencyBoxY + 20;
+        const float CurrencyListW = 115;
+        const float CurrencyRowH = 15;
+        const int CurrencyCount =
+            (gCusChoTroi.m_CurrencyList.empty())
+                ? 10
+                : (int)gCusChoTroi.m_CurrencyList.size();
 
-      if (MouseDownConfirm && !ConfirmButtonClick &&
-          GetTickCount() - ChoTroiSellMouseDebugTick > 1000) {
-        ChoTroiSellMouseDebugTick = GetTickCount();
-        SetChoTroiSellDebug(
-            "[ChoTroiDebug] Mouse on XacNhan, DrawButton=0 cache=%p show=%d "
-            "price=%s coin=%d day=%s",
-            gCusChoTroi.ItemCacheSelect, gCusChoTroi.ItemCacheShow ? 1 : 0,
-            szGiaTriCoin, TypeCoinBan, szNgayRaoBan);
+        gInterface->DrawBarForm(CurrencyListX, CurrencyListY, CurrencyListW,
+                                CurrencyRowH * CurrencyCount, 0.0, 0.0, 0.0,
+                                0.85);
+
+        if (gCusChoTroi.m_CurrencyList.empty()) {
+          for (int i = 1; i <= 10; i++) {
+            if (!gCusChoTroi.IsCurrencyEnabled(i)) {
+              continue;
+            }
+
+            DWORD SelectHover = 0x0;
+            const float RowY = CurrencyListY + (CurrencyRowH * (i - 1));
+            if (SEASON3B::CheckMouseIn(CurrencyListX, RowY, CurrencyListW,
+                                       CurrencyRowH)) {
+              SelectHover = 0x66646450;
+              if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
+                  (GetKeyState(VK_LBUTTON) & 0x8000)) {
+                TypeCoinBan = i;
+                SelectCurrencyChoTroi = false;
+                gInterface->Data[eTIME].EventTick = GetTickCount();
+                PlayBuffer(25, 0, 0);
+              }
+            }
+
+            SEASON3B::TextDraw((HFONT)g_hFontBold, CurrencyListX, RowY,
+                               0xFFFFFFFF, SelectHover, CurrencyListW, 0, 3,
+                               "%s", gCusChoTroi.GetCurrencyName(i));
+          }
+        } else {
+          for (int i = 0; i < (int)gCusChoTroi.m_CurrencyList.size(); i++) {
+            DWORD SelectHover = 0x0;
+            const float RowY = CurrencyListY + (CurrencyRowH * i);
+            if (SEASON3B::CheckMouseIn(CurrencyListX, RowY, CurrencyListW,
+                                       CurrencyRowH)) {
+              SelectHover = 0x66646450;
+              if (GetTickCount() - gInterface->Data[eTIME].EventTick > 300 &&
+                  (GetKeyState(VK_LBUTTON) & 0x8000)) {
+                TypeCoinBan = gCusChoTroi.m_CurrencyList[i].Id;
+                SelectCurrencyChoTroi = false;
+                gInterface->Data[eTIME].EventTick = GetTickCount();
+                PlayBuffer(25, 0, 0);
+              }
+            }
+
+            SEASON3B::TextDraw((HFONT)g_hFontBold, CurrencyListX, RowY,
+                               0xFFFFFFFF, SelectHover, CurrencyListW, 0, 3,
+                               "%s", gCusChoTroi.m_CurrencyList[i].Name);
+          }
+        }
       }
 
-      if (ConfirmButtonClick) {
-        SetChoTroiSellDebug(
-            "[ChoTroiDebug] Client Confirm click cache=%p show=%d price=%s "
-            "coin=%d day=%s pass=%s",
-            gCusChoTroi.ItemCacheSelect, gCusChoTroi.ItemCacheShow ? 1 : 0,
-            szGiaTriCoin, TypeCoinBan, szNgayRaoBan,
-            (szPassChoTroi[0] == 0) ? "-1" : szPassChoTroi);
+      if (gInterface->DrawButton(StartX + (WindowW / 2) - (ButtonW / 2),
+                                 StartY + WindowH - 30, 110, 12,
+                                 gTextClient.txtClient_ChoTroi[5])) {
         if (atoi(szGiaTriCoin) == 0) {
-          SetChoTroiSellDebug("[ChoTroiDebug] Client stop: price is 0");
           return;
         }
-        if (TypeCoinBan < 1 || TypeCoinBan > 6) {
-          SetChoTroiSellDebug("[ChoTroiDebug] Client stop: coin type invalid %d",
-                              TypeCoinBan);
+        if (!gCusChoTroi.IsCurrencyEnabled(TypeCoinBan)) {
           return;
         }
         // gInterface->DrawMessage(1, "Coint %d", atoi(szGiaTriCoin));
@@ -1189,11 +1215,6 @@ void DrawInfoPhai(int X, int Y) {
         pMsg.ItemPrice = atoi(szGiaTriCoin);
         pMsg.ItemDay = itemDay;            // HSD Them
         pMsg.Pass = (szPassChoTroi[0] == 0) ? -1 : atoi(szPassChoTroi);
-        SetChoTroiSellDebug(
-            "[ChoTroiDebug] Client send D3/14 price=%d coin=%d day=%d pass=%d "
-            "size=%d",
-            pMsg.ItemPrice, pMsg.ItemPriceType, pMsg.ItemDay, pMsg.Pass,
-            pMsg.h.size);
         memset(&szGiaTriCoin, 0, sizeof(szGiaTriCoin));
         memset(&szNgayRaoBan, 0, sizeof(szNgayRaoBan));   // HSD Them
         memset(&szPassChoTroi, 0, sizeof(szPassChoTroi)); // HSD Them
@@ -1209,8 +1230,6 @@ void DrawInfoPhai(int X, int Y) {
       if (CacheItemRaoBan == -1) {
         CacheItemRaoBan = 1;
       }
-
-      RenderChoTroiSellDebug(StartX - 20, StartY + WindowH - 8, WindowW + 40);
 
       //Item trong ô Rao Bán
       g_pNewUISystem->RenderItem3DFree(
@@ -1543,7 +1562,8 @@ void DrawWindowChoTroi() {
         0xFFDF2B96, 0x0, (ListItemWH + 49), 0, 3,
         gTextClient.txtClient_ChoTroi[12],
         gInterface->NumberFormat(gCusChoTroi.m_DataChoTroi[n].Price),
-        NameGiaCoin[gCusChoTroi.m_DataChoTroi[n].PriceType]); // Gia Ban
+        gCusChoTroi.GetCurrencyName(
+            gCusChoTroi.m_DataChoTroi[n].PriceType)); // Gia Ban
     SEASON3B::TextDraw(
         (HFONT)g_hFont, KhungInfoX + ListItemWH + 10, KhungInfoY + 12 * 3,
         0xFAFAFA96, 0x0, (ListItemWH + 49), 0, 3,
@@ -1959,6 +1979,93 @@ void CustomChoTroi::SetShowItemCache(BYTE *Recv) {
   }
   return;
 }
+
+void CustomChoTroi::GCSetCurrencyList(BYTE *Recv, int Size) {
+  this->m_CurrencyList.clear();
+
+  int packetSize = ChoTroiGetPacketSize(Recv, Size);
+  int packetCount = 0;
+  int dataOffset = 12;
+  const int rowSize = 32;
+
+  if (!ChoTroiTryCurrencyPacketLayout(Recv, packetSize, 8, rowSize,
+                                      &packetCount)) {
+    if (ChoTroiTryCurrencyPacketLayout(Recv, packetSize, 5, rowSize,
+                                       &packetCount)) {
+      dataOffset = 9;
+    } else {
+      return;
+    }
+  }
+
+  for (int n = 0; n < packetCount; n++) {
+    BYTE *row = Recv + dataOffset + (rowSize * n);
+    CHOTROI_CURRENCY_DATA info;
+    memset(&info, 0, sizeof(info));
+
+    info.Id = ChoTroiReadInt(row + 0);
+    memcpy(info.Name, row + 4, CHOTROI_CURRENCY_NAME_LEN);
+    info.Name[CHOTROI_CURRENCY_NAME_LEN - 1] = 0;
+    info.Kind = ChoTroiReadInt(row + 20);
+    info.CoinType = ChoTroiReadInt(row + 24);
+    info.ItemIndex = ChoTroiReadInt(row + 28);
+
+    if (info.Id > 0 && info.Id <= 31 && info.Name[0] != 0) {
+      this->m_CurrencyList.push_back(info);
+    }
+  }
+
+  EnsureChoTroiSelectedCurrency();
+}
+
+const char *CustomChoTroi::GetCurrencyName(int CurrencyId) const {
+  for (size_t n = 0; n < this->m_CurrencyList.size(); n++) {
+    if (this->m_CurrencyList[n].Id == CurrencyId) {
+      return this->m_CurrencyList[n].Name;
+    }
+  }
+
+  if (CurrencyId >= 0 &&
+      CurrencyId < (int)(sizeof(ChoTroiCurrencyFallbackName) /
+                         sizeof(ChoTroiCurrencyFallbackName[0]))) {
+    return ChoTroiCurrencyFallbackName[CurrencyId];
+  }
+
+  return "Coin";
+}
+
+bool CustomChoTroi::IsCurrencyEnabled(int CurrencyId) const {
+  if (CurrencyId <= 0 || CurrencyId > 31) {
+    return false;
+  }
+
+  if (!this->m_CurrencyList.empty()) {
+    for (size_t n = 0; n < this->m_CurrencyList.size(); n++) {
+      if (this->m_CurrencyList[n].Id == CurrencyId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  return ((this->OnCointType & (1 << (CurrencyId - 1))) != 0);
+}
+
+int CustomChoTroi::GetFirstCurrencyId() const {
+  if (!this->m_CurrencyList.empty()) {
+    return this->m_CurrencyList[0].Id;
+  }
+
+  for (int i = 1; i <= 31; i++) {
+    if (this->IsCurrencyEnabled(i)) {
+      return i;
+    }
+  }
+
+  return 1;
+}
+
 void CustomChoTroi::GCSetListChoTroi(BYTE *Recv, int Size) {
   gCusChoTroi.OnCointType = 0;
   gCusChoTroi.m_DataChoTroi.clear();

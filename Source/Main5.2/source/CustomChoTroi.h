@@ -4,6 +4,7 @@
 #define MARKET_NAME_LEN 11
 #define MARKET_ITEM_BUFFER 16
 #define MARKET_ITEM_MAX 100
+#define CHOTROI_CURRENCY_NAME_LEN 16
 
 class CustomChoTroi {
 public:
@@ -50,6 +51,19 @@ public:
     int Type;
   };
 
+  struct CHOTROI_CURRENCY_DATA {
+    int Id;
+    char Name[CHOTROI_CURRENCY_NAME_LEN];
+    int Kind;
+    int CoinType;
+    int ItemIndex;
+  };
+
+  struct PMSG_CHOTROI_CURRENCY_LIST {
+    PSWMSG_HEAD header;
+    int Count;
+  };
+
   CustomChoTroi();
   virtual ~CustomChoTroi();
   void CustomChoTroi::BDrawWindowChoTroi();
@@ -59,6 +73,10 @@ public:
   bool CustomChoTroi::IsWindowActive() const;
   bool CustomChoTroi::IsBuyPassWindowActive() const;
   void GCSetListChoTroi(BYTE *Recv, int Size = 0);
+  void GCSetCurrencyList(BYTE *Recv, int Size = 0);
+  const char *GetCurrencyName(int CurrencyId) const;
+  bool IsCurrencyEnabled(int CurrencyId) const;
+  int GetFirstCurrencyId() const;
   void SetShowItemCache(BYTE *Recv);
   void UpdateInputFocus();
   SEASON3B::CNewUIRadioGroupButton m_TabBtn;
@@ -67,6 +85,7 @@ public:
   std::map<int, char *> mListItemFind;
   std::vector<MARKET_DATA> m_DataChoTroi;
   int OnCointType;
+  std::vector<CHOTROI_CURRENCY_DATA> m_CurrencyList;
   ITEM *ItemCacheSelect;
   DWORD ItemCacheTime;
   bool ItemCacheShow;

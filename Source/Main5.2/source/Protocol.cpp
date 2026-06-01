@@ -163,6 +163,9 @@ BOOL ProtocolCoreEx(BYTE head, BYTE* lpMsg, int size, int key) // OK
 		case 0x20:
 			gCusChoTroi.GCSetListChoTroi(lpMsg, size);
 			return 1;
+		case 0x22:
+			gCusChoTroi.GCSetCurrencyList(lpMsg, size);
+			return 1;
 #endif
 		case 0x2E:
 			if (gCB_BotMix == nullptr)

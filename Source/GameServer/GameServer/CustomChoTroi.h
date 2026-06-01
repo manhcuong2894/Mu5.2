@@ -23,6 +23,7 @@
 #define DBI_GET_DINO_OPTION(x)  ( DBI_GET_OPTION16((x)) >> 4 )
 #define DBI_GET_NOPTION(x)  ( (x) & 0x3F  )
 #define DBI_GET_380OPTION(x) ( ((x) & 0x08) << 4  )
+#define CHOTROI_CURRENCY_NAME_LEN 16
 
 enum
 {
@@ -35,6 +36,60 @@ enum
 };
 
 
+
+enum
+{
+	eChoTroiCurrencyKindCoin = 1,
+	eChoTroiCurrencyKindItemBank = 2,
+	eChoTroiCurrencyKindItem = 3,
+	eChoTroiCurrencyKindZen = 4,
+};
+
+enum
+{
+	eChoTroiCoinTypeNone = 0,
+	eChoTroiCoinTypeWC = 1,
+	eChoTroiCoinTypeWP = 2,
+	eChoTroiCoinTypeGP = 3,
+};
+
+struct CHOTROI_CURRENCY_INFO
+{
+	CHOTROI_CURRENCY_INFO()
+	{
+		this->Id = 0;
+		this->Enable = 0;
+		memset(this->Name, 0, sizeof(this->Name));
+		this->Kind = 0;
+		this->CoinType = eChoTroiCoinTypeNone;
+		this->ItemIndex = -1;
+		this->TaxRate = 10;
+	}
+
+	int Id;
+	int Enable;
+	char Name[CHOTROI_CURRENCY_NAME_LEN];
+	int Kind;
+	int CoinType;
+	int ItemIndex;
+	int TaxRate;
+	std::map<int, int> TaxRateByTypeItem;
+};
+
+struct PMSG_CHOTROI_CURRENCY_DATA
+{
+	int Id;
+	char Name[CHOTROI_CURRENCY_NAME_LEN];
+	int Kind;
+	int CoinType;
+	int ItemIndex;
+};
+
+struct PMSG_CHOTROI_CURRENCY_LIST
+{
+	PSWMSG_HEAD header;
+	int Count;
+};
 
 struct PMSG_REQ_MARKET_SELL
 {
@@ -181,9 +236,16 @@ public:
 	void Load(char* FilePath);
 	int Enable;
 	int OnCointType;
+	std::map<int, CHOTROI_CURRENCY_INFO> m_CurrencyInfo;
+	std::vector<int> m_CurrencyOrder;
 	std::map<int, VAT_DATA_INFO> m_DataVAT;
 	std::vector<DATA_ITEMBLOCK> m_DataItemBlock;
 	std::vector<MARKET_DATA> m_ListDataChoTroi[MAX_OBJECT];
+	int GetCurrencyBit(int CurrencyId);
+	CHOTROI_CURRENCY_INFO* GetCurrencyInfo(int CurrencyId);
+	bool IsCurrencyEnabled(int CurrencyId);
+	const char* GetCurrencyName(int CurrencyId);
+	void SendCurrencyList(int aIndex);
 	bool CheckItemBlockSend(CItem* lpItem);
 	void ClientSendItemRaoBan(int aIndex, PMSG_REQ_MARKET_ITEM_MOVE* lpMsg);
 	void RollbackCacheItem(int aIndex, bool sendClientState, bool saveCharacter, const char* reason);

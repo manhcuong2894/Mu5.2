@@ -315,12 +315,6 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
   memset(szName, 0, sizeof(szName));
   memcpy(szName, lpMsg->Name, sizeof(szName) - 1);
 
-  LogAdd(LOG_BLUE,
-         "[ChoTroiDebug] DS recv EE/01 aIndex=%d account=%s name=%s price=%d "
-         "coin=%d typeItem=%d day=%d pass=%d",
-         lpMsg->aIndex, szAccountID, szName, lpMsg->Price, lpMsg->PriceType,
-         lpMsg->TypeItem, lpMsg->ItemDay, lpMsg->Pass);
-
   int itemDay = lpMsg->ItemDay;
   if (itemDay < 1) {
     itemDay = 1;
@@ -347,8 +341,6 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
           lpMsg->TypeItem, szName, TimeHSD, szPassValue);
 
   if (!gQueryManager.ExecQuery(szQuery)) {
-    LogAdd(LOG_RED, "[ChoTroiDebug] DS stop: insert failed account=%s name=%s",
-           szAccountID, szName);
     LogAdd(LOG_RED, "[ChoTroi] Loi Sell Item len cho !!");
     gQueryManager.Close();
     return;
@@ -365,10 +357,6 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
 
   if (!gQueryManager.ExecQuery(szQuery) ||
       gQueryManager.Fetch() == SQL_NO_DATA) {
-    LogAdd(LOG_RED,
-           "[ChoTroiDebug] DS stop: cannot find new row account=%s name=%s "
-           "time=%d",
-           szAccountID, szName, TimeHSD);
     LogAdd(LOG_RED, "[ChoTroi] Khong tim thay row moi de cap nhat item [%s][%s]",
            szAccountID, szName);
     gQueryManager.Close();
@@ -389,12 +377,9 @@ void CChoTroi::GDReqItemSell(SDHP_REQ_MARKET_SELL *lpMsg, int uIndex) {
                                       sizeof(lpMsg->ItemData));
 
   if (!gQueryManager.ExecQuery(szQuery, id)) {
-    LogAdd(LOG_RED, "[ChoTroiDebug] DS stop: blob update failed ID=%d", id);
     LogAdd(LOG_RED, "[ChoTroi] Loi cap nhat blob item [%s][%s] ID=%d",
            szAccountID, szName, id);
   } else {
-    LogAdd(LOG_BLUE, "[ChoTroiDebug] DS save complete ID=%d account=%s name=%s",
-           id, szAccountID, szName);
 #if (MARKET_DEBUG)
     LogAdd(LOG_BLUE, "[ChoTroi] SaveItem OK ID=%d Account=%s Name=%s Len=%d",
            id, szAccountID, szName, (int)sizeof(lpMsg->ItemData));
@@ -554,27 +539,7 @@ void CChoTroi::GDReqItemListPage(SDHP_REQ_MARKET_ITEM *lpMsg, int uIndex) {
 
   memset(szPriceType, 0, sizeof(szPriceType));
 
-  if (lpMsg->PriceType == eMarketPriceWC) {
-    sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
-  }
-
-  if (lpMsg->PriceType == eMarketPriceWP) {
-    sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
-  }
-
-  if (lpMsg->PriceType == eMarketPriceGP) {
-    sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
-  }
-
-  if (lpMsg->PriceType == eMarketPriceB) {
-    sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
-  }
-
-  if (lpMsg->PriceType == eMarketPriceS) {
-    sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
-  }
-
-  if (lpMsg->PriceType == eMarketPriceC) {
+  if (lpMsg->PriceType > 0) {
     sprintf(szPriceType, "AND PriceType = '%d' ", lpMsg->PriceType);
   }
 

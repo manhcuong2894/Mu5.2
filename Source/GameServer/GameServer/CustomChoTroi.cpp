@@ -6,6 +6,7 @@
 #include "DSProtocol.h"
 #include "EffectManager.h"
 #include "GameMain.h"
+#include "GMHolyItem.h"
 #include "ItemLevel.h"
 #include "ItemManager.h"
 #include "Log.h"
@@ -24,6 +25,50 @@
 #if (CUSTOM_CHOTROI)
 BCustomChoTroi gBCustomChoTroi;
 char *TypeCoin[7] = {"NULL", "WC", "WP", "GP", "B", "S", "C"};
+
+static int ChoTroiParseCurrencyKind(const char *kind) {
+  if (kind == 0) {
+    return 0;
+  }
+
+  if (_stricmp(kind, "Coin") == 0) {
+    return eChoTroiCurrencyKindCoin;
+  }
+
+  if (_stricmp(kind, "ItemBank") == 0) {
+    return eChoTroiCurrencyKindItemBank;
+  }
+
+  if (_stricmp(kind, "Item") == 0) {
+    return eChoTroiCurrencyKindItem;
+  }
+
+  if (_stricmp(kind, "Zen") == 0) {
+    return eChoTroiCurrencyKindZen;
+  }
+
+  return 0;
+}
+
+static int ChoTroiParseCoinType(const char *coinType) {
+  if (coinType == 0) {
+    return eChoTroiCoinTypeNone;
+  }
+
+  if (_stricmp(coinType, "WC") == 0) {
+    return eChoTroiCoinTypeWC;
+  }
+
+  if (_stricmp(coinType, "WP") == 0) {
+    return eChoTroiCoinTypeWP;
+  }
+
+  if (_stricmp(coinType, "GP") == 0) {
+    return eChoTroiCoinTypeGP;
+  }
+
+  return eChoTroiCoinTypeNone;
+}
 
 static void ChoTroiSendClientCacheState(int aIndex, DWORD thaoTac) {
   if (!OBJMAX_RANGE(aIndex)) {
@@ -45,21 +90,6 @@ static LPOBJ ChoTroiFindOnlineSeller(const char *name) {
   memcpy(sellerName, name, MARKET_NAME_LEN - 1);
 
   return gObjFind(sellerName);
-}
-
-static void ChoTroiDebugSell(int aIndex, const char *format, ...) {
-  char message[256] = {0};
-
-  va_list args;
-  va_start(args, format);
-  vsprintf_s(message, sizeof(message), format, args);
-  va_end(args);
-
-  LogAdd(LOG_BLUE, "%s", message);
-
-  if (OBJMAX_RANGE(aIndex)) {
-    gNotice.GCNoticeSend(aIndex, 1, 0, 0, 0, 0, 0, "%s", message);
-  }
 }
 
 // === Helper: Count jewel in inventory by item index ===
@@ -106,6 +136,207 @@ static void ChoTroi_AddJewel(int aIndex, int itemIndex, int addCount) {
     }
   }
 }
+
+static int ChoTroi_FindHolyBankSlot(int aIndex, int itemIndex) {
+#ifdef INVENTORY_HOLY_JOH
+  if (!OBJECT_RANGE(aIndex) || itemIndex < 0) {
+    return -1;
+  }
+
+  LPOBJ lpObj = &gObj[aIndex];
+  if (lpObj->LoadHolyInventory == 0) {
+    return -1;
+  }
+
+  for (int n = 0; n < HOLY_INVENTORY_SIZE; n++) {
+    if (lpObj->HolyInventory[n].bItemindex == itemIndex) {
+      return n;
+    }
+  }
+#endif
+  return -1;
+}
+
+static __int64 ChoTroi_CountHolyBankItem(int aIndex, int itemIndex) {
+#ifdef INVENTORY_HOLY_JOH
+  int slot = ChoTroi_FindHolyBankSlot(aIndex, itemIndex);
+  if (slot < 0) {
+    return 0;
+  }
+
+  return gObj[aIndex].HolyInventory[slot].bItemCount;
+#else
+  return 0;
+#endif
+}
+
+static bool ChoTroi_AddHolyBankItem(int aIndex, int itemIndex, int addCount) {
+#ifdef INVENTORY_HOLY_JOH
+  if (addCount <= 0) {
+    return false;
+  }
+
+  int slot = ChoTroi_FindHolyBankSlot(aIndex, itemIndex);
+  if (slot < 0) {
+    return false;
+  }
+
+  gObj[aIndex].HolyInventory[slot].bItemCount += addCount;
+  GMHolyItem->GCInventoryListSend(aIndex);
+  GMHolyItem->DGHolyInventorySave(aIndex);
+  return true;
+#else
+  return false;
+#endif
+}
+
+static bool ChoTroi_RemoveHolyBankItem(int aIndex, int itemIndex,
+                                       int removeCount) {
+#ifdef INVENTORY_HOLY_JOH
+  if (removeCount <= 0) {
+    return false;
+  }
+
+  int slot = ChoTroi_FindHolyBankSlot(aIndex, itemIndex);
+  if (slot < 0) {
+    return false;
+  }
+
+  if (gObj[aIndex].HolyInventory[slot].bItemCount < removeCount) {
+    return false;
+  }
+
+  gObj[aIndex].HolyInventory[slot].bItemCount -= removeCount;
+  GMHolyItem->GCInventoryListSend(aIndex);
+  GMHolyItem->DGHolyInventorySave(aIndex);
+  return true;
+#else
+  return false;
+#endif
+}
+
+static __int64 ChoTroi_GetCurrencyValue(int aIndex,
+                                        const CHOTROI_CURRENCY_INFO *currency) {
+  if (!OBJECT_RANGE(aIndex) || currency == 0) {
+    return 0;
+  }
+
+  LPOBJ lpObj = &gObj[aIndex];
+
+  switch (currency->Kind) {
+  case eChoTroiCurrencyKindCoin:
+    if (currency->CoinType == eChoTroiCoinTypeWC) {
+      return lpObj->Coin1;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeWP) {
+      return lpObj->Coin2;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeGP) {
+      return lpObj->Coin3;
+    }
+    break;
+  case eChoTroiCurrencyKindItemBank:
+    return ChoTroi_CountHolyBankItem(aIndex, currency->ItemIndex);
+  case eChoTroiCurrencyKindItem:
+    return ChoTroi_CountJewel(aIndex, currency->ItemIndex);
+  case eChoTroiCurrencyKindZen:
+    return lpObj->Money;
+  default:
+    break;
+  }
+
+  return 0;
+}
+
+static bool ChoTroi_DebitCurrency(int aIndex,
+                                  const CHOTROI_CURRENCY_INFO *currency,
+                                  int value) {
+  if (!OBJECT_RANGE(aIndex) || currency == 0 || value <= 0) {
+    return false;
+  }
+
+  LPOBJ lpObj = &gObj[aIndex];
+
+  switch (currency->Kind) {
+  case eChoTroiCurrencyKindCoin:
+    if (currency->CoinType == eChoTroiCoinTypeWC) {
+      GDSetCoinSend(aIndex, -value, 0, 0, "ChoTroi - WCoinC");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeWP) {
+      GDSetCoinSend(aIndex, 0, -value, 0, "ChoTroi - WCoinP");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeGP) {
+      GDSetCoinSend(aIndex, 0, 0, -value, "ChoTroi - GobinP");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    break;
+  case eChoTroiCurrencyKindItemBank:
+    return ChoTroi_RemoveHolyBankItem(aIndex, currency->ItemIndex, value);
+  case eChoTroiCurrencyKindItem:
+    ChoTroi_RemoveJewel(aIndex, currency->ItemIndex, value);
+    return true;
+  case eChoTroiCurrencyKindZen:
+    if (lpObj->Money < (DWORD)value) {
+      return false;
+    }
+    lpObj->Money -= value;
+    GCMoneySend(aIndex, lpObj->Money);
+    return true;
+  default:
+    break;
+  }
+
+  return false;
+}
+
+static bool ChoTroi_CreditCurrency(int aIndex,
+                                   const CHOTROI_CURRENCY_INFO *currency,
+                                   int value) {
+  if (!OBJECT_RANGE(aIndex) || currency == 0 || value <= 0) {
+    return false;
+  }
+
+  LPOBJ lpObj = &gObj[aIndex];
+
+  switch (currency->Kind) {
+  case eChoTroiCurrencyKindCoin:
+    if (currency->CoinType == eChoTroiCoinTypeWC) {
+      GDSetCoinSend(aIndex, value, 0, 0, "ChoTroi + WCoinC");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeWP) {
+      GDSetCoinSend(aIndex, 0, value, 0, "ChoTroi + WCoinP");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    if (currency->CoinType == eChoTroiCoinTypeGP) {
+      GDSetCoinSend(aIndex, 0, 0, value, "ChoTroi + GobinP");
+      gCashShop.CGCashShopPointRecv(aIndex);
+      return true;
+    }
+    break;
+  case eChoTroiCurrencyKindItemBank:
+    return ChoTroi_AddHolyBankItem(aIndex, currency->ItemIndex, value);
+  case eChoTroiCurrencyKindItem:
+    ChoTroi_AddJewel(aIndex, currency->ItemIndex, value);
+    return true;
+  case eChoTroiCurrencyKindZen:
+    lpObj->Money += value;
+    GCMoneySend(aIndex, lpObj->Money);
+    return true;
+  default:
+    break;
+  }
+
+  return false;
+}
+
 void BCustomChoTroi::Load(char *FilePath) {
   this->m_DataVAT.clear();
   this->m_DataItemBlock.clear();
@@ -113,6 +344,8 @@ void BCustomChoTroi::Load(char *FilePath) {
   this->TypeHSD = 0;
 
   this->OnCointType = 0;
+  this->m_CurrencyInfo.clear();
+  this->m_CurrencyOrder.clear();
   pugi::xml_document file;
   pugi::xml_parse_result res = file.load_file(FilePath);
   if (res.status != pugi::status_ok) {
@@ -123,23 +356,86 @@ void BCustomChoTroi::Load(char *FilePath) {
   pugi::xml_node oCustomChoTroi = file.child("CustomChoTroi");
   this->Enable = oCustomChoTroi.attribute("Enable").as_int();
   this->TypeHSD = oCustomChoTroi.attribute("TypeHSD").as_int();
-  if (oCustomChoTroi.attribute("OnWC").as_int() == 1) {
-    this->OnCointType += 1;
+
+  pugi::xml_node oCurrencyList = oCustomChoTroi.child("CurrencyList");
+  for (pugi::xml_node currency = oCurrencyList.child("Currency"); currency;
+       currency = currency.next_sibling("Currency")) {
+    CHOTROI_CURRENCY_INFO info;
+
+    info.Id = currency.attribute("Id").as_int();
+    info.Enable = currency.attribute("Enable").as_int();
+    strncpy_s(info.Name, currency.attribute("Name").as_string(),
+              sizeof(info.Name));
+    info.Kind =
+        ChoTroiParseCurrencyKind(currency.attribute("Kind").as_string());
+    info.CoinType =
+        ChoTroiParseCoinType(currency.attribute("CoinType").as_string());
+    info.ItemIndex = currency.attribute("ItemIndex").as_int(-1);
+    info.TaxRate = currency.attribute("TaxRate").as_int(10);
+
+    for (pugi::xml_node tax = currency.child("Tax"); tax;
+         tax = tax.next_sibling("Tax")) {
+      info.TaxRateByTypeItem[tax.attribute("TypeItem").as_int()] =
+          tax.attribute("TaxRate").as_int(info.TaxRate);
+    }
+
+    if (info.Id <= 0 || info.Id > 31 || info.Name[0] == 0 ||
+        info.Kind == 0) {
+      LogAdd(LOG_RED,
+             "[CustomChoTroi] Skip invalid currency Id=%d Name=%s Kind=%d",
+             info.Id, info.Name, info.Kind);
+      continue;
+    }
+
+    this->m_CurrencyInfo[info.Id] = info;
+
+    if (info.Enable) {
+      this->m_CurrencyOrder.push_back(info.Id);
+      this->OnCointType |= this->GetCurrencyBit(info.Id);
+    }
   }
-  if (oCustomChoTroi.attribute("OnWP").as_int() == 1) {
-    this->OnCointType += 2;
-  }
-  if (oCustomChoTroi.attribute("OnGP").as_int() == 1) {
-    this->OnCointType += 4;
-  }
-  if (oCustomChoTroi.attribute("OnB").as_int() == 1) {
-    this->OnCointType += 8;
-  }
-  if (oCustomChoTroi.attribute("OnS").as_int() == 1) {
-    this->OnCointType += 16;
-  }
-  if (oCustomChoTroi.attribute("OnC").as_int() == 1) {
-    this->OnCointType += 32;
+
+  if (this->m_CurrencyInfo.empty()) {
+    struct LEGACY_CURRENCY {
+      int Id;
+      const char *Name;
+      int Kind;
+      int CoinType;
+      int ItemIndex;
+      const char *FlagName;
+    };
+
+    LEGACY_CURRENCY legacy[] = {
+        {eMarketPriceWC, "WC", eChoTroiCurrencyKindCoin, eChoTroiCoinTypeWC,
+         -1, "OnWC"},
+        {eMarketPriceWP, "WP", eChoTroiCurrencyKindCoin, eChoTroiCoinTypeWP,
+         -1, "OnWP"},
+        {eMarketPriceGP, "GP", eChoTroiCurrencyKindCoin, eChoTroiCoinTypeGP,
+         -1, "OnGP"},
+        {eMarketPriceB, "Bless", eChoTroiCurrencyKindItemBank,
+         eChoTroiCoinTypeNone, 7181, "OnB"},
+        {eMarketPriceS, "Soul", eChoTroiCurrencyKindItemBank,
+         eChoTroiCoinTypeNone, 7182, "OnS"},
+        {eMarketPriceC, "Chaos", eChoTroiCurrencyKindItemBank,
+         eChoTroiCoinTypeNone, 6159, "OnC"},
+    };
+
+    for (int n = 0; n < (int)(sizeof(legacy) / sizeof(legacy[0])); n++) {
+      CHOTROI_CURRENCY_INFO info;
+      info.Id = legacy[n].Id;
+      info.Enable = oCustomChoTroi.attribute(legacy[n].FlagName).as_int();
+      strncpy_s(info.Name, legacy[n].Name, sizeof(info.Name));
+      info.Kind = legacy[n].Kind;
+      info.CoinType = legacy[n].CoinType;
+      info.ItemIndex = legacy[n].ItemIndex;
+      info.TaxRate = 10;
+      this->m_CurrencyInfo[info.Id] = info;
+
+      if (info.Enable) {
+        this->m_CurrencyOrder.push_back(info.Id);
+        this->OnCointType |= this->GetCurrencyBit(info.Id);
+      }
+    }
   }
 
   this->m_MessageInfoBP.clear();
@@ -190,6 +486,86 @@ void BCustomChoTroi::Load(char *FilePath) {
          this->m_DataVAT.size(), this->m_DataItemBlock.size());
 }
 
+int BCustomChoTroi::GetCurrencyBit(int CurrencyId) {
+  if (CurrencyId <= 0 || CurrencyId > 31) {
+    return 0;
+  }
+
+  return (1 << (CurrencyId - 1));
+}
+
+CHOTROI_CURRENCY_INFO *BCustomChoTroi::GetCurrencyInfo(int CurrencyId) {
+  std::map<int, CHOTROI_CURRENCY_INFO>::iterator it =
+      this->m_CurrencyInfo.find(CurrencyId);
+
+  if (it == this->m_CurrencyInfo.end()) {
+    return 0;
+  }
+
+  return &it->second;
+}
+
+bool BCustomChoTroi::IsCurrencyEnabled(int CurrencyId) {
+  CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(CurrencyId);
+  if (currency == 0 || currency->Enable == 0) {
+    return false;
+  }
+
+  return ((this->OnCointType & this->GetCurrencyBit(CurrencyId)) != 0);
+}
+
+const char *BCustomChoTroi::GetCurrencyName(int CurrencyId) {
+  CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(CurrencyId);
+  if (currency == 0 || currency->Name[0] == 0) {
+    return "NULL";
+  }
+
+  return currency->Name;
+}
+
+void BCustomChoTroi::SendCurrencyList(int aIndex) {
+  if (!this->Enable || !gObjIsConnected(aIndex)) {
+    return;
+  }
+
+  BYTE send[1024];
+  PMSG_CHOTROI_CURRENCY_LIST pMsg;
+  pMsg.header.set(0xD3, 0x22, 0);
+
+  int size = sizeof(pMsg);
+  pMsg.Count = 0;
+
+  for (std::vector<int>::iterator it = this->m_CurrencyOrder.begin();
+       it != this->m_CurrencyOrder.end(); it++) {
+    CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(*it);
+    if (currency == 0 || currency->Enable == 0) {
+      continue;
+    }
+
+    if ((size + (int)sizeof(PMSG_CHOTROI_CURRENCY_DATA)) >=
+        (int)sizeof(send)) {
+      break;
+    }
+
+    PMSG_CHOTROI_CURRENCY_DATA info;
+    memset(&info, 0, sizeof(info));
+    info.Id = currency->Id;
+    strncpy_s(info.Name, currency->Name, sizeof(info.Name));
+    info.Kind = currency->Kind;
+    info.CoinType = currency->CoinType;
+    info.ItemIndex = currency->ItemIndex;
+
+    memcpy(&send[size], &info, sizeof(info));
+    size += sizeof(info);
+    pMsg.Count++;
+  }
+
+  pMsg.header.size[0] = SET_NUMBERHB(size);
+  pMsg.header.size[1] = SET_NUMBERLB(size);
+  memcpy(send, &pMsg, sizeof(pMsg));
+  DataSend(aIndex, send, size);
+}
+
 char *BCustomChoTroi::GetMessage(int index) // OK
 {
   std::map<int, CUSTOM_CHOTROI_MESSAGE>::iterator it =
@@ -205,6 +581,21 @@ char *BCustomChoTroi::GetMessage(int index) // OK
 }
 int BCustomChoTroi::GetRateTaxTypeItem(int TypeItem, int TypeCoin) // OK
 {
+  CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(TypeCoin);
+  if (currency != 0) {
+    std::map<int, int>::iterator tax = currency->TaxRateByTypeItem.find(TypeItem);
+    if (tax != currency->TaxRateByTypeItem.end()) {
+      return tax->second;
+    }
+
+    tax = currency->TaxRateByTypeItem.find(0);
+    if (tax != currency->TaxRateByTypeItem.end()) {
+      return tax->second;
+    }
+
+    return currency->TaxRate;
+  }
+
   if (TypeItem > 10 || TypeItem < 0)
     TypeItem = 0;
   std::map<int, VAT_DATA_INFO>::iterator it = this->m_DataVAT.find(TypeItem);
@@ -440,101 +831,23 @@ void BCustomChoTroi::ClientSendItemRaoBan(int aIndex,
 }
 
 void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
-  ChoTroiDebugSell(
-      aIndex,
-      "[ChoTroiDebug] GS recv D3/14 result=%d price=%d coin=%d day=%d pass=%d",
-      lpMsg->Result, lpMsg->ItemPrice, lpMsg->ItemPriceType, lpMsg->ItemDay,
-      lpMsg->Pass);
-
   if (lpMsg->ItemPrice < 0) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: price < 0");
-    return;
-  }
-  if (lpMsg->ItemPriceType < eMarketPriceWC &&
-      lpMsg->ItemPriceType > eMarketPriceC) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: invalid coin type %d",
-                     lpMsg->ItemPriceType);
     return;
   }
 
   int ItemPriceType = lpMsg->ItemPriceType;
   int ItemPrice = lpMsg->ItemPrice;
   if (!OBJECT_RANGE(aIndex)) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: OBJECT_RANGE false");
     return;
   }
 
-  switch (ItemPriceType) {
-  case eMarketPriceWC: {
-    if (!(this->OnCointType & 1)) {
-      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: WC disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-  case eMarketPriceWP: {
-    if (!(this->OnCointType & 2)) {
-      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: WP disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-  case eMarketPriceGP: {
-    if (!(this->OnCointType & 4)) {
-      ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: GP disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-  case eMarketPriceB: {
-    if (!(this->OnCointType & 8)) {
-      ChoTroiDebugSell(aIndex,
-                       "[ChoTroiDebug] GS stop: Bless disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-  case eMarketPriceS: {
-    if (!(this->OnCointType & 16)) {
-      ChoTroiDebugSell(aIndex,
-                       "[ChoTroiDebug] GS stop: Soul disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-
-  case eMarketPriceC: {
-    if (!(this->OnCointType & 32)) {
-      ChoTroiDebugSell(aIndex,
-                       "[ChoTroiDebug] GS stop: Chaos disabled OnCoin=%d",
-                       this->OnCointType);
-      gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                           this->GetMessage(11)); //
-      return;
-    }
-  } break;
-  default:
-    break;
+  if (!this->IsCurrencyEnabled(ItemPriceType)) {
+    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
+                         this->GetMessage(11)); //
+    return;
   }
 
   LPOBJ lpUser = &gObj[aIndex];
-  ChoTroiDebugSell(
-      aIndex,
-      "[ChoTroiDebug] GS state interface=%d use=%d cacheSlot=%d status=%d "
-      "item=%d",
-      lpUser->Interface.type, lpUser->Interface.use, lpUser->CH_IndexItem[0],
-      lpUser->StatusCacheItem, lpUser->CH_InfoItem[0].IsItem() ? 1 : 0);
-
   if (lpUser->Interface.type == INTERFACE_CHAOS_BOX ||
       lpUser->Interface.type == INTERFACE_TRADE ||
       lpUser->Interface.type == INTERFACE_PARTY ||
@@ -546,22 +859,17 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
       lpUser->DieRegen != 0 || lpUser->Teleport != 0 ||
       lpUser->PShopOpen != 0 || lpUser->ChaosLock != 0 ||
       lpUser->SkillSummonPartyTime != 0) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: interface/state blocked");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(0)); //
     return;
   }
 
   if (lpUser->CH_IndexItem[0] == -1) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: no cached item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(1)); //
     return;
   }
-  if (ItemPriceType < 1 || ItemPriceType > 6 || ItemPrice < 1) {
-    ChoTroiDebugSell(aIndex,
-                     "[ChoTroiDebug] GS stop: invalid final price/coin p=%d c=%d",
-                     ItemPrice, ItemPriceType);
+  if (!this->IsCurrencyEnabled(ItemPriceType) || ItemPrice < 1) {
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(0)); //
     return;
@@ -606,7 +914,6 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
                                  &lpUser->CH_InfoItem[0]);
 
   if (lpUser->CH_InfoItem[0].m_IsPeriodicItem) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: periodic item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -614,7 +921,6 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   }
 
   if (lpUser->CH_InfoItem[0].m_LoadPeriodicItem) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: loaded periodic item");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -622,14 +928,12 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   }
 
   if (lpUser->CH_InfoItem[0].m_PeriodicItemTime) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: periodic item time");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
     return;
   }
   if (lpUser->CH_InfoItem[0].m_JewelOfHarmonyOption) {
-    ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS stop: harmony option");
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(4)); //
     // LogAdd(LOG_RED, "ItemMakert : Sell Item Thoi Han Error");
@@ -679,47 +983,11 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
       lpUser->CH_InfoItem[0].m_SocketOption[2],
       lpUser->CH_InfoItem[0].m_SocketOption[3],
       lpUser->CH_InfoItem[0].m_SocketOption[4]);
-  if (ItemPriceType == eMarketPriceWC) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "WC"); //
-  } else if (ItemPriceType == eMarketPriceWP) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "WP"); //
-  } else if (ItemPriceType == eMarketPriceGP) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "GP"); //
-  } else if (ItemPriceType == eMarketPriceB) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "Bless"); //
-  } else if (ItemPriceType == eMarketPriceS) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "Soul"); //
-  } else if (ItemPriceType == eMarketPriceC) {
-    gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
-                         this->GetMessage(9),
-                         gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
-                                                lpUser->CH_InfoItem[0].m_Level),
-                         ItemPrice, "Chaos"); //
-  }
-  ChoTroiDebugSell(aIndex,
-                   "[ChoTroiDebug] GS send EE/01 to DS price=%d coin=%d "
-                   "typeItem=%d day=%d",
-                   pMsg.Price, pMsg.PriceType, pMsg.TypeItem, pMsg.ItemDay);
+  gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
+                       this->GetMessage(9),
+                       gItemLevel.GetItemName(lpUser->CH_InfoItem[0].m_Index,
+                                              lpUser->CH_InfoItem[0].m_Level),
+                       ItemPrice, this->GetCurrencyName(ItemPriceType)); //
   gDataServerConnection.DataSend((BYTE *)&pMsg, pMsg.h.size);
 
   gObj[aIndex].CH_IndexItem[0] = -1;
@@ -730,7 +998,6 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   cMsg.header.set(0xD3, 0x01, sizeof(cMsg));
   cMsg.ThaoTac = 2; // Show Item Cache
   DataSend(lpUser->Index, (BYTE *)&cMsg, cMsg.header.size);
-  ChoTroiDebugSell(aIndex, "[ChoTroiDebug] GS sent D3/01 clear cache to client");
 }
 
 //===Send Get List DS
@@ -803,6 +1070,7 @@ void BCustomChoTroi::SendListUser(int Index) {
     return;
   }
   // ----
+  this->SendCurrencyList(Index);
 
   BYTE send[8192];
 
@@ -878,41 +1146,16 @@ bool BCustomChoTroi::GetCheckMoney(int aIndex, int PriceType, int PriceValue) {
     return false;
   }
   LPOBJ lpUser = &gObj[aIndex];
-  int currentValue = 0;
-  const char *currencyName = "NULL";
-
-  switch (PriceType) {
-  case eMarketPriceWC:
-    currentValue = lpUser->Coin1;
-    currencyName = "WC";
-    break;
-  case eMarketPriceWP:
-    currentValue = lpUser->Coin2;
-    currencyName = "WP";
-    break;
-  case eMarketPriceGP:
-    currentValue = lpUser->Coin3;
-    currencyName = "GP";
-    break;
-  case eMarketPriceB:
-    currentValue = ChoTroi_CountJewel(aIndex, 7181);
-    currencyName = "Bless";
-    break;
-  case eMarketPriceS:
-    currentValue = ChoTroi_CountJewel(aIndex, 7182);
-    currencyName = "Soul";
-    break;
-  case eMarketPriceC:
-    currentValue = ChoTroi_CountJewel(aIndex, 6159);
-    currencyName = "Chaos";
-    break;
-  default:
+  CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(PriceType);
+  if (currency == 0 || !this->IsCurrencyEnabled(PriceType)) {
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(11));
     gNotice.GCNoticeSend(aIndex, 1, 0, 0, 0, 0, 0,
                         this->GetMessage(11));
     return false;
   }
+
+  __int64 currentValue = ChoTroi_GetCurrencyValue(aIndex, currency);
 
   if (PriceValue <= currentValue) {
     return true;
@@ -921,11 +1164,11 @@ bool BCustomChoTroi::GetCheckMoney(int aIndex, int PriceType, int PriceValue) {
   gNotice.GCNoticeSend(
       aIndex, eMessageBox, 0, 0, 0, 0, 0,
       this->GetMessage(2),
-      currencyName, PriceValue, currentValue);
+      currency->Name, PriceValue, (int)currentValue);
   gNotice.GCNoticeSend(
       aIndex, 1, 0, 0, 0, 0, 0,
       this->GetMessage(2),
-      currencyName, PriceValue, currentValue);
+      currency->Name, PriceValue, (int)currentValue);
   /*LogAdd(LOG_BLUE,
          "[ChoTroi] Buy denied insufficient currency Account=%s Name=%s Need=%d %s Have=%d",
          lpUser->Account, lpUser->Name, PriceValue, currencyName, currentValue);*/
@@ -1034,36 +1277,16 @@ void BCustomChoTroi::DGAnsItemBuy(SDHP_ANS_MARKET_BUY *lpMsg) {
                                      this->m_ListDataChoTroi[aIndex][i].Item);
         if (lpMsg->Result == 1) // MUA
         {
-          //===Tru Coin
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceWC) {
-            GDSetCoinSend(aIndex, -(this->m_ListDataChoTroi[aIndex][i].Price),
-                          0, 0, "ChoTroi - WCoinC");
-            gCashShop.CGCashShopPointRecv(aIndex);
-          }
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceWP) {
-            GDSetCoinSend(aIndex, 0,
-                          -(this->m_ListDataChoTroi[aIndex][i].Price), 0,
-                          "ChoTroi - WCoinP");
-            gCashShop.CGCashShopPointRecv(aIndex);
-          }
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceGP) {
-            GDSetCoinSend(aIndex, 0, 0,
-                          -(this->m_ListDataChoTroi[aIndex][i].Price),
-                          "ChoTroi - GobinP");
-            gCashShop.CGCashShopPointRecv(aIndex);
-          }
-
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceB) {
-            ChoTroi_RemoveJewel(aIndex, 7181,
-                                this->m_ListDataChoTroi[aIndex][i].Price);
-          }
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceS) {
-            ChoTroi_RemoveJewel(aIndex, 7182,
-                                this->m_ListDataChoTroi[aIndex][i].Price);
-          }
-          if (this->m_ListDataChoTroi[aIndex][i].PriceType == eMarketPriceC) {
-            ChoTroi_RemoveJewel(aIndex, 6159,
-                                this->m_ListDataChoTroi[aIndex][i].Price);
+          CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(
+              this->m_ListDataChoTroi[aIndex][i].PriceType);
+          if (!ChoTroi_DebitCurrency(aIndex, currency,
+                                     this->m_ListDataChoTroi[aIndex][i].Price)) {
+            LogAdd(LOG_RED,
+                   "[ChoTroi] Debit currency failed Buyer=%s PriceType=%d "
+                   "Price=%d",
+                   lpUser->Name, this->m_ListDataChoTroi[aIndex][i].PriceType,
+                   this->m_ListDataChoTroi[aIndex][i].Price);
+            return;
           }
 
           gNotice.GCNoticeSend(
@@ -1188,7 +1411,8 @@ void BCustomChoTroi::DGAnsItemStatus(CUSTOM_LOAD_COUNT *lpMsg) {
     }
     int ItemPrice = lpInfo->PriceValue;
     int ItemPriceType = lpInfo->PriceType;
-    if (ItemPriceType < eMarketPriceWC || ItemPriceType > eMarketPriceC) {
+    CHOTROI_CURRENCY_INFO *currency = this->GetCurrencyInfo(ItemPriceType);
+    if (currency == 0 || currency->Enable == 0) {
       continue;
     }
 
@@ -1196,39 +1420,26 @@ void BCustomChoTroi::DGAnsItemStatus(CUSTOM_LOAD_COUNT *lpMsg) {
     int CoinAfterTax =
         lpInfo->PriceValue - ((lpInfo->PriceValue * RateTax) / 100);
 
-    //===Cong Coin
-    if (ItemPriceType == eMarketPriceWC) {
-      GDSetCoinSend(lpUser->Index, +CoinAfterTax, 0, 0, "ChoTroi + WCoinC");
-      gCashShop.CGCashShopPointRecv(lpUser->Index);
-    } else if (ItemPriceType == eMarketPriceWP) {
-      GDSetCoinSend(lpUser->Index, 0, +CoinAfterTax, 0, "ChoTroi + WCoinP");
-      gCashShop.CGCashShopPointRecv(lpUser->Index);
-    } else if (ItemPriceType == eMarketPriceGP) {
-      GDSetCoinSend(lpUser->Index, 0, 0, +CoinAfterTax, "ChoTroi + GobinP");
-      gCashShop.CGCashShopPointRecv(lpUser->Index);
+    if (!ChoTroi_CreditCurrency(lpUser->Index, currency, CoinAfterTax)) {
+      LogAdd(LOG_RED,
+             "[ChoTroi] Credit currency failed Seller=%s PriceType=%d "
+             "Value=%d",
+             lpUser->Name, ItemPriceType, CoinAfterTax);
+      continue;
     }
-
-    else if (ItemPriceType == eMarketPriceB) {
-      ChoTroi_AddJewel(lpUser->Index, 7181, CoinAfterTax);
-    } else if (ItemPriceType == eMarketPriceS) {
-      ChoTroi_AddJewel(lpUser->Index, 7182, CoinAfterTax);
-    } else if (ItemPriceType == eMarketPriceC) {
-      ChoTroi_AddJewel(lpUser->Index, 6159, CoinAfterTax);
-    }
-    //===
 
     gNotice.GCNoticeSend(
         lpUser->Index, eMessageBox, 0, 0, 0, 0, 0,
         "[Cho Troi] Da ban %s: +%d %s (Thue %d%%)",
         gItemLevel.GetItemName(item.m_Index, item.m_Level), CoinAfterTax,
-        TypeCoin[ItemPriceType], RateTax);
+        this->GetCurrencyName(ItemPriceType), RateTax);
     this->GuiThuThongBao(
         lpUser, this->GetMessage(10),
         "=====[Successfully Sold]===== \n- TAX %d%% (%s) += %d \n- %s (Price: "
         "%d [%s])",
-        RateTax, TypeCoin[ItemPriceType], CoinAfterTax,
+        RateTax, this->GetCurrencyName(ItemPriceType), CoinAfterTax,
         gItemLevel.GetItemName(item.m_Index, item.m_Level), ItemPrice,
-        TypeCoin[ItemPriceType]);
+        this->GetCurrencyName(ItemPriceType));
     /*this->GuiThuThongBao(
         lpUser, this->GetMessage(10),
         "[Cho Troi] Ban vat pham [%s] voi gia %d %s.",
@@ -1243,7 +1454,7 @@ void BCustomChoTroi::DGAnsItemStatus(CUSTOM_LOAD_COUNT *lpMsg) {
         "%03d, SocketOption: %03d, %03d, %03d, %03d, %03d)",
         lpUser->Account, lpUser->Name,
         gItemLevel.GetItemName(item.m_Index, item.m_Level), item.m_Index,
-        ItemPrice, TypeCoin[ItemPriceType], item.m_Level, item.m_Serial,
+        ItemPrice, this->GetCurrencyName(ItemPriceType), item.m_Level, item.m_Serial,
         item.m_Option1, item.m_Option2, item.m_Option3, item.m_NewOption,
         item.m_JewelOfHarmonyOption, item.m_ItemOptionEx,
         item.m_SocketOption[0], item.m_SocketOption[1], item.m_SocketOption[2],
