@@ -11637,10 +11637,13 @@ void RenderPartObjectBodyColor2(BMD* b, OBJECT* o, int Type, float Alpha, int Re
 
 void NextGradeObjectRender(CHARACTER* c)
 {
-	const int blinkPhase = ((int)(WorldTime / 500.0f)) & 1;
-	if (blinkPhase != 0)
+	if (g_iCrowdVisiblePlayerCount >= 24)
 	{
-		return;
+		const int blinkPhase = ((int)(WorldTime / 2000.0f)) & 1;
+		if (blinkPhase != 0)
+		{
+			return;
+		}
 	}
 
 	int weaponIndex;
