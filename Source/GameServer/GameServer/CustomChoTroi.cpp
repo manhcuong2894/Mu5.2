@@ -428,7 +428,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   if (lpMsg->ItemPrice < 0) {
     return;
   }
-  if (lpMsg->ItemPriceType < eMarketPriceWC &&
+  if (lpMsg->ItemPriceType < eMarketPriceWC ||
       lpMsg->ItemPriceType > eMarketPriceC) {
     return;
   }
@@ -507,6 +507,7 @@ void BCustomChoTroi::CGReqItemSell(PMSG_REQ_MARKET_SELL *lpMsg, int aIndex) {
   if (lpUser->CH_IndexItem[0] == -1) {
     gNotice.GCNoticeSend(aIndex, eMessageBox, 0, 0, 0, 0, 0,
                          this->GetMessage(1)); //
+    ChoTroiSendClientCacheState(aIndex, 0);
     return;
   }
   if (ItemPriceType < 1 || ItemPriceType > 6 || ItemPrice < 1) {

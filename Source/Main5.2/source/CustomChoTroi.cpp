@@ -1856,7 +1856,7 @@ bool CustomChoTroi::SendItemRaoBan(ITEM *ItemSell, int Slot, bool KeyClick) {
 
     gCusChoTroi.ItemCacheSelect = pSellCacheItem;
     gCusChoTroi.ItemCacheTime = currentTick;
-    gCusChoTroi.ItemCacheShow = true;
+    gCusChoTroi.ItemCacheShow = false;
     ChoTroiOwnsSellCacheItem = true;
     ChoTroiSellCacheSourceSlot = Slot;
     CacheItemRaoBan = 1;
