@@ -3186,46 +3186,10 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 			VectorCopy(o->Angle, SkillAngle);
 
 			CHARACTER* pTargetCharacter = gmCharacters->GetCharacter(c->TargetCharacter);
-			float fTargetDistance = 940.0f;
 			if (pTargetCharacter && pTargetCharacter->Object.Live)
 			{
 				OBJECT* pTargetObject = &pTargetCharacter->Object;
 				SkillAngle[2] = CreateAngle(o->Position[0], o->Position[1], pTargetObject->Position[0], pTargetObject->Position[1]);
-				float fDeltaX = pTargetObject->Position[0] - o->Position[0];
-				float fDeltaY = pTargetObject->Position[1] - o->Position[1];
-				fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
-			}
-
-			if (c->AttackTime > 1 && c->AttackTime <= 10 && o->CurrentAction == PLAYER_HIT_ONETOONE)
-			{
-				const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
-				const float fSin = sinf(fAngle);
-				const float fCos = cosf(fAngle);
-				float fPhase = (float)(((double)c->AttackTime - 1.0) / 9.0);
-
-				if (fPhase < 0.0f)
-					fPhase = 0.0f;
-				else if (fPhase > 1.0f)
-					fPhase = 1.0f;
-
-				float fStartDistance = min(180.0f, fTargetDistance * 0.35f);
-				float fDistance = fStartDistance + (fPhase * (fTargetDistance - fStartDistance));
-				float fHalfWidth = 8.0f + (fPhase * 235.0f);
-				int fanCount = (int)(fPhase * 4.0f);
-
-				for (int k = -fanCount; k <= fanCount; ++k)
-				{
-					vec3_t Position;
-					float fSide = (fanCount == 0) ? 0.0f : (fHalfWidth * ((float)k / (float)fanCount));
-
-					VectorCopy(o->Position, Position);
-					Position[0] += (-fDistance * fSin);
-					Position[1] += (fDistance * fCos);
-					Position[0] += (fSide * fCos);
-					Position[1] += (fSide * fSin);
-					Position[2] += 125.0f;
-					CreateJointSync(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, o, 34.0f);
-				}
 			}
 
 			if (c->AttackTime <= 8 && o->CurrentAction == PLAYER_HIT_ONETOONE)

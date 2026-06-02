@@ -69,7 +69,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 			}
-			else if (MODEL_SPEARSKILL == Type && o->SubType == 2)
+			else if (MODEL_SPEARSKILL == Type && (o->SubType == 2 || o->SubType == 52))
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 				o->Target = Target;
@@ -1523,7 +1523,8 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				VectorCopy(o->Position, o->TargetPosition);
 				break;
 			case MODEL_SPEARSKILL:
-				VectorCopy(o->Target->Position, o->TargetPosition);
+				if (o->SubType != 52)
+					VectorCopy(o->Target->Position, o->TargetPosition);
 				switch (o->SubType)
 				{
 				case 0:
@@ -1765,6 +1766,16 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					o->LifeTime = 20 + rand() % 10;
 
 					Vector(0.f, 0.f, 1.f, o->Light);
+				}
+				else if (o->SubType == 52)
+				{
+					VectorCopy(o->Position, o->StartPosition);
+					o->LifeTime = 12;
+					o->MaxTails = 0;
+					o->NumTails = -1;
+					o->Velocity = 0.f;
+					o->m_bCreateTails = false;
+					o->Scale = Scale;
 				}
 				else if (o->SubType == 2 || o->SubType == 24 || o->SubType == 50 || o->SubType == 51)
 				{
@@ -4382,6 +4393,42 @@ void MoveJoint(JOINT* o, int iIndex)
 					}
 				}
 			}
+		}
+		if (o->SubType == 52)
+		{
+			const float fTotalLife = 12.0f;
+			float fPhase = (fTotalLife - (float)o->LifeTime) / (fTotalLife - 1.0f);
+
+			if (fPhase < 0.0f)
+				fPhase = 0.0f;
+			else if (fPhase > 1.0f)
+				fPhase = 1.0f;
+
+			float fDeltaX = o->TargetPosition[0] - o->StartPosition[0];
+			float fDeltaY = o->TargetPosition[1] - o->StartPosition[1];
+			float fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
+			float fStartDistance = min(120.0f, fTargetDistance * 0.25f);
+			float fDistance = fStartDistance + (fPhase * (fTargetDistance - fStartDistance));
+			float fHalfWidth = 8.0f + (fPhase * 235.0f);
+			int fanCount = (int)(fPhase * 4.0f);
+			float fAngle = o->Angle[2] * Q_PI / 180.0f;
+			float fSin = sinf(fAngle);
+			float fCos = cosf(fAngle);
+
+			for (int k = -fanCount; k <= fanCount; ++k)
+			{
+				vec3_t Position;
+				float fSide = (fanCount == 0) ? 0.0f : (fHalfWidth * ((float)k / (float)fanCount));
+
+				VectorCopy(o->StartPosition, Position);
+				Position[0] += (-fDistance * fSin);
+				Position[1] += (fDistance * fCos);
+				Position[0] += (fSide * fCos);
+				Position[1] += (fSide * fSin);
+				Position[2] += 125.0f;
+				CreateJoint(MODEL_SPEARSKILL, Position, Position, o->Angle, 2, o->Target, 34.0f);
+			}
+			break;
 		}
 		if (o->SubType == 2)
 		{

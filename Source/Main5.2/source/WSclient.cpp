@@ -135,44 +135,28 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
       targetObject = &targetCharacter->Object;
   }
 
-  float fTargetDistance = 940.0f;
   if (targetObject && targetObject->Live)
   {
     SkillAngle[2] = CreateAngle(so->Position[0], so->Position[1], targetObject->Position[0], targetObject->Position[1]);
-    float fDeltaX = targetObject->Position[0] - so->Position[0];
-    float fDeltaY = targetObject->Position[1] - so->Position[1];
-    fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
   }
 
   const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  const int segmentCount = 4;
-  for (int j = 0; j < segmentCount; ++j)
+  vec3_t TargetPosition;
+  if (targetObject && targetObject->Live)
   {
-    float fRatio = (float)j / (float)(segmentCount - 1);
-    float fStartDistance = min(120.0f, fTargetDistance * 0.25f);
-    float fEndDistance = min(270.0f, fTargetDistance * 0.45f);
-    float fDistance = fStartDistance + (fRatio * (fEndDistance - fStartDistance));
-    float fHalfWidth = 8.0f + (fRatio * 45.0f);
-    int fanCount = j / 2;
-
-    for (int k = -fanCount; k <= fanCount; ++k)
-    {
-      vec3_t Position;
-      float fSide = (fanCount == 0) ? 0.0f : (fHalfWidth * ((float)k / (float)fanCount));
-
-      VectorCopy(so->Position, Position);
-      Position[0] += (-fDistance * fSin);
-      Position[1] += (fDistance * fCos);
-      Position[0] += (fSide * fCos);
-      Position[1] += (fSide * fSin);
-      Position[2] += 125.0f;
-
-      CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, 38.0f);
-    }
+    VectorCopy(targetObject->Position, TargetPosition);
   }
+  else
+  {
+    VectorCopy(so->Position, TargetPosition);
+    TargetPosition[0] += (-940.0f * fSin);
+    TargetPosition[1] += (940.0f * fCos);
+  }
+
+  CreateJoint(MODEL_SPEARSKILL, so->Position, TargetPosition, SkillAngle, 52, so, 1.0f);
 }
 BYTE Version[SIZE_PROTOCOLVERSION] = {'1' + 1, '0' + 2, '4' + 3, '0' + 4,
                                       '5' + 5};
