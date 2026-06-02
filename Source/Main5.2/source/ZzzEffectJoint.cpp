@@ -69,7 +69,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 			}
-			else if (MODEL_SPEARSKILL == Type && (o->SubType == 2 || o->SubType == 52))
+			else if (MODEL_SPEARSKILL == Type && o->SubType == 2)
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 				o->Target = Target;
@@ -140,7 +140,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				bCreateStartTail = false;
 			}
 
-			if (Type == MODEL_SPEARSKILL && (o->SubType == 5 || o->SubType == 6 || o->SubType == 7 || o->SubType == 52))
+			if (Type == MODEL_SPEARSKILL && (o->SubType == 5 || o->SubType == 6 || o->SubType == 7))
 			{
 				bCreateStartTail = false;
 			}
@@ -1523,8 +1523,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				VectorCopy(o->Position, o->TargetPosition);
 				break;
 			case MODEL_SPEARSKILL:
-				if (o->SubType != 52)
-					VectorCopy(o->Target->Position, o->TargetPosition);
+				VectorCopy(o->Target->Position, o->TargetPosition);
 				switch (o->SubType)
 				{
 				case 0:
@@ -1555,8 +1554,12 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					break;
 				case 2:
 					VectorCopy(TargetPosition, o->TargetPosition);
+					if (o->Target)
+						VectorCopy(o->Target->m_vPosSword, o->StartPosition);
+					else
+						VectorCopy(o->Position, o->StartPosition);
 					Vector(1.0f, 0.3f, 0.3f, o->Light);
-					o->LifeTime = 20;
+					o->LifeTime = (Scale >= 10.0f && Scale <= 20.0f) ? Scale : 20.0f;
 					o->MaxTails = 5;
 					o->TexType = BITMAP_FLARE_FORCE;
 					break;
@@ -1609,15 +1612,6 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 
 					o->NumTails = -1;
 					CreateTail(o, Matrix);
-					break;
-				case 52:
-					VectorCopy(o->Position, o->StartPosition);
-					o->LifeTime = 18;
-					o->MaxTails = 0;
-					o->NumTails = -1;
-					o->Velocity = 0.f;
-					o->m_bCreateTails = false;
-					o->Scale = Scale;
 					break;
 				case 8:
 					o->RenderFace = RENDER_FACE_ONE;
@@ -4393,54 +4387,6 @@ void MoveJoint(JOINT* o, int iIndex)
 				}
 			}
 		}
-		if (o->SubType == 52)
-		{
-			const float fTotalLife = 18.0f;
-			float fPhase = (fTotalLife - (float)o->LifeTime) / (fTotalLife - 1.0f);
-
-			if (fPhase < 0.0f)
-				fPhase = 0.0f;
-			else if (fPhase > 1.0f)
-				fPhase = 1.0f;
-
-			float fDeltaX = o->TargetPosition[0] - o->StartPosition[0];
-			float fDeltaY = o->TargetPosition[1] - o->StartPosition[1];
-			float fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
-			float fStartDistance = min(85.0f, fTargetDistance * 0.16f);
-			float fMaxWidth = min(185.0f, max(45.0f, fTargetDistance * 0.22f));
-			float fAngle = o->Angle[2] * Q_PI / 180.0f;
-			float fSin = sinf(fAngle);
-			float fCos = cosf(fAngle);
-
-			for (int j = 0; j < 3; ++j)
-			{
-				float fTrailPhase = fPhase - ((float)j * 0.055f);
-				if (fTrailPhase < 0.0f)
-					continue;
-
-				float fDistance = fStartDistance + (fTrailPhase * (fTargetDistance - fStartDistance));
-				float fHalfWidth = 6.0f + (fTrailPhase * fMaxWidth);
-				float fScale = 31.0f - ((float)j * 3.0f);
-
-				for (int k = -1; k <= 1; ++k)
-				{
-					if (k == 0 && fTrailPhase > 0.18f && j != 0)
-						continue;
-
-					vec3_t Position;
-					float fSide = (float)k * fHalfWidth;
-
-					VectorCopy(o->StartPosition, Position);
-					Position[0] += (-fDistance * fSin);
-					Position[1] += (fDistance * fCos);
-					Position[0] += (fSide * fCos);
-					Position[1] += (fSide * fSin);
-					Position[2] += 125.0f;
-					CreateJoint(MODEL_SPEARSKILL, Position, Position, o->Angle, 8, o->Target, fScale);
-				}
-			}
-			break;
-		}
 		if (o->SubType == 2)
 		{
 			if (!o->Target || !o->Target->Live)
@@ -4453,16 +4399,16 @@ void MoveJoint(JOINT* o, int iIndex)
 			float fRate1 = max(0.0f, min(((float)o->LifeTime - 10) / (float)10, 1.0f));
 			float fRate2 = 1.0f - fRate1;
 
-			vec3_t MagicPos, TargetPos;
+			vec3_t MagicPos, StartPos;
 
 			GetMagicScrew(iIndex * 17721, MagicPos, (1.4f));
-			VectorScale(MagicPos, (300.0f), MagicPos);
+			VectorScale(MagicPos, (90.0f), MagicPos);
 			VectorAdd(MagicPos, o->TargetPosition, MagicPos);
-			VectorCopy(o->Target->m_vPosSword, TargetPos);
+			VectorCopy(o->StartPosition, StartPos);
 
 			for (int i = 0; i < 3; ++i)
 			{
-				o->Position[i] = fRate2 * TargetPos[i] + fRate1 * MagicPos[i];
+				o->Position[i] = fRate1 * StartPos[i] + fRate2 * MagicPos[i];
 			}
 		}
 		else if (o->SubType == 3)

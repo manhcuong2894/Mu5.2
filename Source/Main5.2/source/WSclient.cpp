@@ -144,19 +144,48 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  vec3_t TargetPosition;
+  float fTargetDistance = 900.0f;
   if (targetObject && targetObject->Live)
   {
-    VectorCopy(targetObject->Position, TargetPosition);
-  }
-  else
-  {
-    VectorCopy(so->Position, TargetPosition);
-    TargetPosition[0] += (-900.0f * fSin);
-    TargetPosition[1] += (900.0f * fCos);
+    const float fDeltaX = targetObject->Position[0] - so->Position[0];
+    const float fDeltaY = targetObject->Position[1] - so->Position[1];
+    fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
+    fTargetDistance = max(360.0f, min(fTargetDistance, 900.0f));
   }
 
-  CreateJoint(MODEL_SPEARSKILL, so->Position, TargetPosition, SkillAngle, 52, so, 1.0f);
+  const int segmentCount = 14;
+  for (int j = 0; j < segmentCount; ++j)
+  {
+    float fRatio = (float)(j + 1) / (float)segmentCount;
+    float fDistance = 70.0f + (fRatio * (fTargetDistance - 70.0f));
+    float fHalfWidth = 10.0f + (fRatio * min(170.0f, fTargetDistance * 0.2f));
+    float fLifeTime = 19.5f - (fRatio * 5.0f);
+    float fLanes[5] = { -1.0f, 1.0f, -0.45f, 0.45f, 0.0f };
+    int laneCount = 2;
+
+    if (j > 3 && j % 3 != 0)
+      laneCount = 4;
+    else if (j == 0 || j % 2 == 0 || j == segmentCount - 1)
+    {
+      fLanes[2] = 0.0f;
+      laneCount = 3;
+    }
+
+    for (int k = 0; k < laneCount; ++k)
+    {
+      vec3_t Position;
+      float fSide = fHalfWidth * fLanes[k];
+
+      VectorCopy(so->Position, Position);
+      Position[0] += (-fDistance * fSin);
+      Position[1] += (fDistance * fCos);
+      Position[0] += (fSide * fCos);
+      Position[1] += (fSide * fSin);
+      Position[2] += 125.0f;
+
+      CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, fLifeTime);
+    }
+  }
 }
 BYTE Version[SIZE_PROTOCOLVERSION] = {'1' + 1, '0' + 2, '4' + 3, '0' + 4,
                                       '5' + 5};
