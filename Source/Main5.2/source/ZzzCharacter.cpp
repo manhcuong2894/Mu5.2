@@ -3184,17 +3184,17 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 
 			if (c->AttackTime > 2 && c->AttackTime <= 8)
 			{
-				for (int j = 0; j < 3; ++j)
+				for (int j = 0; j < 5; ++j)
 				{
 					vec3_t CurPos, TempPos;
 					VectorCopy(o->Position, CurPos);
-					CurPos[2] += 120.0f;
+					CurPos[2] += 110.0f + (float)(rand() % 50);
 
-					GetNearRandomPos(CurPos, 300, TempPos);
-					float fDistance = 1400.0f;
+					GetNearRandomPos(CurPos, 380, TempPos);
+					float fDistance = 1320.0f + (float)(rand() % 220);
 					TempPos[0] += (-fDistance * sinf(o->Angle[2] * Q_PI / 180.0f));
 					TempPos[1] += (fDistance * cosf(o->Angle[2] * Q_PI / 180.0f));
-					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, o->Angle, 2, o, 40.0f);
+					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, o->Angle, 2, o, 42.0f);
 				}
 			}
 			if (c->AttackTime <= 8)
@@ -3228,6 +3228,9 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 					vec3_t Light = { 1.0f, 1.0f, 1.0f };
 					CreateEffectSync(MODEL_SPEAR, Position, o->Angle, Light, 1, o);
 					CreateEffectSync(MODEL_SPEAR, Position, o->Angle, Light, 1, o);
+					CreateParticleSync(BITMAP_LIGHT, Position, o->Angle, Light, 5, 1.2f);
+					CreateParticleSync(BITMAP_SPARK + 1, Position, o->Angle, Light, 11, 1.5f);
+					CreateParticleSync(BITMAP_SPARK + 1, Position, o->Angle, Light, 11, 1.2f);
 
 					CHARACTER* tc = gmCharacters->GetCharacter(c->TargetCharacter);
 
