@@ -3184,16 +3184,19 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 
 			if (c->AttackTime > 2 && c->AttackTime <= 8)
 			{
+				const float fAngle = o->Angle[2] * Q_PI / 180.0f;
+				const float fSin = sinf(fAngle);
+				const float fCos = cosf(fAngle);
+
 				for (int j = 0; j < 8; ++j)
 				{
-					vec3_t CurPos, TempPos;
-					VectorCopy(o->Position, CurPos);
-					CurPos[2] += 115.0f + (float)(rand() % 25);
+					vec3_t TempPos;
+					float fDistance = 1280.0f + (float)(j * 34) + (float)((c->AttackTime - 3) * 12);
 
-					GetNearRandomPos(CurPos, 220, TempPos);
-					float fDistance = 1360.0f + (float)(rand() % 120);
-					TempPos[0] += (-fDistance * sinf(o->Angle[2] * Q_PI / 180.0f));
-					TempPos[1] += (fDistance * cosf(o->Angle[2] * Q_PI / 180.0f));
+					VectorCopy(o->Position, TempPos);
+					TempPos[0] += (-fDistance * fSin);
+					TempPos[1] += (fDistance * fCos);
+					TempPos[2] += 125.0f;
 					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, o->Angle, 2, o, 34.0f);
 				}
 			}
