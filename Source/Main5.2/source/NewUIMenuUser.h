@@ -1,6 +1,7 @@
 #pragma once
 #include "NewUIBase.h"
 #include "NewUIManager.h"
+#include "NewUIScrollBar.h"
 
 
 namespace SEASON3B
@@ -10,6 +11,7 @@ namespace SEASON3B
 	private:
 		CNewUIManager* m_pNewUIMng;
 		POINT m_Pos;
+		CNewUIScrollBarHTML m_MenuScrollBar;
 	public:
 		CNewUIMenuUser();
 		virtual~CNewUIMenuUser();

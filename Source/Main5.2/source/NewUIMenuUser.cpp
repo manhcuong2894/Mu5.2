@@ -29,6 +29,7 @@ struct MenuEntry {
 };
 
 const int kMenuMaxEntries = 8;
+const int kMenuVisibleEntries = 5;
 const float kMenuWindowWidth = 214.0f;
 const float kMenuWindowHeight = 248.0f;
 const float kMenuContentX = 8.0f;
@@ -47,6 +48,7 @@ const float kMenuFooterY = 212.0f;
 const float kMenuCloseOffsetX = 187.0f;
 const float kMenuCloseOffsetY = 5.0f;
 const float kMenuCloseSize = 36.0f;
+const float kMenuScrollX = 199.0f;
 
 const char *ResolveMenuUserText(int index, const char *fallback) {
   const char *text = gTextClient.txtClient_MenuUser[index];
@@ -59,19 +61,23 @@ const char *ResolveMenuUserText(int index, const char *fallback) {
 }
 
 float GetMenuWindowHeight(int entryCount) {
-  if (entryCount <= 5) {
+  if (entryCount <= kMenuVisibleEntries) {
     return kMenuWindowHeight;
   }
 
-  return kMenuWindowHeight + ((entryCount - 5) * kMenuEntryStep);
+  return kMenuWindowHeight;
 }
 
 float GetMenuContentHeight(int entryCount) {
-  if (entryCount <= 5) {
+  if (entryCount <= kMenuVisibleEntries) {
     return kMenuContentHeight;
   }
 
-  return kMenuContentHeight + ((entryCount - 5) * kMenuEntryStep);
+  return kMenuContentHeight;
+}
+
+int GetVisibleMenuEntryCount(int entryCount) {
+  return (entryCount > kMenuVisibleEntries) ? kMenuVisibleEntries : entryCount;
 }
 
 void GetCenteredMenuPosition(float windowWidth, float windowHeight, float &x,
@@ -228,9 +234,39 @@ bool SEASON3B::CNewUIMenuUser::UpdateMouseEvent() {
                        : (float)m_Pos.y);
   MenuEntry entries[kMenuMaxEntries];
   int entryCount = BuildMenuEntries(entries, kMenuMaxEntries);
+  int visibleCount = GetVisibleMenuEntryCount(entryCount);
   float menuWindowHeight = GetMenuWindowHeight(entryCount);
 
   GetCenteredMenuPosition(kMenuWindowWidth, menuWindowHeight, windowX, windowY);
+
+  int scrollOffset = 0;
+  if (entryCount > visibleCount) {
+    const int maxScroll = entryCount - visibleCount;
+    m_MenuScrollBar.SetPos((int)(windowX + kMenuScrollX),
+                           (int)(windowY + kMenuEntryY));
+    m_MenuScrollBar.SetMaxPos(maxScroll);
+    if (m_MenuScrollBar.GetCurPos() > maxScroll) {
+      m_MenuScrollBar.SetCurPos(maxScroll);
+    }
+
+    if (SEASON3B::CheckMouseIn(windowX + kMenuEntryX, windowY + kMenuEntryY,
+                               kMenuEntryWidth + 14.0f,
+                               kMenuEntryStep * visibleCount)) {
+      if (MouseWheel < 0) {
+        MouseWheel = 0;
+        m_MenuScrollBar.SetCurPos(m_MenuScrollBar.GetCurPos() + 1);
+      } else if (MouseWheel > 0) {
+        MouseWheel = 0;
+        m_MenuScrollBar.SetCurPos(m_MenuScrollBar.GetCurPos() - 1);
+      }
+    }
+
+    m_MenuScrollBar.UpdateMouseEvent();
+    m_MenuScrollBar.Update();
+    scrollOffset = m_MenuScrollBar.GetCurPos();
+  } else {
+    m_MenuScrollBar.SetCurPos(0);
+  }
 
   if (SEASON3B::CheckMouseIn(windowX + kMenuCloseOffsetX,
                              windowY + kMenuCloseOffsetY, kMenuCloseSize,
@@ -238,13 +274,14 @@ bool SEASON3B::CNewUIMenuUser::UpdateMouseEvent() {
     return false;
   }
 
-  for (int i = 0; i < entryCount; ++i) {
-    float entryY = windowY + kMenuEntryY + (i * kMenuEntryStep);
+  for (int row = 0; row < visibleCount; ++row) {
+    const int entryIndex = scrollOffset + row;
+    float entryY = windowY + kMenuEntryY + (row * kMenuEntryStep);
 
     if (SEASON3B::CheckMouseIn(windowX + kMenuEntryX, entryY, kMenuEntryWidth,
                                kMenuEntryHeight)) {
       if (SEASON3B::IsRelease(VK_LBUTTON)) {
-        ExecuteMenuAction(entries[i].ActionId);
+        ExecuteMenuAction(entries[entryIndex].ActionId);
       }
 
       return false;
@@ -298,6 +335,10 @@ void SEASON3B::CNewUIMenuUser::OpenningProcess() {
 
   ApplyCenteredMenuPosition(kMenuWindowWidth, menuWindowHeight, windowX,
                             windowY);
+  m_MenuScrollBar.Create((int)(windowX + kMenuScrollX),
+                         (int)(windowY + kMenuEntryY),
+                         (int)(kMenuEntryStep * kMenuVisibleEntries));
+  m_MenuScrollBar.SetCurPos(0);
   SetPos(windowX, windowY);
   gInterface->Data[eWindowMenuUser].Open();
   gInterface->Data[eWindowMenuUser].AllowMove = false;
@@ -337,6 +378,12 @@ void SEASON3B::CNewUIMenuUser::RenderTexte() {
   float windowY = (float)m_Pos.y;
   MenuEntry entries[kMenuMaxEntries];
   int entryCount = BuildMenuEntries(entries, kMenuMaxEntries);
+  int visibleCount = GetVisibleMenuEntryCount(entryCount);
+  int scrollOffset = 0;
+
+  if (entryCount > visibleCount) {
+    scrollOffset = m_MenuScrollBar.GetCurPos();
+  }
 
   g_pRenderText->SetBgColor(0);
   g_pRenderText->SetFont(g_hFontBold);
@@ -355,8 +402,9 @@ void SEASON3B::CNewUIMenuUser::RenderTexte() {
                        gTextClient.txtClient_MenuUser[8]);
   }
 
-  for (int i = 0; i < entryCount; ++i) {
-    float entryY = windowY + kMenuEntryY + (i * kMenuEntryStep);
+  for (int row = 0; row < visibleCount; ++row) {
+    const int entryIndex = scrollOffset + row;
+    float entryY = windowY + kMenuEntryY + (row * kMenuEntryStep);
     DWORD textColor = (SEASON3B::CheckMouseIn(windowX + kMenuEntryX, entryY,
                                               kMenuEntryWidth, kMenuEntryHeight)
                            ? 0xFFF2C28C
@@ -364,7 +412,7 @@ void SEASON3B::CNewUIMenuUser::RenderTexte() {
 
     SEASON3B::TextDraw((HFONT)g_hFontBold, (int)(windowX + kMenuEntryX + 10.0f),
                        (int)(entryY + 5.0f), textColor, 0x0, 0, 0, 1, "%s",
-                       entries[i].Label);
+                       entries[entryIndex].Label);
   }
 
   // SEASON3B::TextDraw((HFONT)g_hFont, (int)(windowX + kMenuHeaderX),
@@ -377,11 +425,23 @@ void SEASON3B::CNewUIMenuUser::RenderButtons() {
   float windowY = (float)m_Pos.y;
   MenuEntry entries[kMenuMaxEntries];
   int entryCount = BuildMenuEntries(entries, kMenuMaxEntries);
+  int visibleCount = GetVisibleMenuEntryCount(entryCount);
+  int scrollOffset = (entryCount > visibleCount) ? m_MenuScrollBar.GetCurPos() : 0;
 
-  for (int i = 0; i < entryCount; ++i) {
-    float entryY = windowY + kMenuEntryY + (i * kMenuEntryStep);
+  for (int row = 0; row < visibleCount; ++row) {
+    float entryY = windowY + kMenuEntryY + (row * kMenuEntryStep);
     RenderButton(windowX + kMenuEntryX, entryY, kMenuEntryWidth,
                  kMenuEntryHeight);
+  }
+
+  if (entryCount > visibleCount) {
+    m_MenuScrollBar.SetPos((int)(windowX + kMenuScrollX),
+                           (int)(windowY + kMenuEntryY));
+    m_MenuScrollBar.SetMaxPos(entryCount - visibleCount);
+    if (scrollOffset > entryCount - visibleCount) {
+      m_MenuScrollBar.SetCurPos(entryCount - visibleCount);
+    }
+    m_MenuScrollBar.Render();
   }
 }
 
