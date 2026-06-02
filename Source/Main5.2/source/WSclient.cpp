@@ -144,28 +144,28 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  const int segmentCount = 42;
+  const int segmentCount = 16;
   for (int j = 0; j < segmentCount; ++j)
   {
-    vec3_t Position;
-    float fRatio = 0.08f + (((float)j / (float)(segmentCount - 1)) * 0.92f);
+    float fRatio = (float)j / (float)(segmentCount - 1);
+    float fDistance = 120.0f + (fRatio * 780.0f);
+    float fHalfWidth = 12.0f + (fRatio * 235.0f);
+    int fanCount = j / 3;
 
-    if (targetObject && targetObject->Live)
+    for (int k = -fanCount; k <= fanCount; ++k)
     {
-      Position[0] = so->Position[0] + ((targetObject->Position[0] - so->Position[0]) * fRatio);
-      Position[1] = so->Position[1] + ((targetObject->Position[1] - so->Position[1]) * fRatio);
-      Position[2] = so->Position[2] + ((targetObject->Position[2] - so->Position[2]) * fRatio) + 125.0f;
-    }
-    else
-    {
-      float fDistance = 120.0f + (float)(j * 22);
+      vec3_t Position;
+      float fSide = (fanCount == 0) ? 0.0f : (fHalfWidth * ((float)k / (float)fanCount));
+
       VectorCopy(so->Position, Position);
       Position[0] += (-fDistance * fSin);
       Position[1] += (fDistance * fCos);
+      Position[0] += (fSide * fCos);
+      Position[1] += (fSide * fSin);
       Position[2] += 125.0f;
-    }
 
-    CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, 38.0f);
+      CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, 38.0f);
+    }
   }
 }
 BYTE Version[SIZE_PROTOCOLVERSION] = {'1' + 1, '0' + 2, '4' + 3, '0' + 4,
