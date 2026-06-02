@@ -1,6 +1,7 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "AntiLagManager.h"
 #include "ZzzOpenglUtil.h"
 #include "ZzzBMD.h"
 #include "ZzzInfomation.h"
@@ -3920,6 +3921,11 @@ bool ForceRenderObject(OBJECT* o)
 
 void RenderObjects()
 {
+	if (AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
+	{
+		return;
+	}
+
 	float range = 0.f;
 
 	int iMapIndex = gMapManager->FindMapIndex();
@@ -4186,6 +4192,11 @@ LABEL_100:
 
 void RenderObjects_AfterCharacter()
 {
+	if (AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
+	{
+		return;
+	}
+
 	int iMapIndex = gMapManager->FindMapIndex();
 
 	if ((iMapIndex == WD_37KANTURU_1ST || iMapIndex == WD_38KANTURU_2ND || iMapIndex == WD_39KANTURU_3RD
@@ -7719,6 +7730,11 @@ void ItemHeight(int Type, BMD* b)
 
 void RenderItems()
 {
+	if (AntiLag_IsHidden(ANTI_LAG_HIDE_ITEMS))
+	{
+		return;
+	}
+
 	for (int i = 0; i < MAX_ITEMS; i++)
 	{
 		OBJECT* o = &Items[i].Object;

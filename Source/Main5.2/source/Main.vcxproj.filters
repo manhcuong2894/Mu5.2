@@ -505,6 +505,9 @@
     <ClCompile Include="ZzzAI.cpp">
       <Filter>MU\Client\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AntiLagManager.cpp">
+      <Filter>MU\Client\Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ZzzBMD.cpp">
       <Filter>MU\Client\Source Files</Filter>
     </ClCompile>
@@ -1810,6 +1813,9 @@
       <Filter>MU\Client\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ZzzAI.h">
+      <Filter>MU\Client\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AntiLagManager.h">
       <Filter>MU\Client\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ZzzBMD.h">

@@ -6,6 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "AntiLagManager.h"
 #include "_enum.h"
 #include <eh.h>
 #include "UIManager.h"
@@ -11631,7 +11632,8 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 		}
 	}
 
-	giPetManager::RenderPet(c);
+	if (!AntiLag_IsHidden(ANTI_LAG_HIDE_PETS))
+		giPetManager::RenderPet(c);
 
 	if (c->GetBaseClass() == CLASS_SUMMONER)
 	{
@@ -11661,7 +11663,7 @@ void RenderCharactersClient()
 	++g_uiCrowdAnimationFrameId;
 
 	const bool prioritizeHeroEffects = (Hero != NULL && g_iCrowdVisiblePlayerCount >= 24);
-	if (prioritizeHeroEffects)
+	if (prioritizeHeroEffects && !AntiLag_IsHidden(ANTI_LAG_HIDE_CHARACTER))
 	{
 		OBJECT* heroObject = &Hero->Object;
 
@@ -11743,6 +11745,13 @@ void RenderCharactersClient()
 		{
 			if (o->Visible)
 			{
+				if ((AntiLag_IsHidden(ANTI_LAG_HIDE_CHARACTER) && o->Kind == KIND_PLAYER)
+					|| (AntiLag_IsHidden(ANTI_LAG_HIDE_MONSTER) && o->Kind == KIND_MONSTER)
+					|| (AntiLag_IsHidden(ANTI_LAG_HIDE_PETS) && o->Kind == KIND_PET))
+				{
+					continue;
+				}
+
 				RenderCharacter(c, o, (i == SelectedCharacter || i == SelectedNpc));
 
 				if (o->Type == MODEL_PLAYER)
@@ -15344,7 +15353,7 @@ bool RenderCharacterBackItem(CHARACTER* c, OBJECT* o, bool bTranslate)
 		{
 			int iType = c->Wing.Type;
 
-			if (iType != -1)
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_WINGS) && iType != -1)
 			{
 				PART_t* w = &c->Wing;
 
@@ -15371,7 +15380,7 @@ bool RenderCharacterBackItem(CHARACTER* c, OBJECT* o, bool bTranslate)
 
 #ifdef SHUTDOWN_CORE_WING4
 				iType = c->Core.Type;
-				if (iType != -1)
+				if (!AntiLag_IsHidden(ANTI_LAG_HIDE_WINGS) && iType != -1)
 				{
 					w = &c->Core;
 
@@ -15402,7 +15411,7 @@ bool RenderCharacterBackItem(CHARACTER* c, OBJECT* o, bool bTranslate)
 #ifdef SYSTEM_FLAG_NAT
 			iType = c->Flag.Type;
 
-			if (iType != -1)
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_WINGS) && iType != -1)
 			{
 				PART_t* flag = &c->Flag;
 			
@@ -15419,7 +15428,7 @@ bool RenderCharacterBackItem(CHARACTER* c, OBJECT* o, bool bTranslate)
 
 			iType = c->Helper.Type;
 
-			if (iType == MODEL_HELPER + 1)
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MOUNT) && iType == MODEL_HELPER + 1)
 			{
 				PART_t* w = &c->Helper;
 				w->LinkBone = 34;

@@ -640,6 +640,7 @@
     <ClCompile Include="w_PetActionStand.cpp" />
     <ClCompile Include="w_PetActionUnicorn.cpp" />
     <ClCompile Include="w_PetProcess.cpp" />
+    <ClCompile Include="AntiLagManager.cpp" />
     <ClCompile Include="ZzzAI.cpp" />
     <ClCompile Include="ZzzBMD.cpp" />
     <ClCompile Include="ZzzCharacter.cpp" />
@@ -1156,6 +1157,7 @@
     <ClInclude Include="w_PetActionUnicorn.h" />
     <ClInclude Include="w_PetProcess.h" />
     <ClInclude Include="w_WindowMessageHandler.h" />
+    <ClInclude Include="AntiLagManager.h" />
     <ClInclude Include="ZzzAI.h" />
     <ClInclude Include="ZzzBMD.h" />
     <ClInclude Include="ZzzCharacter.h" />

@@ -134,6 +134,7 @@ namespace
 #include "CameraManager.h"
 #include "CGMHeadChat.h"
 #include "ConnectVersionHex.h"
+#include "AntiLagManager.h"
 
 extern CUITextInputBox* g_pSingleTextInputBox;
 extern CUITextInputBox* g_pSinglePasswdInputBox;
@@ -2703,46 +2704,64 @@ bool RenderMainScene()
 			if (World == WD_39KANTURU_3RD)
 			{
 				if (!g_Direction.m_CKanturu.IsMayaScene())
-					RenderTerrain(false);
+					if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+						RenderTerrain(false);
 			}
 			else if (World != WD_10HEAVEN && World != -1)
 			{
 				if (gMapManager->IsPKField() || IsDoppelGanger2())
 				{
-					RenderObjects();
+					if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
+						RenderObjects();
 				}
-				RenderTerrain(false);
+				if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+					RenderTerrain(false);
 			}
 		}
 
 		if (!gMapManager->IsPKField() && !IsDoppelGanger2())
-			RenderObjects();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
+				RenderObjects();
 
-		RenderEffectShadows();
-		RenderBoids();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderEffectShadows();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+			RenderBoids();
 
 		RenderCharactersClient();
 
 		if (EditFlag != EDIT_NONE)
-			RenderTerrain(true);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+				RenderTerrain(true);
 
 		if (!CameraTopViewEnable)
-			RenderItems();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_ITEMS))
+				RenderItems();
 
-		RenderFishs();
-		gGoboidManager->RenderBugs();
-		RenderLeaves();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+			RenderFishs();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MOUNT))
+			gGoboidManager->RenderBugs();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+			RenderLeaves();
 
 		if (!gMapManager->InChaosCastle())
-			ThePetProcess().RenderPets();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_PETS))
+				ThePetProcess().RenderPets();
 
-		RenderBoids(true);
-		RenderObjects_AfterCharacter();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+			RenderBoids(true);
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
+			RenderObjects_AfterCharacter();
 
-		RenderJoints(byWaterMap);
-		RenderEffects();
-		RenderBlurs();
-		CheckSprites();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderJoints(byWaterMap);
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderEffects();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderBlurs();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			CheckSprites();
 		BeginSprite();
 
 		if ((World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
@@ -2757,20 +2776,25 @@ bool RenderMainScene()
 			|| IsUnitedMarketPlace()
 			)
 		{
-			RenderLeaves();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+				RenderLeaves();
 		}
 
-		RenderSprites();
-		RenderParticles();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderSprites();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderParticles();
 
 		if (IsWaterTerrain() == false)
 		{
-			RenderPoints(byWaterMap);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderPoints(byWaterMap);
 		}
 
 		EndSprite();
 
-		RenderAfterEffects();
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+			RenderAfterEffects();
 
 		if (IsWaterTerrain() == true)
 		{
@@ -2778,19 +2802,28 @@ bool RenderMainScene()
 
 			EndOpengl();
 			BeginOpengl(0, 0, Width, Height, true);
-			RenderWaterTerrain();
-			RenderJoints(byWaterMap);
-			RenderEffects(true);
-			RenderBlurs();
-			CheckSprites();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+				RenderWaterTerrain();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderJoints(byWaterMap);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderEffects(true);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderBlurs();
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				CheckSprites();
 			BeginSprite();
 
 			if (World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
-				RenderLeaves();
+				if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
+					RenderLeaves();
 
-			RenderSprites(byWaterMap);
-			RenderParticles(byWaterMap);
-			RenderPoints(byWaterMap);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderSprites(byWaterMap);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderParticles(byWaterMap);
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
+				RenderPoints(byWaterMap);
 
 			EndSprite();
 			EndOpengl();
@@ -2897,6 +2930,7 @@ void MainScene(HDC hDC)
 		}
 
 		g_dwMouseUseUIID = 0;
+		AntiLag_UpdateHotkeys();
 
 		switch (SceneFlag)
 		{
