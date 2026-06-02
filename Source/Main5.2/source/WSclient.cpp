@@ -144,13 +144,13 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  const int segmentCount = 16;
+  const int segmentCount = 4;
   for (int j = 0; j < segmentCount; ++j)
   {
     float fRatio = (float)j / (float)(segmentCount - 1);
-    float fDistance = 120.0f + (fRatio * 780.0f);
-    float fHalfWidth = 12.0f + (fRatio * 235.0f);
-    int fanCount = j / 3;
+    float fDistance = 120.0f + (fRatio * 150.0f);
+    float fHalfWidth = 8.0f + (fRatio * 45.0f);
+    int fanCount = j / 2;
 
     for (int k = -fanCount; k <= fanCount; ++k)
     {
