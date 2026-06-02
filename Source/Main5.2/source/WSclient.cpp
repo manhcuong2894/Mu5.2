@@ -118,6 +118,44 @@ extern bool g_PetEnableDuel;
 extern CUIMapName *g_pUIMapName; // rozy
 
 MASTER_LEVEL_VALUE Master_Level_Data;
+
+static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
+{
+  if (sc == NULL || so == NULL)
+    return;
+
+  vec3_t SkillAngle;
+  VectorCopy(so->Angle, SkillAngle);
+
+  OBJECT* targetObject = to;
+  if (targetObject == NULL || targetObject->Live == false)
+  {
+    CHARACTER* targetCharacter = gmCharacters->GetCharacter(sc->TargetCharacter);
+    if (targetCharacter && targetCharacter->Object.Live)
+      targetObject = &targetCharacter->Object;
+  }
+
+  if (targetObject && targetObject->Live)
+  {
+    SkillAngle[2] = CreateAngle(so->Position[0], so->Position[1], targetObject->Position[0], targetObject->Position[1]);
+  }
+
+  const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
+  const float fSin = sinf(fAngle);
+  const float fCos = cosf(fAngle);
+
+  for (int j = 0; j < 10; ++j)
+  {
+    vec3_t Position;
+    float fDistance = 1260.0f + (float)(j * 32);
+
+    VectorCopy(so->Position, Position);
+    Position[0] += (-fDistance * fSin);
+    Position[1] += (fDistance * fCos);
+    Position[2] += 125.0f;
+    CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, 34.0f);
+  }
+}
 BYTE Version[SIZE_PROTOCOLVERSION] = {'1' + 1, '0' + 2, '4' + 3, '0' + 4,
                                       '5' + 5};
 BYTE Serial[SIZE_PROTOCOLSERIAL + 1] = {"TbYehR2hFUPBKgZj"};
@@ -4333,6 +4371,7 @@ BOOL ReceiveMagic(BYTE *ReceiveBuffer, int Size, BOOL bEncrypted) {
             case Skill_Death_Stab_Strengthener:
             LABEL_102:
               SetAction(so, PLAYER_HIT_ONETOONE, true);
+              CreateDeathStabMainEffect(sc, so, to);
               if (sc != Hero && so->Type == MODEL_PLAYER)
                 so->AnimationFrame = 0.0;
               sc->AttackTime = 1;
@@ -5144,6 +5183,7 @@ BOOL ReceiveMagicContinue(BYTE *ReceiveBuffer, int Size, BOOL bEncrypted) {
             case Skill_Death_Stab_Strengthener:
             LABEL_39:
               SetAction(so, PLAYER_HIT_ONETOONE);
+              CreateDeathStabMainEffect(sc, so, NULL);
               break;
             case Skill_Chaotic_Diseier_Strengthener:
             LABEL_43:

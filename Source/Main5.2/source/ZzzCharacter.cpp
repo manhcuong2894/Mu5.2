@@ -3192,24 +3192,6 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 				SkillAngle[2] = CreateAngle(o->Position[0], o->Position[1], pTargetObject->Position[0], pTargetObject->Position[1]);
 			}
 
-			if (c->AttackTime > 2 && c->AttackTime <= 8 && o->CurrentAction == PLAYER_HIT_ONETOONE)
-			{
-				const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
-				const float fSin = sinf(fAngle);
-				const float fCos = cosf(fAngle);
-
-				for (int j = 0; j < 8; ++j)
-				{
-					vec3_t TempPos;
-					float fDistance = 1280.0f + (float)(j * 34) + (float)(((double)c->AttackTime - 3.0) * 12.0);
-
-					VectorCopy(o->Position, TempPos);
-					TempPos[0] += (-fDistance * fSin);
-					TempPos[1] += (fDistance * fCos);
-					TempPos[2] += 125.0f;
-					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, SkillAngle, 2, o, 34.0f);
-				}
-			}
 			if (c->AttackTime <= 8 && o->CurrentAction == PLAYER_HIT_ONETOONE)
 			{
 				float fDistance = 300.0f;
