@@ -1554,14 +1554,19 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					break;
 				case 2:
 					VectorCopy(TargetPosition, o->TargetPosition);
-					if (o->Target)
-						VectorCopy(o->Target->m_vPosSword, o->StartPosition);
-					else
-						VectorCopy(o->Position, o->StartPosition);
 					Vector(1.0f, 0.3f, 0.3f, o->Light);
 					o->LifeTime = (Scale >= 10.0f && Scale <= 20.0f) ? Scale : 20.0f;
 					o->MaxTails = 5;
 					o->TexType = BITMAP_FLARE_FORCE;
+					if (o->Target)
+					{
+						float fRate1 = max(0.0f, min(((float)o->LifeTime - 10) / (float)10, 1.0f));
+						float fRate2 = 1.0f - fRate1;
+						for (int i = 0; i < 3; ++i)
+						{
+							o->Position[i] = fRate2 * o->Target->m_vPosSword[i] + fRate1 * o->TargetPosition[i];
+						}
+					}
 					break;
 				case 3:
 					if (o->Target != NULL)
@@ -4399,16 +4404,16 @@ void MoveJoint(JOINT* o, int iIndex)
 			float fRate1 = max(0.0f, min(((float)o->LifeTime - 10) / (float)10, 1.0f));
 			float fRate2 = 1.0f - fRate1;
 
-			vec3_t MagicPos, StartPos;
+			vec3_t MagicPos, TargetPos;
 
 			GetMagicScrew(iIndex * 17721, MagicPos, (1.4f));
-			VectorScale(MagicPos, (90.0f), MagicPos);
+			VectorScale(MagicPos, (300.0f), MagicPos);
 			VectorAdd(MagicPos, o->TargetPosition, MagicPos);
-			VectorCopy(o->StartPosition, StartPos);
+			VectorCopy(o->Target->m_vPosSword, TargetPos);
 
 			for (int i = 0; i < 3; ++i)
 			{
-				o->Position[i] = fRate1 * StartPos[i] + fRate2 * MagicPos[i];
+				o->Position[i] = fRate2 * TargetPos[i] + fRate1 * MagicPos[i];
 			}
 		}
 		else if (o->SubType == 3)

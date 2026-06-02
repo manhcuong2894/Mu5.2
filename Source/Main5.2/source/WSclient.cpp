@@ -153,23 +153,20 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
     fTargetDistance = max(360.0f, min(fTargetDistance, 900.0f));
   }
 
-  const int segmentCount = 14;
+  const int segmentCount = 18;
   for (int j = 0; j < segmentCount; ++j)
   {
     float fRatio = (float)(j + 1) / (float)segmentCount;
-    float fDistance = 70.0f + (fRatio * (fTargetDistance - 70.0f));
-    float fHalfWidth = 10.0f + (fRatio * min(170.0f, fTargetDistance * 0.2f));
-    float fLifeTime = 19.5f - (fRatio * 5.0f);
-    float fLanes[5] = { -1.0f, 1.0f, -0.45f, 0.45f, 0.0f };
+    float fDistance = 60.0f + (fRatio * (fTargetDistance - 60.0f));
+    float fHalfWidth = 8.0f + (fRatio * min(170.0f, fTargetDistance * 0.2f));
+    float fLifeTime = 10.8f + (fRatio * 8.8f);
+    float fLanes[5] = { -1.0f, 1.0f, 0.0f, -0.5f, 0.5f };
     int laneCount = 2;
 
-    if (j > 3 && j % 3 != 0)
-      laneCount = 4;
-    else if (j == 0 || j % 2 == 0 || j == segmentCount - 1)
-    {
-      fLanes[2] = 0.0f;
+    if (j % 2 == 0)
       laneCount = 3;
-    }
+    if (j > 4 && j % 3 == 1)
+      laneCount = 5;
 
     for (int k = 0; k < laneCount; ++k)
     {
