@@ -69,7 +69,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 			}
-			else if (MODEL_SPEARSKILL == Type && o->SubType == 2)
+			else if (MODEL_SPEARSKILL == Type && (o->SubType == 2 || o->SubType == 52))
 			{
 				VectorCopy(TargetPosition, o->TargetPosition);
 				o->Target = Target;
@@ -140,7 +140,7 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				bCreateStartTail = false;
 			}
 
-			if (Type == MODEL_SPEARSKILL && (o->SubType == 5 || o->SubType == 6 || o->SubType == 7))
+			if (Type == MODEL_SPEARSKILL && (o->SubType == 5 || o->SubType == 6 || o->SubType == 7 || o->SubType == 52))
 			{
 				bCreateStartTail = false;
 			}
@@ -1523,7 +1523,8 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				VectorCopy(o->Position, o->TargetPosition);
 				break;
 			case MODEL_SPEARSKILL:
-				VectorCopy(o->Target->Position, o->TargetPosition);
+				if (o->SubType != 52)
+					VectorCopy(o->Target->Position, o->TargetPosition);
 				switch (o->SubType)
 				{
 				case 0:
@@ -1555,18 +1556,9 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 				case 2:
 					VectorCopy(TargetPosition, o->TargetPosition);
 					Vector(1.0f, 0.3f, 0.3f, o->Light);
-					o->LifeTime = (Scale >= 10.0f && Scale <= 20.0f) ? Scale : 20.0f;
+					o->LifeTime = 20;
 					o->MaxTails = 5;
 					o->TexType = BITMAP_FLARE_FORCE;
-					if (o->Target)
-					{
-						float fRate1 = max(0.0f, min(((float)o->LifeTime - 10) / (float)10, 1.0f));
-						float fRate2 = 1.0f - fRate1;
-						for (int i = 0; i < 3; ++i)
-						{
-							o->Position[i] = fRate2 * o->Target->m_vPosSword[i] + fRate1 * o->TargetPosition[i];
-						}
-					}
 					break;
 				case 3:
 					if (o->Target != NULL)
@@ -1617,6 +1609,15 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 
 					o->NumTails = -1;
 					CreateTail(o, Matrix);
+					break;
+				case 52:
+					VectorCopy(o->Position, o->StartPosition);
+					o->LifeTime = 13;
+					o->MaxTails = 0;
+					o->NumTails = -1;
+					o->Velocity = 0.f;
+					o->m_bCreateTails = false;
+					o->Scale = Scale;
 					break;
 				case 8:
 					o->RenderFace = RENDER_FACE_ONE;
@@ -4391,6 +4392,47 @@ void MoveJoint(JOINT* o, int iIndex)
 					}
 				}
 			}
+		}
+		if (o->SubType == 52)
+		{
+			const float fTotalLife = 13.0f;
+			float fPhase = (fTotalLife - (float)o->LifeTime) / (fTotalLife - 1.0f);
+
+			if (fPhase < 0.0f)
+				fPhase = 0.0f;
+			else if (fPhase > 1.0f)
+				fPhase = 1.0f;
+
+			float fDeltaX = o->TargetPosition[0] - o->StartPosition[0];
+			float fDeltaY = o->TargetPosition[1] - o->StartPosition[1];
+			float fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
+			float fStartDistance = min(70.0f, fTargetDistance * 0.18f);
+			float fMaxWidth = min(170.0f, max(55.0f, fTargetDistance * 0.22f));
+			float fDistance = fStartDistance + (fPhase * (fTargetDistance - fStartDistance));
+			float fHalfWidth = 6.0f + (fPhase * fMaxWidth);
+			float fAngle = o->Angle[2] * Q_PI / 180.0f;
+			float fSin = sinf(fAngle);
+			float fCos = cosf(fAngle);
+			float fLanes[5] = { 0.0f, -0.55f, 0.55f, -1.0f, 1.0f };
+			int laneCount = (fPhase < 0.18f) ? 1 : 3;
+
+			if (fPhase > 0.48f && (((int)o->LifeTime % 3) == 0))
+				laneCount = 5;
+
+			for (int k = 0; k < laneCount; ++k)
+			{
+				vec3_t Position;
+				float fSide = fHalfWidth * fLanes[k];
+
+				VectorCopy(o->StartPosition, Position);
+				Position[0] += (-fDistance * fSin);
+				Position[1] += (fDistance * fCos);
+				Position[0] += (fSide * fCos);
+				Position[1] += (fSide * fSin);
+				Position[2] += 125.0f;
+				CreateJoint(MODEL_SPEARSKILL, Position, Position, o->Angle, 2, o->Target, 38.0f);
+			}
+			break;
 		}
 		if (o->SubType == 2)
 		{

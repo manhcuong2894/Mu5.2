@@ -144,45 +144,19 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  float fTargetDistance = 900.0f;
+  vec3_t TargetPosition;
   if (targetObject && targetObject->Live)
   {
-    const float fDeltaX = targetObject->Position[0] - so->Position[0];
-    const float fDeltaY = targetObject->Position[1] - so->Position[1];
-    fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
-    fTargetDistance = max(360.0f, min(fTargetDistance, 900.0f));
+    VectorCopy(targetObject->Position, TargetPosition);
   }
-
-  const int segmentCount = 18;
-  for (int j = 0; j < segmentCount; ++j)
+  else
   {
-    float fRatio = (float)(j + 1) / (float)segmentCount;
-    float fDistance = 60.0f + (fRatio * (fTargetDistance - 60.0f));
-    float fHalfWidth = 8.0f + (fRatio * min(170.0f, fTargetDistance * 0.2f));
-    float fLifeTime = 10.8f + (fRatio * 8.8f);
-    float fLanes[5] = { -1.0f, 1.0f, 0.0f, -0.5f, 0.5f };
-    int laneCount = 2;
-
-    if (j % 2 == 0)
-      laneCount = 3;
-    if (j > 4 && j % 3 == 1)
-      laneCount = 5;
-
-    for (int k = 0; k < laneCount; ++k)
-    {
-      vec3_t Position;
-      float fSide = fHalfWidth * fLanes[k];
-
-      VectorCopy(so->Position, Position);
-      Position[0] += (-fDistance * fSin);
-      Position[1] += (fDistance * fCos);
-      Position[0] += (fSide * fCos);
-      Position[1] += (fSide * fSin);
-      Position[2] += 125.0f;
-
-      CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, fLifeTime);
-    }
+    VectorCopy(so->Position, TargetPosition);
+    TargetPosition[0] += (-900.0f * fSin);
+    TargetPosition[1] += (900.0f * fCos);
   }
+
+  CreateJoint(MODEL_SPEARSKILL, so->Position, TargetPosition, SkillAngle, 52, so, 1.0f);
 }
 BYTE Version[SIZE_PROTOCOLVERSION] = {'1' + 1, '0' + 2, '4' + 3, '0' + 4,
                                       '5' + 5};
