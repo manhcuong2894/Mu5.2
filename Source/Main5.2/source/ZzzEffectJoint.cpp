@@ -4406,17 +4406,18 @@ void MoveJoint(JOINT* o, int iIndex)
 			float fDeltaX = o->TargetPosition[0] - o->StartPosition[0];
 			float fDeltaY = o->TargetPosition[1] - o->StartPosition[1];
 			float fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
-			float fStartDistance = min(70.0f, fTargetDistance * 0.18f);
-			float fMaxWidth = min(170.0f, max(55.0f, fTargetDistance * 0.22f));
-			float fDistance = fStartDistance + (fPhase * (fTargetDistance - fStartDistance));
-			float fHalfWidth = 6.0f + (fPhase * fMaxWidth);
+			float fFarDistance = max(260.0f, fTargetDistance);
+			float fNearDistance = min(90.0f, fFarDistance * 0.18f);
+			float fDistance = fFarDistance - (fPhase * (fFarDistance - fNearDistance));
+			float fMaxWidth = min(220.0f, max(80.0f, fFarDistance * 0.24f));
+			float fHalfWidth = 10.0f + ((1.0f - fPhase) * fMaxWidth);
 			float fAngle = o->Angle[2] * Q_PI / 180.0f;
 			float fSin = sinf(fAngle);
 			float fCos = cosf(fAngle);
 			float fLanes[5] = { 0.0f, -0.55f, 0.55f, -1.0f, 1.0f };
-			int laneCount = (fPhase < 0.18f) ? 1 : 3;
+			int laneCount = (fPhase > 0.78f) ? 1 : 3;
 
-			if (fPhase > 0.48f && (((int)o->LifeTime % 3) == 0))
+			if (fPhase < 0.52f && (((int)o->LifeTime % 3) == 0))
 				laneCount = 5;
 
 			for (int k = 0; k < laneCount; ++k)
