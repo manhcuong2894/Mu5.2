@@ -152,8 +152,8 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   else
   {
     VectorCopy(so->Position, TargetPosition);
-    TargetPosition[0] += (-940.0f * fSin);
-    TargetPosition[1] += (940.0f * fCos);
+    TargetPosition[0] += (-900.0f * fSin);
+    TargetPosition[1] += (900.0f * fCos);
   }
 
   CreateJoint(MODEL_SPEARSKILL, so->Position, TargetPosition, SkillAngle, 52, so, 1.0f);
