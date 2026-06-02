@@ -79,9 +79,6 @@ typedef struct
 	bool MenuButtonCommand;
 	bool MenuButtonOptions;
 	bool MenuButtonEventTime;
-	bool MenuButtonVQMM;
-	bool MenuButtonMocNap;
-	bool MenuButtonChoTroi;
 	bool WindowsVipShop;
 	bool WindowsRankTop;
 	bool WindowsCommand;
@@ -760,21 +757,15 @@ void EncoderInformation()
 
 	info.MenuTypeButton = GetPrivateProfileInt("Custom", "CustomMenuType", 0, ".\\MainInfo.ini");
 
-	info.MenuButtonVipShop = GetPrivateProfileInt("CustomMenu", "Menu_BuyVip", GetPrivateProfileInt("Custom", "EnableVipShopButton", 0, ".\\MainInfo.ini"), ".\\MainInfo.ini");
+	info.MenuButtonVipShop = GetPrivateProfileInt("Custom", "EnableVipShopButton", 0, ".\\MainInfo.ini");
 
-	info.MenuButtonRankTop = GetPrivateProfileInt("CustomMenu", "Menu_BXH", GetPrivateProfileInt("Custom", "EnableRankingButton", 0, ".\\MainInfo.ini"), ".\\MainInfo.ini");
+	info.MenuButtonRankTop = GetPrivateProfileInt("Custom", "EnableRankingButton", 0, ".\\MainInfo.ini");
 
-	info.MenuButtonCommand = GetPrivateProfileInt("CustomMenu", "Menu_PhimTat", GetPrivateProfileInt("Custom", "EnableCommandButton", 0, ".\\MainInfo.ini"), ".\\MainInfo.ini");
+	info.MenuButtonCommand = GetPrivateProfileInt("Custom", "EnableCommandButton", 0, ".\\MainInfo.ini");
 
-	info.MenuButtonOptions = GetPrivateProfileInt("CustomMenu", "Menu_CauHinh", GetPrivateProfileInt("Custom", "EnableOptionButton", 0, ".\\MainInfo.ini"), ".\\MainInfo.ini");
+	info.MenuButtonOptions = GetPrivateProfileInt("Custom", "EnableOptionButton", 0, ".\\MainInfo.ini");
 
-	info.MenuButtonEventTime = GetPrivateProfileInt("CustomMenu", "Menu_EventTime", GetPrivateProfileInt("Custom", "EnableEventTimeButton", 0, ".\\MainInfo.ini"), ".\\MainInfo.ini");
-
-	info.MenuButtonVQMM = GetPrivateProfileInt("CustomMenu", "Menu_VQMM", 1, ".\\MainInfo.ini");
-
-	info.MenuButtonMocNap = GetPrivateProfileInt("CustomMenu", "Menu_MocNap", 1, ".\\MainInfo.ini");
-
-	info.MenuButtonChoTroi = GetPrivateProfileInt("CustomMenu", "Menu_ChoTroi", 1, ".\\MainInfo.ini");
+	info.MenuButtonEventTime = GetPrivateProfileInt("Custom", "EnableEventTimeButton", 0, ".\\MainInfo.ini");
 
 	info.WindowsVipShop = GetPrivateProfileInt("Custom", "EnableWindowsVipShop", 0, ".\\MainInfo.ini");
 

@@ -84,9 +84,6 @@ typedef struct
 	bool MenuButtonCommand;
 	bool MenuButtonOptions;
 	bool MenuButtonEventTime;
-	bool MenuButtonVQMM;
-	bool MenuButtonMocNap;
-	bool MenuButtonChoTroi;
 	bool WindowsVipShop;
 	bool WindowsRankTop;
 	bool WindowsCommand;
