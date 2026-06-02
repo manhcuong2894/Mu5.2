@@ -3191,7 +3191,7 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 				for (int j = 0; j < 8; ++j)
 				{
 					vec3_t TempPos;
-					float fDistance = 1280.0f + (float)(j * 34) + (float)((c->AttackTime - 3) * 12);
+					float fDistance = 1280.0f + (float)(j * 34) + (float)(((double)c->AttackTime - 3.0) * 12.0);
 
 					VectorCopy(o->Position, TempPos);
 					TempPos[0] += (-fDistance * fSin);
