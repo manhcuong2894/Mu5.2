@@ -79,6 +79,9 @@ typedef struct
 	bool MenuButtonCommand;
 	bool MenuButtonOptions;
 	bool MenuButtonEventTime;
+	bool MenuButtonVongQuay;
+	bool MenuButtonMocNap;
+	bool MenuButtonChoTroi;
 	bool WindowsVipShop;
 	bool WindowsRankTop;
 	bool WindowsCommand;
@@ -766,6 +769,12 @@ void EncoderInformation()
 	info.MenuButtonOptions = GetPrivateProfileInt("Custom", "EnableOptionButton", 0, ".\\MainInfo.ini");
 
 	info.MenuButtonEventTime = GetPrivateProfileInt("Custom", "EnableEventTimeButton", 0, ".\\MainInfo.ini");
+
+	info.MenuButtonVongQuay = GetPrivateProfileInt("Custom", "EnableVongQuayButton", 1, ".\\MainInfo.ini");
+
+	info.MenuButtonMocNap = GetPrivateProfileInt("Custom", "EnableMocNapButton", 1, ".\\MainInfo.ini");
+
+	info.MenuButtonChoTroi = GetPrivateProfileInt("Custom", "EnableChoTroiButton", 1, ".\\MainInfo.ini");
 
 	info.WindowsVipShop = GetPrivateProfileInt("Custom", "EnableWindowsVipShop", 0, ".\\MainInfo.ini");
 

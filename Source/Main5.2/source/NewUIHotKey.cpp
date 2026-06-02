@@ -113,6 +113,10 @@ bool CloseCustomMenuChildWindowsForF7() {
 }
 
 bool OpenCustomMenuWithF7() {
+  if (gmProtect->MenuSwitch == 0) {
+    return false;
+  }
+
   if (!CloseCustomMenuChildWindowsForF7()) {
     return false;
   }

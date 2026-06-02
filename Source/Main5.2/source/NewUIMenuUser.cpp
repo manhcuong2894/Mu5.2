@@ -109,13 +109,13 @@ int BuildMenuEntries(MenuEntry *entries, int maxEntries) {
     ++count;
   }
 
-  if (count < maxEntries) {
+  if (gmProtect->MenuButtonVongQuay && count < maxEntries) {
     entries[count].ActionId = MENU_ACTION_VONG_QUAY;
     entries[count].Label = gTextClient.txtClient_MenuUser[9];
     ++count;
   }
 
-  if (count < maxEntries) {
+  if (gmProtect->MenuButtonMocNap && count < maxEntries) {
     entries[count].ActionId = MENU_ACTION_MOC_NAP;
     entries[count].Label = gTextClient.txtClient_MenuUser[10];
     ++count;
@@ -146,7 +146,7 @@ int BuildMenuEntries(MenuEntry *entries, int maxEntries) {
   }
 
 #if CUSTOM_CHOTROI
-  if (count < maxEntries) {
+  if (gmProtect->MenuButtonChoTroi && count < maxEntries) {
     entries[count].ActionId = MENU_ACTION_CHO_TROI;
     entries[count].Label = ResolveMenuUserText(11, "Chợ Trời");
     ++count;
