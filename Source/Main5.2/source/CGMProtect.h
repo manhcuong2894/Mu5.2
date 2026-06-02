@@ -91,6 +91,9 @@ typedef struct
 	bool WindowsRankTop;
 	bool WindowsCommand;
 	bool WindowsEventTime;
+	bool WindowsVongQuay;
+	bool WindowsMocNap;
+	bool WindowsChoTroi;
 	bool WindowsJewelInventory;
 	bool WindowsResetInfo;
 	BYTE SwitchPersonalShopType;

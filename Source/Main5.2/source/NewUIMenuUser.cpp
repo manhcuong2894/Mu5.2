@@ -408,15 +408,16 @@ void SEASON3B::CNewUIMenuUser::RenderButton(float x, float y, float width,
 bool SEASON3B::CNewUIMenuUser::ExecuteMenuAction(int actionId) {
   switch (actionId) {
   case MENU_ACTION_EVENT_TIME:
-    if (g_CustomEventTime->OnOffWindow()) {
+    if (gmProtect->WindowsEventTime && g_CustomEventTime->OnOffWindow()) {
       g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
       PlayBuffer(SOUND_CLICK01);
     }
     return true;
 
   case MENU_ACTION_VONG_QUAY:
-    if (gInterface->Data[eWindowVongQuay].OnShow ||
-        CanOpenTopMostOverlayWindow(eTopMostOverlayVongQuay)) {
+    if (gmProtect->WindowsVongQuay &&
+        (gInterface->Data[eWindowVongQuay].OnShow ||
+         CanOpenTopMostOverlayWindow(eTopMostOverlayVongQuay))) {
       gVongQuay.OpenVongQuay();
       g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
       PlayBuffer(SOUND_CLICK01);
@@ -424,8 +425,9 @@ bool SEASON3B::CNewUIMenuUser::ExecuteMenuAction(int actionId) {
     return true;
 
   case MENU_ACTION_MOC_NAP:
-    if (gInterface->Data[eWindowMocNap].OnShow ||
-        CanOpenTopMostOverlayWindow(eTopMostOverlayMocNap)) {
+    if (gmProtect->WindowsMocNap &&
+        (gInterface->Data[eWindowMocNap].OnShow ||
+         CanOpenTopMostOverlayWindow(eTopMostOverlayMocNap))) {
       gMocNap.OpenWindowMocNap();
       g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
       PlayBuffer(SOUND_CLICK01);
@@ -463,9 +465,11 @@ bool SEASON3B::CNewUIMenuUser::ExecuteMenuAction(int actionId) {
 
 #if CUSTOM_CHOTROI
   case MENU_ACTION_CHO_TROI:
-    gCusChoTroi.GetOpenChoTroiWinDow();
-    g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
-    PlayBuffer(SOUND_CLICK01);
+    if (gmProtect->WindowsChoTroi) {
+      gCusChoTroi.GetOpenChoTroiWinDow();
+      g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
+      PlayBuffer(SOUND_CLICK01);
+    }
     return true;
 #endif
   }

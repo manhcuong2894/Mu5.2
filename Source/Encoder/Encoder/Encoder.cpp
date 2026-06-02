@@ -86,6 +86,9 @@ typedef struct
 	bool WindowsRankTop;
 	bool WindowsCommand;
 	bool WindowsEventTime;
+	bool WindowsVongQuay;
+	bool WindowsMocNap;
+	bool WindowsChoTroi;
 	bool WindowsJewelInventory;
 	bool WindowsResetInfo;
 	BYTE SwitchPersonalShopType;
@@ -783,6 +786,12 @@ void EncoderInformation()
 	info.WindowsCommand = GetPrivateProfileInt("Custom", "EnableWindowsCommand", 0, ".\\MainInfo.ini");
 
 	info.WindowsEventTime = GetPrivateProfileInt("Custom", "EnableWindowsEventTime", 0, ".\\MainInfo.ini");
+
+	info.WindowsVongQuay = GetPrivateProfileInt("Custom", "EnableWindowsVongQuay", 1, ".\\MainInfo.ini");
+
+	info.WindowsMocNap = GetPrivateProfileInt("Custom", "EnableWindowsMocNap", 1, ".\\MainInfo.ini");
+
+	info.WindowsChoTroi = GetPrivateProfileInt("Custom", "EnableWindowsChoTroi", 1, ".\\MainInfo.ini");
 
 	info.SwitchPersonalShopType = GetPrivateProfileInt("Custom", "SwitchPersonalShopType", 0, ".\\MainInfo.ini");
 
