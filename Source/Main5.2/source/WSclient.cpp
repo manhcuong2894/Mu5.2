@@ -135,9 +135,13 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
       targetObject = &targetCharacter->Object;
   }
 
+  float fTargetDistance = 940.0f;
   if (targetObject && targetObject->Live)
   {
     SkillAngle[2] = CreateAngle(so->Position[0], so->Position[1], targetObject->Position[0], targetObject->Position[1]);
+    float fDeltaX = targetObject->Position[0] - so->Position[0];
+    float fDeltaY = targetObject->Position[1] - so->Position[1];
+    fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
   }
 
   const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
@@ -148,7 +152,9 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   for (int j = 0; j < segmentCount; ++j)
   {
     float fRatio = (float)j / (float)(segmentCount - 1);
-    float fDistance = 120.0f + (fRatio * 150.0f);
+    float fStartDistance = min(120.0f, fTargetDistance * 0.25f);
+    float fEndDistance = min(270.0f, fTargetDistance * 0.45f);
+    float fDistance = fStartDistance + (fRatio * (fEndDistance - fStartDistance));
     float fHalfWidth = 8.0f + (fRatio * 45.0f);
     int fanCount = j / 2;
 

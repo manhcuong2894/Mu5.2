@@ -3186,10 +3186,14 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 			VectorCopy(o->Angle, SkillAngle);
 
 			CHARACTER* pTargetCharacter = gmCharacters->GetCharacter(c->TargetCharacter);
+			float fTargetDistance = 940.0f;
 			if (pTargetCharacter && pTargetCharacter->Object.Live)
 			{
 				OBJECT* pTargetObject = &pTargetCharacter->Object;
 				SkillAngle[2] = CreateAngle(o->Position[0], o->Position[1], pTargetObject->Position[0], pTargetObject->Position[1]);
+				float fDeltaX = pTargetObject->Position[0] - o->Position[0];
+				float fDeltaY = pTargetObject->Position[1] - o->Position[1];
+				fTargetDistance = sqrtf((fDeltaX * fDeltaX) + (fDeltaY * fDeltaY));
 			}
 
 			if (c->AttackTime > 1 && c->AttackTime <= 10 && o->CurrentAction == PLAYER_HIT_ONETOONE)
@@ -3204,7 +3208,8 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 				else if (fPhase > 1.0f)
 					fPhase = 1.0f;
 
-				float fDistance = 180.0f + (fPhase * 760.0f);
+				float fStartDistance = min(180.0f, fTargetDistance * 0.35f);
+				float fDistance = fStartDistance + (fPhase * (fTargetDistance - fStartDistance));
 				float fHalfWidth = 8.0f + (fPhase * 235.0f);
 				int fanCount = (int)(fPhase * 4.0f);
 
