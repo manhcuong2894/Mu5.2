@@ -3182,9 +3182,19 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 					PlayBuffer(SOUND_SKILL_SWORD2);
 			}
 
-			if (c->AttackTime > 2 && c->AttackTime <= 8)
+			vec3_t SkillAngle;
+			VectorCopy(o->Angle, SkillAngle);
+
+			CHARACTER* pTargetCharacter = gmCharacters->GetCharacter(c->TargetCharacter);
+			if (pTargetCharacter && pTargetCharacter->Object.Live)
 			{
-				const float fAngle = o->Angle[2] * Q_PI / 180.0f;
+				OBJECT* pTargetObject = &pTargetCharacter->Object;
+				SkillAngle[2] = CreateAngle(o->Position[0], o->Position[1], pTargetObject->Position[0], pTargetObject->Position[1]);
+			}
+
+			if (c->AttackTime > 2 && c->AttackTime <= 8 && o->CurrentAction == PLAYER_HIT_ONETOONE)
+			{
+				const float fAngle = SkillAngle[2] * Q_PI / 180.0f;
 				const float fSin = sinf(fAngle);
 				const float fCos = cosf(fAngle);
 
@@ -3197,10 +3207,10 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 					TempPos[0] += (-fDistance * fSin);
 					TempPos[1] += (fDistance * fCos);
 					TempPos[2] += 125.0f;
-					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, o->Angle, 2, o, 34.0f);
+					CreateJointSync(MODEL_SPEARSKILL, TempPos, TempPos, SkillAngle, 2, o, 34.0f);
 				}
 			}
-			if (c->AttackTime <= 8)
+			if (c->AttackTime <= 8 && o->CurrentAction == PLAYER_HIT_ONETOONE)
 			{
 				float fDistance = 300.0f;
 				vec4_t* mtBone = o->GetBoneTransform(c->Weapon[Hand].LinkBone);
@@ -3209,11 +3219,11 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 				{
 					vec3_t Position2 = { 0.0f, 0.0f, 0.0f };
 					pModel->TransformPosition(mtBone, Position2, o->m_vPosSword, true);
-					o->m_vPosSword[0] += timefac(fDistance * sinf(o->Angle[2] * Q_PI / 180.0f));
-					o->m_vPosSword[1] += timefac(-fDistance * cosf(o->Angle[2] * Q_PI / 180.0f));
+					o->m_vPosSword[0] += timefac(fDistance * sinf(SkillAngle[2] * Q_PI / 180.0f));
+					o->m_vPosSword[1] += timefac(-fDistance * cosf(SkillAngle[2] * Q_PI / 180.0f));
 				}
 			}
-			if (c->AttackTime > 6 && c->AttackTime <= 12)
+			if (c->AttackTime > 6 && c->AttackTime <= 12 && o->CurrentAction == PLAYER_HIT_ONETOONE)
 			{
 				vec3_t Position;
 				vec3_t Position2 = { 0.0f, 0.0f, 0.0f };
@@ -3225,22 +3235,20 @@ bool AttackStage(CHARACTER* c, OBJECT* o)
 					pModel->TransformPosition(mtBone, Position2, Position, true);
 
 					float fDistance = 100.0f + (float)((double)c->AttackTime - 8.f) * 10.0f;
-					Position[0] += timeNormalizer(fDistance * sinf(o->Angle[2] * Q_PI / 180.0f));
-					Position[1] += timeNormalizer(-fDistance * cosf(o->Angle[2] * Q_PI / 180.0f));
+					Position[0] += timeNormalizer(fDistance * sinf(SkillAngle[2] * Q_PI / 180.0f));
+					Position[1] += timeNormalizer(-fDistance * cosf(SkillAngle[2] * Q_PI / 180.0f));
 
 					vec3_t Light = { 1.0f, 1.0f, 1.0f };
-					CreateEffectSync(MODEL_SPEAR, Position, o->Angle, Light, 1, o);
-					CreateEffectSync(MODEL_SPEAR, Position, o->Angle, Light, 1, o);
-					CreateParticleSync(BITMAP_LIGHT, Position, o->Angle, Light, 5, 0.85f);
-					CreateParticleSync(BITMAP_SPARK + 1, Position, o->Angle, Light, 11, 1.0f);
-					CreateParticleSync(BITMAP_SPARK + 1, Position, o->Angle, Light, 11, 0.9f);
-					CreateParticleSync(BITMAP_SPARK + 1, Position, o->Angle, Light, 11, 0.8f);
+					CreateEffectSync(MODEL_SPEAR, Position, SkillAngle, Light, 1, o);
+					CreateEffectSync(MODEL_SPEAR, Position, SkillAngle, Light, 1, o);
+					CreateParticleSync(BITMAP_LIGHT, Position, SkillAngle, Light, 5, 0.85f);
+					CreateParticleSync(BITMAP_SPARK + 1, Position, SkillAngle, Light, 11, 1.0f);
+					CreateParticleSync(BITMAP_SPARK + 1, Position, SkillAngle, Light, 11, 0.9f);
+					CreateParticleSync(BITMAP_SPARK + 1, Position, SkillAngle, Light, 11, 0.8f);
 
-					CHARACTER* tc = gmCharacters->GetCharacter(c->TargetCharacter);
-
-					if (tc)
+					if (pTargetCharacter)
 					{
-						OBJECT* to = &tc->Object;
+						OBJECT* to = &pTargetCharacter->Object;
 						if (c->AttackTime > 10 && to->Live)
 						{
 							to->m_byHurtByOneToOne = 35;
