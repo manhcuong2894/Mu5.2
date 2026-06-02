@@ -144,15 +144,27 @@ static void CreateDeathStabMainEffect(CHARACTER* sc, OBJECT* so, OBJECT* to)
   const float fSin = sinf(fAngle);
   const float fCos = cosf(fAngle);
 
-  for (int j = 0; j < 44; ++j)
+  const int segmentCount = 42;
+  for (int j = 0; j < segmentCount; ++j)
   {
     vec3_t Position;
-    float fDistance = 1210.0f + (float)(j * 9);
+    float fRatio = 0.08f + (((float)j / (float)(segmentCount - 1)) * 0.92f);
 
-    VectorCopy(so->Position, Position);
-    Position[0] += (-fDistance * fSin);
-    Position[1] += (fDistance * fCos);
-    Position[2] += 125.0f;
+    if (targetObject && targetObject->Live)
+    {
+      Position[0] = so->Position[0] + ((targetObject->Position[0] - so->Position[0]) * fRatio);
+      Position[1] = so->Position[1] + ((targetObject->Position[1] - so->Position[1]) * fRatio);
+      Position[2] = so->Position[2] + ((targetObject->Position[2] - so->Position[2]) * fRatio) + 125.0f;
+    }
+    else
+    {
+      float fDistance = 120.0f + (float)(j * 22);
+      VectorCopy(so->Position, Position);
+      Position[0] += (-fDistance * fSin);
+      Position[1] += (fDistance * fCos);
+      Position[2] += 125.0f;
+    }
+
     CreateJoint(MODEL_SPEARSKILL, Position, Position, SkillAngle, 2, so, 38.0f);
   }
 }
