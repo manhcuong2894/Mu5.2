@@ -90,6 +90,7 @@ typedef struct
 	bool WindowsVipShop;
 	bool WindowsRankTop;
 	bool WindowsCommand;
+	bool WindowsOptions;
 	bool WindowsEventTime;
 	bool WindowsVongQuay;
 	bool WindowsMocNap;

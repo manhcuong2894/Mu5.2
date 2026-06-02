@@ -85,6 +85,7 @@ typedef struct
 	bool WindowsVipShop;
 	bool WindowsRankTop;
 	bool WindowsCommand;
+	bool WindowsOptions;
 	bool WindowsEventTime;
 	bool WindowsVongQuay;
 	bool WindowsMocNap;
@@ -784,6 +785,8 @@ void EncoderInformation()
 	info.WindowsRankTop = GetPrivateProfileInt("Custom", "EnableWindowsRankTop", 0, ".\\MainInfo.ini");
 
 	info.WindowsCommand = GetPrivateProfileInt("Custom", "EnableWindowsCommand", 0, ".\\MainInfo.ini");
+
+	info.WindowsOptions = GetPrivateProfileInt("Custom", "EnableWindowsOption", 0, ".\\MainInfo.ini");
 
 	info.WindowsEventTime = GetPrivateProfileInt("Custom", "EnableWindowsEventTime", 0, ".\\MainInfo.ini");
 

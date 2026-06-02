@@ -458,9 +458,11 @@ bool SEASON3B::CNewUIMenuUser::ExecuteMenuAction(int actionId) {
     return true;
 
   case MENU_ACTION_OPTIONS:
-    g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
-    g_pNewUISystem->Show(INTERFACE_OPTION);
-    PlayBuffer(SOUND_CLICK01);
+    if (gmProtect->WindowsOptions) {
+      g_pNewUISystem->Hide(INTERFACE_CUSTOM_MENU);
+      g_pNewUISystem->Show(INTERFACE_OPTION);
+      PlayBuffer(SOUND_CLICK01);
+    }
     return true;
 
 #if CUSTOM_CHOTROI
