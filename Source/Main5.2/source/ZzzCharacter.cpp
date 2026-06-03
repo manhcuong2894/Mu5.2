@@ -10197,7 +10197,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 
 	if (!gMapManager->InChaosCastle() && !(gMapManager->IsCursedTemple() && !c->SafeZone))
 	{
-		if (g_pOption->GetRenderEquipment())
+		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS) && g_pOption->GetRenderEquipment())
 		{
 			if (gmProtect->max_item_level_on >= 15)
 			{
@@ -10428,7 +10428,8 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 					Vector(Luminosity * 0.3f, Luminosity * 0.3f, Luminosity * 0.3f, Light);
 				}
 				float Scale;
-				if (c->PK < PVP_MURDERER2
+				if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS)
+					&& c->PK < PVP_MURDERER2
 					&& c->Level != 4
 					&& GetCrowdEquipmentFxZone(c, o) == CROWD_EQUIPMENT_FX_FULL)
 				{
@@ -11176,7 +11177,7 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
 				//c->ExtendStateTime += timefac(1.f);
 			}
 
-			if (fullset && g_pOption->GetRenderEquipment() && ShouldRenderHighCostEquipmentFx(c, o))
+			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS) && fullset && g_pOption->GetRenderEquipment() && ShouldRenderHighCostEquipmentFx(c, o))
 			{
 				PartObjectColor(c->BodyPart[5].Type, o->Alpha, 0.5f, Light);
 

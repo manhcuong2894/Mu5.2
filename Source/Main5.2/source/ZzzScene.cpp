@@ -2723,8 +2723,7 @@ bool RenderMainScene()
 			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
 				RenderObjects();
 
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderEffectShadows();
+		RenderEffectShadows();
 		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
 			RenderBoids();
 
@@ -2754,14 +2753,10 @@ bool RenderMainScene()
 		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_MAP_OBJECT))
 			RenderObjects_AfterCharacter();
 
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderJoints(byWaterMap);
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderEffects();
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderBlurs();
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			CheckSprites();
+		RenderJoints(byWaterMap);
+		RenderEffects();
+		RenderBlurs();
+		CheckSprites();
 		BeginSprite();
 
 		if ((World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
@@ -2780,21 +2775,17 @@ bool RenderMainScene()
 				RenderLeaves();
 		}
 
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderSprites();
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderParticles();
+		RenderSprites();
+		RenderParticles();
 
 		if (IsWaterTerrain() == false)
 		{
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderPoints(byWaterMap);
+			RenderPoints(byWaterMap);
 		}
 
 		EndSprite();
 
-		if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-			RenderAfterEffects();
+		RenderAfterEffects();
 
 		if (IsWaterTerrain() == true)
 		{
@@ -2804,26 +2795,19 @@ bool RenderMainScene()
 			BeginOpengl(0, 0, Width, Height, true);
 			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
 				RenderWaterTerrain();
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderJoints(byWaterMap);
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderEffects(true);
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderBlurs();
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				CheckSprites();
+			RenderJoints(byWaterMap);
+			RenderEffects(true);
+			RenderBlurs();
+			CheckSprites();
 			BeginSprite();
 
 			if (World == WD_2DEVIAS && HeroTile != 3 && HeroTile < 10)
 				if (!AntiLag_IsHidden(ANTI_LAG_HIDE_BACKGROUND))
 					RenderLeaves();
 
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderSprites(byWaterMap);
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderParticles(byWaterMap);
-			if (!AntiLag_IsHidden(ANTI_LAG_HIDE_EFFECTS))
-				RenderPoints(byWaterMap);
+			RenderSprites(byWaterMap);
+			RenderParticles(byWaterMap);
+			RenderPoints(byWaterMap);
 
 			EndSprite();
 			EndOpengl();

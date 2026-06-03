@@ -14,7 +14,7 @@ namespace
 		case ANTI_LAG_HIDE_WINGS:
 			return "Hide wings";
 		case ANTI_LAG_HIDE_EFFECTS:
-			return "Hide effects";
+			return "Hide equipment effects";
 		case ANTI_LAG_HIDE_ITEMS:
 			return "Hide ground item & zen";
 		case ANTI_LAG_HIDE_PETS:
