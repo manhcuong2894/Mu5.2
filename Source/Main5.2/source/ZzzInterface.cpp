@@ -67,6 +67,80 @@
 
 namespace
 {
+	bool g_bEndHoldRightMouse = false;
+	bool g_bClientTaskTitleSaved = false;
+	char g_szOriginalClientTaskTitle[256] = { 0 };
+
+	void SaveOriginalClientTaskTitle()
+	{
+		if (g_bClientTaskTitleSaved)
+		{
+			return;
+		}
+
+		HWND hClientWnd = gwinhandle->GethWnd();
+		if (hClientWnd == NULL)
+		{
+			return;
+		}
+
+		GetWindowTextA(hClientWnd, g_szOriginalClientTaskTitle, sizeof(g_szOriginalClientTaskTitle));
+		g_bClientTaskTitleSaved = true;
+	}
+
+	void UpdateClientTaskTitle()
+	{
+		HWND hClientWnd = gwinhandle->GethWnd();
+		if (hClientWnd == NULL)
+		{
+			return;
+		}
+
+		SaveOriginalClientTaskTitle();
+		if (!g_bClientTaskTitleSaved)
+		{
+			return;
+		}
+
+		if (g_bHideUI && g_bEndHoldRightMouse)
+		{
+			char szNewTitle[256];
+			sprintf(szNewTitle, "%s - F1: ON - END: ON", g_szOriginalClientTaskTitle);
+			SetWindowTextA(hClientWnd, szNewTitle);
+		}
+		else if (g_bHideUI)
+		{
+			char szNewTitle[256];
+			sprintf(szNewTitle, "%s - F1: ON", g_szOriginalClientTaskTitle);
+			SetWindowTextA(hClientWnd, szNewTitle);
+		}
+		else if (g_bEndHoldRightMouse)
+		{
+			char szNewTitle[256];
+			sprintf(szNewTitle, "%s - END: ON", g_szOriginalClientTaskTitle);
+			SetWindowTextA(hClientWnd, szNewTitle);
+		}
+		else
+		{
+			SetWindowTextA(hClientWnd, g_szOriginalClientTaskTitle);
+		}
+	}
+
+	void ApplyEndRightMouseHold(bool bIsForegroundClient)
+	{
+		if (!g_bEndHoldRightMouse || !bIsForegroundClient)
+		{
+			return;
+		}
+
+		MouseRButtonPop = false;
+		if (!MouseRButton)
+		{
+			MouseRButtonPush = true;
+		}
+		MouseRButton = true;
+	}
+
 	size_t GetUtf8CharByteLength(const char* pszText)
 	{
 		if (pszText == NULL || *pszText == '\0')
@@ -7916,6 +7990,7 @@ void SendMacroChat(char* Text)
 void MoveInterface()
 {
 	static DWORD dwLastPressF1 = 0;
+	static DWORD dwLastPressEnd = 0;
 	HWND hClientWnd = gwinhandle->GethWnd();
 	const bool bIsForegroundClient = (hClientWnd != NULL && GetForegroundWindow() == hClientWnd);
 
@@ -7924,27 +7999,24 @@ void MoveInterface()
 		dwLastPressF1 = GetTickCount();
 		extern bool g_bHideUI;
 		g_bHideUI = !g_bHideUI;
+		UpdateClientTaskTitle();
+	}
 
-		static bool bTitleSaved = false;
-		static char szOriginalTitle[256] = { 0 };
+	if (bIsForegroundClient && (GetAsyncKeyState(VK_END) & 0x8000) && (GetTickCount() - dwLastPressEnd > 300))
+	{
+		dwLastPressEnd = GetTickCount();
+		g_bEndHoldRightMouse = !g_bEndHoldRightMouse;
 
-		if (!bTitleSaved)
+		if (!g_bEndHoldRightMouse && ((GetAsyncKeyState(VK_RBUTTON) & 0x8000) == 0))
 		{
-			GetWindowTextA(gwinhandle->GethWnd(), szOriginalTitle, sizeof(szOriginalTitle));
-			bTitleSaved = true;
+			MouseRButtonReset();
 		}
 
-		if (g_bHideUI)
-		{
-			char szNewTitle[256];
-			sprintf(szNewTitle, "%s - F1: ON", szOriginalTitle);
-			SetWindowTextA(gwinhandle->GethWnd(), szNewTitle);
-		}
-		else
-		{
-			SetWindowTextA(gwinhandle->GethWnd(), szOriginalTitle);
-		}
-}
+		UpdateClientTaskTitle();
+	}
+
+	ApplyEndRightMouseHold(bIsForegroundClient);
+
 	if (g_Direction.IsDirection())
 	{
 		return;
