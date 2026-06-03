@@ -375,6 +375,7 @@ bool Calc_RenderObject(OBJECT* o, bool Translate, int Select, int ExtraMon)
 	if (o->EnableBoneMatrix)
 	{
 		b->Animation(o->BoneTransform, o->AnimationFrame, o->PriorAnimationFrame, o->PriorAction, o->Angle, o->HeadAngle, false, !Translate);
+		o->BoneTransformValid = true;
 	}
 	else
 	{
@@ -488,6 +489,7 @@ bool Calc_ObjectAnimation(OBJECT* o, bool Translate, int Select)
 			if (o->EnableBoneMatrix)
 			{
 				pModel->Animation(o->GetBoneTransform(), o->AnimationFrame, o->PriorAnimationFrame, o->PriorAction, o->Angle, o->HeadAngle, false, !Translate);
+				o->BoneTransformValid = true;
 			}
 			else
 			{

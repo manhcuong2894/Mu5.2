@@ -20,6 +20,25 @@
 
 extern float g_fBoneSave[10][3][4];
 
+static bool IsRemotePlayerBoneTransformNotReady(const OBJECT* Target)
+{
+	return (Target != NULL
+		&& (Hero == NULL || Target != &Hero->Object)
+		&& Target->Type == MODEL_PLAYER
+		&& Target->Kind == KIND_PLAYER
+		&& Target->EnableBoneMatrix
+		&& !Target->IsBoneTransformReady());
+}
+
+static bool KillJointIfBoneTransformNotReady(JOINT* o)
+{
+	if (o != NULL && IsRemotePlayerBoneTransformNotReady(o->Target))
+	{
+		o->Live = false;
+		return true;
+	}
+	return false;
+}
 void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PK, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vColor, short int sTargetIndex)
 {
 	if (checkNormalizer)
@@ -30,6 +49,11 @@ void CreateJointSync(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t An
 
 void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle, int SubType, OBJECT* Target, float Scale, short PKKey, WORD SkillIndex, WORD SkillSerialNum, int iChaIndex, const float* vPriorColor, short int sTargetindex)
 {
+	if (IsRemotePlayerBoneTransformNotReady(Target))
+	{
+		return;
+	}
+
 	for (int i = 0; i < MAX_JOINTS; i++)
 	{
 		JOINT* o = &Joints[i];
@@ -1108,6 +1132,8 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					o->LifeTime = 2;
 					Vector(1.f, 0.1f, 0.f, o->Light);
 					Vector(0.f, -150.f, 0.f, BitePosition);//42
+					if (KillJointIfBoneTransformNotReady(o))
+						break;
 					gmClientModels->GetModel(MODEL_PLAYER)->TransformPosition(o->Target->BoneTransform[33], BitePosition, o->TargetPosition, true);
 					break;
 				case 3:
@@ -1315,6 +1341,8 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					o->LifeTime = 2;
 					Vector(1.f, 0.5f, 0.4f, o->Light);
 					Vector(0.f, -150.f, 0.f, BitePosition);//42
+					if (KillJointIfBoneTransformNotReady(o))
+						break;
 					gmClientModels->GetModel(MODEL_PLAYER)->TransformPosition(o->Target->BoneTransform[33], BitePosition, o->TargetPosition, true);
 					break;
 					// ChainLighting
@@ -1705,6 +1733,8 @@ void CreateJoint(int Type, vec3_t Position, vec3_t TargetPosition, vec3_t Angle,
 					BMD* b = gmClientModels->GetModel(o->Target->Type);
 					if (b)
 					{
+						if (KillJointIfBoneTransformNotReady(o))
+							break;
 						vec3_t p;
 						Vector(0.0f, 0.0f, 0.0f, p);
 						b->TransformPosition(o->Target->BoneTransform[33], p, o->Position, true);
@@ -4622,6 +4652,8 @@ void MoveJoint(JOINT* o, int iIndex)
 
 				if (pModel)
 				{
+					if (KillJointIfBoneTransformNotReady(o))
+						break;
 					pModel->TransformPosition(o->Target->BoneTransform[37], vRelative, o->TargetPosition, false);
 					VectorScale(o->TargetPosition, pModel->BodyScale, o->TargetPosition);
 					VectorAdd(o->Target->Position, o->TargetPosition, o->TargetPosition);
@@ -5017,6 +5049,12 @@ void MoveJoint(JOINT* o, int iIndex)
 							OBJECT* pTargetObj = &pTargetChar->Object;
 							vec3_t vRelativePos, vPos, vAngle;
 							BMD* pModel = gmClientModels->GetModel(pSourceObj->Type);
+
+							if (IsRemotePlayerBoneTransformNotReady(pSourceObj))
+							{
+								o->Live = false;
+								break;
+							}
 
 							if (pModel)
 							{
@@ -5598,6 +5636,8 @@ void MoveJoint(JOINT* o, int iIndex)
 
 			if (b)
 			{
+				if (KillJointIfBoneTransformNotReady(o))
+					break;
 				vec3_t p;
 				Vector(0.0f, 0.0f, 0.0f, p);
 				b->TransformPosition(o->Target->BoneTransform[33], p, o->Position, true);
@@ -6835,6 +6875,9 @@ void MoveJoint(JOINT* o, int iIndex)
 		{
 			if (o->Target)
 			{
+				if (KillJointIfBoneTransformNotReady(o))
+					break;
+
 				vec3_t Direction, Angle;
 
 				Vector(0.f, 20.f, 0.f, p);

@@ -22,10 +22,36 @@
 vec3_t g_vParticleWind = { 0.0f, 0.0f, 0.0f };
 vec3_t g_vParticleWindVelo = { 0.0f, 0.0f, 0.0f };
 
+static bool IsRemotePlayerBoneTransformNotReady(const OBJECT* Target)
+{
+	return (Target != NULL
+		&& (Hero == NULL || Target != &Hero->Object)
+		&& Target->Type == MODEL_PLAYER
+		&& Target->Kind == KIND_PLAYER
+		&& Target->EnableBoneMatrix
+		&& !Target->IsBoneTransformReady());
+}
+
+static bool KillParticleIfBoneTransformNotReady(PARTICLE* o)
+{
+	if (o != NULL && IsRemotePlayerBoneTransformNotReady(o->Target))
+	{
+		o->Live = false;
+		o->LifeTime = 0;
+		return true;
+	}
+	return false;
+}
+
 
 void HandPosition(PARTICLE* o)
 {
 	OBJECT* Owner = o->Target;
+	if (IsRemotePlayerBoneTransformNotReady(Owner))
+	{
+		return;
+	}
+
 	BMD* b = gmClientModels->GetModel(Owner->Type);
 	if (b)
 	{
@@ -56,6 +82,11 @@ int CreateParticleSync(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, in
 
 int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int SubType, float Scale, OBJECT* Owner)
 {
+	if (IsRemotePlayerBoneTransformNotReady(Owner))
+	{
+		return false;
+	}
+
 	for (int i = 0; i < MAX_PARTICLES; i++)
 	{
 		PARTICLE* o = &Particles[i];
@@ -873,6 +904,9 @@ int CreateParticle(int Type, vec3_t Position, vec3_t Angle, vec3_t Light, int Su
 				else if (o->SubType == 5)
 				{
 					o->TexType = BITMAP_ADV_SMOKE;
+
+					if (KillParticleIfBoneTransformNotReady(o))
+						break;
 
 					BMD* pModel = gmClientModels->GetModel(o->Target->Type);
 					int iNumBones = pModel->NumBones;
@@ -5003,6 +5037,9 @@ void MoveParticles()
 				}
 				else if (o->SubType == 3 || o->SubType == 4 || o->SubType == 5)
 				{
+					if (KillParticleIfBoneTransformNotReady(o))
+						break;
+
 					BMD* pModel = gmClientModels->GetModel(o->Target->Type);
 					if (pModel)
 					{
@@ -8059,6 +8096,9 @@ void MoveParticles()
 				{
 					if (o->Target != NULL && o->Target->Type == MODEL_PLAYER && o->Target->Kind == KIND_PLAYER)
 					{
+						if (KillParticleIfBoneTransformNotReady(o))
+							break;
+
 						OBJECT* Owner = o->Target;
 						BMD* b = gmClientModels->GetModel(Owner->Type);
 
@@ -8305,6 +8345,9 @@ void MoveParticles()
 
 				if (o->SubType == 8)
 				{
+					if (KillParticleIfBoneTransformNotReady(o))
+						break;
+
 					vec3_t vPos, vRelativePos;
 					if (o->Target != NULL)
 					{

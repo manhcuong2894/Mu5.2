@@ -2,6 +2,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include <malloc.h>
 #include "SkillManager.h"
 #include "w_ObjectInfo.h"
 
@@ -192,6 +193,7 @@ void OBJECT::Initialize()
 
 	m_pCloth = NULL;
 	BoneTransform = NULL;
+	BoneTransformValid = false;
 
 	Owner = NULL;
 	Prior = NULL;
@@ -216,11 +218,26 @@ void OBJECT::CreateBoneTransform(int NumBones)
 {
 	this->DeleteBoneTransform();
 	this->BoneTransform = new vec34_t[NumBones];
+	memset(this->BoneTransform, 0, sizeof(vec34_t) * NumBones);
+	this->BoneTransformValid = false;
+}
+
+void OBJECT::EnsureBoneTransform(int NumBones)
+{
+	const size_t RequiredSize = sizeof(vec34_t) * NumBones;
+	if (this->BoneTransform == NULL || _msize(this->BoneTransform) < RequiredSize)
+	{
+		this->DeleteBoneTransform();
+		this->BoneTransform = new vec34_t[NumBones];
+		memset(this->BoneTransform, 0, RequiredSize);
+		this->BoneTransformValid = false;
+	}
 }
 
 void OBJECT::DeleteBoneTransform()
 {
 	SAFE_DELETE_ARRAY(this->BoneTransform);
+	this->BoneTransformValid = false;
 }
 
 vec34_t* OBJECT::GetBoneTransform()

@@ -128,9 +128,11 @@ public:
 	void Destroy();
 
 	void CreateBoneTransform(int NumBones);
+	void EnsureBoneTransform(int NumBones);
 	void DeleteBoneTransform();
 	vec34_t* GetBoneTransform();
 	vec4_t* GetBoneTransform(int index);
+	bool IsBoneTransformReady() const { return BoneTransform != NULL && BoneTransformValid; }
 
 	bool IsHideFenrir();
 	bool IsHideHorser();
@@ -234,6 +236,7 @@ public:
 /*+576*/	CInterpolateContainer	m_Interpolates;
 //--
 			int				LinkIndex;
+			bool			BoneTransformValid;
 			int				runtime_whelskill;
 			int				movementType;
 			std::chrono::steady_clock::time_point time_animation_hide;
